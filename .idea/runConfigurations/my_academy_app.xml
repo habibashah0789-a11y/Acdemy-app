@@ -1,0 +1,6 @@
+<component name="ProjectRunConfigurationManager">
+  <configuration default="false" name="my_academy_app" type="FlutterRunConfigurationType" factoryName="Flutter" editBeforeRun="true" focusToolWindowBeforeRun="true">
+    <option name="filePath" value="$PROJECT_DIR$/my_academy_app/lib/main.dart" />
+    <method v="2" />
+  </configuration>
+</component>
