@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 
-import 'academy_profile_screen.dart';
 import 'fee_settings_screen.dart';
 //import 'subject_management_screen.dart';
 //import 'teacher_management_screen.dart';
@@ -20,12 +19,12 @@ class SettingsScreen extends StatelessWidget {
       ),
       body: ListView(
         children: [
-          _tile(
+          /*_tile(
             context,
             Icons.business,
             "Academy Profile",
             const AcademyProfileScreen(),
-          ),
+          ),*/
           _tile(
             context,
             Icons.currency_rupee,

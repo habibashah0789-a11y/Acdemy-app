@@ -10,12 +10,14 @@ class AddStudentScreen extends StatefulWidget {
   final String? presetClassType;
   final String? presetSubject;
   final String? presetGrade;
+  final String? presetSchedule;
 
   const AddStudentScreen({
     super.key,
     this.presetClassType,
     this.presetSubject,
     this.presetGrade,
+    this.presetSchedule,
   });
 
   @override
@@ -35,6 +37,7 @@ class _AddStudentScreenState extends State<AddStudentScreen> {
   final _chemC = TextEditingController();
   final _engC = TextEditingController();
   final _mathC = TextEditingController();
+  final _scheduleC = TextEditingController();
   Uint8List? _imageBytes;
   bool _isSaving = false;
 
@@ -42,7 +45,8 @@ class _AddStudentScreenState extends State<AddStudentScreen> {
   late String _selectedClassType;
   late String _selectedGrade;
   late String _selectedSubject;
-  String _selectedSchedule = '7:00 AM';
+  int? _startSlotIdx;
+  int? _endSlotIdx;
 
   static const List<String> _classTypes = ['FSc', 'Matric'];
   static const Map<String, List<String>> _gradeOptions = {
@@ -62,6 +66,49 @@ class _AddStudentScreenState extends State<AddStudentScreen> {
     _selectedClassType = widget.presetClassType ?? 'FSc';
     _selectedGrade = widget.presetGrade ?? _gradeOptions[_selectedClassType]!.first;
     _selectedSubject = widget.presetSubject ?? 'Biology';
+    _scheduleC.text = widget.presetSchedule ?? '7:00 AM';
+    _parseSchedule(_scheduleC.text);
+  }
+
+  void _parseSchedule(String text) {
+    if (text.contains('-') || text.contains('—')) {
+      final parts = text.split(RegExp(r'[-—]'));
+      if (parts.length == 2) {
+        final start = parts[0].trim();
+        final end = parts[1].trim();
+        final startIdx = _scheduleSlots.indexOf(start);
+        final endIdx = _scheduleSlots.indexOf(end);
+        if (startIdx != -1 && endIdx != -1) {
+          _startSlotIdx = startIdx;
+          _endSlotIdx = endIdx;
+          return;
+        }
+      }
+    }
+    final idx = _scheduleSlots.indexOf(text.trim());
+    if (idx != -1) {
+      _startSlotIdx = idx;
+      _endSlotIdx = null;
+    }
+  }
+
+  void _onSlotTapped(int index) {
+    setState(() {
+      if (_startSlotIdx == null || (_startSlotIdx != null && _endSlotIdx != null)) {
+        _startSlotIdx = index;
+        _endSlotIdx = null;
+        _scheduleC.text = _scheduleSlots[index];
+      } else {
+        if (index >= _startSlotIdx!) {
+          _endSlotIdx = index;
+          _scheduleC.text = '${_scheduleSlots[_startSlotIdx!]} - ${_scheduleSlots[_endSlotIdx!]}';
+        } else {
+          _startSlotIdx = index;
+          _endSlotIdx = null;
+          _scheduleC.text = _scheduleSlots[index];
+        }
+      }
+    });
   }
 
   @override
@@ -77,6 +124,7 @@ class _AddStudentScreenState extends State<AddStudentScreen> {
     _chemC.dispose();
     _engC.dispose();
     _mathC.dispose();
+    _scheduleC.dispose();
     super.dispose();
   }
 
@@ -151,7 +199,7 @@ class _AddStudentScreenState extends State<AddStudentScreen> {
         lastName: '',
         phone: _phoneC.text.trim(),
         email: _emailC.text.trim(),
-        schedule: _selectedSchedule,
+        schedule: _scheduleC.text.trim(),
         classType: _selectedClassType,
         grade: _selectedGrade,
         subject: _selectedSubject,
@@ -324,18 +372,59 @@ class _AddStudentScreenState extends State<AddStudentScreen> {
                 ),
                 const SizedBox(height: 16),
 
-                // Schedule dropdown (7 AM – 10 PM)
-                DropdownButtonFormField<String>(
-                  value: _selectedSchedule,
+                // Schedule input and scrollable slot row
+                TextFormField(
+                  controller: _scheduleC,
                   decoration: const InputDecoration(
                     labelText: 'Class Schedule *',
                     prefixIcon: Icon(Icons.access_time_rounded),
+                    hintText: 'e.g., 7:00 AM - 10:00 AM',
                   ),
-                  items: _scheduleSlots.map((s) => DropdownMenuItem(value: s, child: Text(s))).toList(),
                   onChanged: (v) {
-                    if (v != null) setState(() => _selectedSchedule = v);
+                    setState(() {
+                      _parseSchedule(v);
+                    });
                   },
+                  validator: (v) => (v == null || v.trim().isEmpty) ? 'Required' : null,
                 ),
+                const SizedBox(height: 8),
+                SizedBox(
+                  height: 40,
+                  child: ListView.separated(
+                    scrollDirection: Axis.horizontal,
+                    itemCount: _scheduleSlots.length,
+                    separatorBuilder: (_, __) => const SizedBox(width: 8),
+                    itemBuilder: (context, index) {
+                      final isSelected = (_endSlotIdx != null)
+                          ? (index >= _startSlotIdx! && index <= _endSlotIdx!)
+                          : (index == _startSlotIdx);
+                      final color = AppTheme.primaryBlue;
+
+                      return GestureDetector(
+                        onTap: () => _onSlotTapped(index),
+                        child: AnimatedContainer(
+                          duration: const Duration(milliseconds: 200),
+                          padding: const EdgeInsets.symmetric(horizontal: 14),
+                          alignment: Alignment.center,
+                          decoration: BoxDecoration(
+                            color: isSelected ? color : color.withOpacity(0.08),
+                            borderRadius: BorderRadius.circular(20),
+                            border: Border.all(color: isSelected ? color : color.withOpacity(0.2)),
+                          ),
+                          child: Text(
+                            _scheduleSlots[index],
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                              color: isSelected ? Colors.white : color,
+                            ),
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                ),
+                const SizedBox(height: 16),
 
                 _sectionTitle('Fee Structure (Rs)'),
                 Row(

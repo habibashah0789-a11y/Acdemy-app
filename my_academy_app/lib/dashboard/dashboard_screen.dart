@@ -4,7 +4,6 @@ import 'package:fl_chart/fl_chart.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import '../services/database_service.dart';
 import '../theme/app_theme.dart';
 import '../models/student_model.dart';
 
@@ -24,42 +23,12 @@ class _ActivityItem {
   });
 }
 
-class ExplorerNode {
-  final String id;
-  final String title;
-  final String trailingLabel;
-  final bool isCurrency;
-  final IconData? icon;
-  final Color? iconColor;
-  final List<ExplorerNode> children;
-
-  const ExplorerNode({
-    required this.id,
-    required this.title,
-    required this.trailingLabel,
-    this.isCurrency = false,
-    this.icon,
-    this.iconColor,
-    this.children = const [],
-  });
-
-  bool get hasChildren => children.isNotEmpty;
-}
-
 const Map<String, List<String>> _subjectFilters = {
   'Bio': ['biology', 'bio'],
   'Physics': ['physics'],
   'Chemistry': ['chemistry'],
   'Maths': ['math', 'mathematics'],
   'English': ['english'],
-};
-
-const Map<String, IconData> _subjectIcons = {
-  'Bio': Icons.biotech_rounded,
-  'Physics': Icons.science_rounded,
-  'Chemistry': Icons.colorize_rounded,
-  'Maths': Icons.calculate_rounded,
-  'English': Icons.menu_book_rounded,
 };
 
 const Map<String, Color> _subjectColors = {
@@ -70,7 +39,7 @@ const Map<String, Color> _subjectColors = {
   'English': Color(0xFF9C27B0),
 };
 
-const List<String> _matricGradeLevels = ['9th Class', '10th Class'];
+const List<String> _subjectsList = ['Bio', 'Physics', 'Chemistry', 'Maths', 'English'];
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
@@ -80,676 +49,30 @@ class DashboardScreen extends StatefulWidget {
 }
 
 class _DashboardScreenState extends State<DashboardScreen> {
-  bool _isRefreshing = false;
   final _fmt = NumberFormat.currency(symbol: 'Rs', decimalDigits: 0);
-  final Map<String, bool> _expandedNodes = {};
 
-  Stream<List<StudentModel>> get _studentSnapshotStream =>
-      FirebaseFirestore.instance.collection('students').snapshots().map(
-            (snap) => snap.docs
-                .map((doc) => StudentModel.fromMap(
-                    doc.data(), doc.id))
-                .toList(),
-          );
+  late final Stream<List<StudentModel>> _studentSnapshotStream;
 
-  bool _isExpanded(String nodeId) => _expandedNodes[nodeId] ?? false;
-
-  void _toggleExpanded(String nodeId) {
-    setState(() {
-      _expandedNodes[nodeId] = !(_expandedNodes[nodeId] ?? false);
-    });
-  }
-
-  void _setAllExpanded(ExplorerNode root, bool expanded) {
-    void recurse(ExplorerNode node) {
-      _expandedNodes[node.id] = expanded;
-      for (final child in node.children) {
-        recurse(child);
-      }
-    }
-
-    setState(() {
-      recurse(root);
-    });
-  }
-
-  Future<void> _refreshData() async {
-    setState(() => _isRefreshing = true);
-    await DatabaseService.syncFromFirestore();
-    if (mounted) setState(() => _isRefreshing = false);
-  }
-
-  void _showFscDetails(List<StudentModel> students) {
-    final fscStudents = students.where((s) => _isFsc(s.classType)).toList();
-    _showDetailsBottomSheet('FSC Subjects Breakdown', _buildSubjectBreakdown(fscStudents));
-  }
-
-  void _showMatricDetails(List<StudentModel> students) {
-    final matricStudents = students.where((s) => _isMatric(s.classType)).toList();
-    _showDetailsBottomSheet('Matric Classes Breakdown', Column(
-      children: _matricGradeLevels.map((grade) {
-        final gradeStudents = matricStudents.where((s) => s.grade.contains(grade.split(' ').first)).toList();
-        return _buildDetailTile(
-          title: grade,
-          students: gradeStudents,
-          icon: Icons.folder_open_rounded,
-          iconColor: const Color(0xFF2E7D32),
-          onTap: () {
-            Navigator.pop(context);
-            _showGradeDetails(grade, gradeStudents);
-          },
+  @override
+  void initState() {
+    super.initState();
+    _studentSnapshotStream = FirebaseFirestore.instance
+        .collection('students')
+        .snapshots()
+        .map(
+          (snap) => snap.docs
+              .map((doc) => StudentModel.fromMap(doc.data(), doc.id))
+              .toList(),
         );
-      }).toList(),
-    ));
-  }
-
-  void _showGradeDetails(String grade, List<StudentModel> students) {
-    _showDetailsBottomSheet('$grade Subjects Breakdown', _buildSubjectBreakdown(students));
-  }
-
-  void _showDetailsBottomSheet(String title, Widget content) {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (context) => Container(
-        height: MediaQuery.of(context).size.height * 0.75,
-        decoration: BoxDecoration(
-          color: Theme.of(context).scaffoldBackgroundColor,
-          borderRadius: const BorderRadius.vertical(top: Radius.circular(25)),
-        ),
-        child: Column(
-          children: [
-            Container(
-              margin: const EdgeInsets.symmetric(vertical: 12),
-              width: 40,
-              height: 4,
-              decoration: BoxDecoration(color: Colors.grey.shade300, borderRadius: BorderRadius.circular(2)),
-            ),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text(title, style: GoogleFonts.poppins(fontSize: 18, fontWeight: FontWeight.bold)),
-                  IconButton(onPressed: () => Navigator.pop(context), icon: const Icon(Icons.close_rounded)),
-                ],
-              ),
-            ),
-            const Divider(),
-            Expanded(child: SingleChildScrollView(padding: const EdgeInsets.all(20), child: content)),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildSubjectBreakdown(List<StudentModel> students) {
-    const subjects = ['Bio', 'Physics', 'Chemistry', 'Maths', 'English'];
-    return Column(
-      children: subjects.map((sub) {
-        final subStudents = students.where((s) => _matchesSubject(s, sub)).toList();
-        return _buildDetailTile(
-          title: sub,
-          students: subStudents,
-          icon: _subjectIcons[sub] ?? Icons.book_rounded,
-          iconColor: _subjectColors[sub] ?? AppTheme.primaryBlue,
-        );
-      }).toList(),
-    );
-  }
-
-  Widget _buildDetailTile({
-    required String title,
-    required List<StudentModel> students,
-    required IconData icon,
-    required Color iconColor,
-    VoidCallback? onTap,
-  }) {
-    double collected = _sumAmount(students, true);
-    double pending = _sumAmount(students, false);
-    double total = collected + pending;
-
-    return Card(
-      margin: const EdgeInsets.only(bottom: 12),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(15),
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            children: [
-              Row(
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(10),
-                    decoration: BoxDecoration(color: iconColor.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(12)),
-                    child: Icon(icon, color: iconColor, size: 24),
-                  ),
-                  const SizedBox(width: 16),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(title, style: GoogleFonts.poppins(fontSize: 16, fontWeight: FontWeight.bold)),
-                        Text('${students.length} Registered Students', style: TextStyle(fontSize: 12, color: Colors.grey.shade600)),
-                      ],
-                    ),
-                  ),
-                  if (onTap != null) const Icon(Icons.chevron_right_rounded, color: Colors.grey),
-                ],
-              ),
-              const SizedBox(height: 16),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  _buildMiniStat('Total', total, AppTheme.primaryBlue),
-                  _buildMiniStat('Collected', collected, Colors.green),
-                  _buildMiniStat('Pending', pending, Colors.red),
-                ],
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildMiniStat(String label, double amount, Color color) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(label, style: TextStyle(fontSize: 10, color: Colors.grey.shade600, fontWeight: FontWeight.w600)),
-        Text(_fmt.format(amount), style: GoogleFonts.poppins(fontSize: 13, fontWeight: FontWeight.bold, color: color)),
-      ],
-    );
   }
 
   bool _isFsc(String classType) => classType.toLowerCase().contains('fsc');
-  bool _isMatric(String classType) =>
-      classType.toLowerCase().contains('matric');
-
-  bool _matchesSubject(StudentModel student, String subjectKey) {
-    final raw = student.subject.toLowerCase();
-    final filters = _subjectFilters[subjectKey]!;
-return filters.any(raw.contains);
-  }
-
-  String _formatCurrency(double amount) => _fmt.format(amount);
-
-  ExplorerNode _buildGradeTree(List<StudentModel> students) {
-    final fscStudents = students.where((s) => _isFsc(s.classType)).toList();
-    final matricStudents =
-        students.where((s) => _isMatric(s.classType)).toList();
-
-    final fscNode = ExplorerNode(
-      id: 'grade_fsc',
-      title: 'FSC Students',
-      trailingLabel: '${fscStudents.length}',
-      icon: Icons.school_rounded,
-      iconColor: const Color(0xFF1565C0),
-      children: _buildFscGradeChildren(fscStudents),
-    );
-
-    final matricNode = ExplorerNode(
-      id: 'grade_matric',
-      title: 'Matric Students',
-      trailingLabel: '${matricStudents.length}',
-      icon: Icons.auto_stories_rounded,
-      iconColor: const Color(0xFF2E7D32),
-      children: _buildMatricGradeChildren(matricStudents),
-    );
-
-    return ExplorerNode(
-      id: 'grade_total',
-      title: 'Total Students',
-      trailingLabel: '${students.length}',
-      icon: Icons.folder_rounded,
-      iconColor: AppTheme.primaryBlue,
-      children: [fscNode, matricNode],
-    );
-  }
-
-  List<ExplorerNode> _buildFscGradeChildren(List<StudentModel> students) {
-    const subjects = ['Bio', 'Physics', 'Chemistry', 'Maths', 'English'];
-    return subjects.map((subject) {
-      final subjectList =
-          students.where((s) => _matchesSubject(s, subject)).toList();
-      return ExplorerNode(
-        id: 'grade_fsc_$subject',
-        title: subject,
-        trailingLabel: '${subjectList.length}',
-        icon: _subjectIcons[subject],
-        iconColor: _subjectColors[subject],
-        children: [
-          ExplorerNode(
-            id: 'grade_fsc_${subject}_first',
-            title: '1st Year $subject Students',
-            trailingLabel:
-                "${subjectList.where((s) => s.grade.toLowerCase().contains('first')).length}",
-            icon: Icons.folder_open_rounded,
-            iconColor: _subjectColors[subject]?.withValues(alpha: 0.7),
-          ),
-          ExplorerNode(
-            id: 'grade_fsc_${subject}_second',
-            title: '2nd Year $subject Students',
-            trailingLabel:
-                "${subjectList.where((s) => s.grade.toLowerCase().contains('second')).length}",
-            icon: Icons.folder_open_rounded,
-            iconColor: _subjectColors[subject]?.withValues(alpha: 0.7),
-          ),
-        ],
-      );
-    }).toList();
-  }
-
-  List<ExplorerNode> _buildMatricGradeChildren(List<StudentModel> students) {
-    return _matricGradeLevels.map((gradeLabel) {
-      final classList = students
-          .where((s) => s.grade
-              .toLowerCase()
-              .contains(gradeLabel.toLowerCase().split(' ').first))
-          .toList();
-      return ExplorerNode(
-        id: 'grade_matric_${gradeLabel.replaceAll(' ', '_')}',
-        title: gradeLabel,
-        trailingLabel: '${classList.length}',
-        icon: Icons.folder_open_rounded,
-        iconColor: const Color(0xFF2E7D32).withValues(alpha: 0.7),
-        children: ['Bio', 'Physics', 'Chemistry', 'Maths', 'English'].map((subject) {
-          final subjectList =
-              classList.where((s) => _matchesSubject(s, subject)).toList();
-          return ExplorerNode(
-            id: 'grade_matric_${gradeLabel.replaceAll(' ', '_')}_$subject',
-            title: subject,
-            trailingLabel: '${subjectList.length}',
-            icon: _subjectIcons[subject],
-            iconColor: _subjectColors[subject],
-          );
-        }).toList(),
-      );
-    }).toList();
-  }
-
-  ExplorerNode _buildAmountTree(
-    List<StudentModel> students,
-    String rootId,
-    String rootTitle,
-    bool collected,
-  ) {
-    final fscStudents = students.where((s) => _isFsc(s.classType)).toList();
-    final matricStudents =
-        students.where((s) => _isMatric(s.classType)).toList();
-
-    final fscNode = ExplorerNode(
-      id: '${rootId}_fsc',
-      title: 'FSC',
-      trailingLabel: _formatCurrency(_sumAmount(fscStudents, collected)),
-      isCurrency: true,
-      icon: Icons.school_rounded,
-      iconColor: const Color(0xFF1565C0),
-      children: _buildFscAmountChildren(fscStudents, collected),
-    );
-
-    final matricNode = ExplorerNode(
-      id: '${rootId}_matric',
-      title: 'Matric',
-      trailingLabel: _formatCurrency(_sumAmount(matricStudents, collected)),
-      isCurrency: true,
-      icon: Icons.auto_stories_rounded,
-      iconColor: const Color(0xFF2E7D32),
-      children: _buildMatricAmountChildren(matricStudents, collected),
-    );
-
-    return ExplorerNode(
-      id: rootId,
-      title: rootTitle,
-      trailingLabel: _formatCurrency(_sumAmount(students, collected)),
-      isCurrency: true,
-      icon: Icons.folder_rounded,
-      iconColor: AppTheme.primaryBlue,
-      children: [fscNode, matricNode],
-    );
-  }
-
-  List<ExplorerNode> _buildFscAmountChildren(
-      List<StudentModel> students, bool collected) {
-    const subjects = ['Bio', 'Physics', 'Chemistry', 'Maths', 'English'];
-    return subjects.map((subject) {
-      final subjectList =
-          students.where((s) => _matchesSubject(s, subject)).toList();
-      final firstYearSum = _sumAmount(
-          subjectList
-              .where((s) => s.grade.toLowerCase().contains('first'))
-              .toList(),
-          collected);
-      final secondYearSum = _sumAmount(
-          subjectList
-              .where((s) => s.grade.toLowerCase().contains('second'))
-              .toList(),
-          collected);
-      return ExplorerNode(
-        id: 'amount_fsc_$subject',
-        title: subject,
-        trailingLabel: _formatCurrency(_sumAmount(subjectList, collected)),
-        isCurrency: true,
-        icon: _subjectIcons[subject],
-        iconColor: _subjectColors[subject],
-        children: [
-          ExplorerNode(
-            id: 'amount_fsc_${subject}_first',
-            title: '1st Year $subject',
-            trailingLabel: _formatCurrency(firstYearSum),
-            isCurrency: true,
-            icon: Icons.folder_open_rounded,
-            iconColor: _subjectColors[subject]?.withValues(alpha: 0.7),
-          ),
-          ExplorerNode(
-            id: 'amount_fsc_${subject}_second',
-            title: '2nd Year $subject',
-            trailingLabel: _formatCurrency(secondYearSum),
-            isCurrency: true,
-            icon: Icons.folder_open_rounded,
-            iconColor: _subjectColors[subject]?.withValues(alpha: 0.7),
-          ),
-        ],
-      );
-    }).toList();
-  }
-
-  List<ExplorerNode> _buildMatricAmountChildren(
-      List<StudentModel> students, bool collected) {
-    return _matricGradeLevels.map((gradeLabel) {
-      final classList = students
-          .where((s) => s.grade
-              .toLowerCase()
-              .contains(gradeLabel.toLowerCase().split(' ').first))
-          .toList();
-      return ExplorerNode(
-        id: 'amount_matric_${gradeLabel.replaceAll(' ', '_')}',
-        title: gradeLabel,
-        trailingLabel: _formatCurrency(_sumAmount(classList, collected)),
-        isCurrency: true,
-        icon: Icons.folder_open_rounded,
-        iconColor: const Color(0xFF2E7D32).withValues(alpha: 0.7),
-        children:
-            ['Bio', 'Physics', 'Chemistry', 'Maths', 'English'].map((subject) {
-          final subjectList =
-              classList.where((s) => _matchesSubject(s, subject)).toList();
-          return ExplorerNode(
-            id: 'amount_matric_${gradeLabel.replaceAll(' ', '_')}_$subject',
-            title: subject,
-            trailingLabel: _formatCurrency(_sumAmount(subjectList, collected)),
-            isCurrency: true,
-            icon: _subjectIcons[subject],
-            iconColor: _subjectColors[subject],
-          );
-        }).toList(),
-      );
-    }).toList();
-  }
+  bool _isMatric(String classType) => classType.toLowerCase().contains('matric');
 
   double _sumAmount(List<StudentModel> students, bool collected) {
     return students.fold(0, (total, student) {
       return total + (collected ? student.feeSubmitted : student.feeRemaining);
     });
-  }
-
-  Widget _buildExplorerSection(String title, ExplorerNode root) {
-    return Card(
-      margin: const EdgeInsets.only(bottom: 20),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Expanded(
-                  child: Text(title,
-                      style: GoogleFonts.poppins(
-                          fontSize: 18, fontWeight: FontWeight.w600)),
-                ),
-                TextButton(
-                  onPressed: () => _setAllExpanded(root, true),
-                  child: const Text('Expand All'),
-                ),
-                const SizedBox(width: 8),
-                TextButton(
-                  onPressed: () => _setAllExpanded(root, false),
-                  child: const Text('Collapse All'),
-                ),
-              ],
-            ),
-            const SizedBox(height: 16),
-            _buildTreeNode(root),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildTreeNode(ExplorerNode node, {int depth = 0}) {
-    final isExpandable = node.hasChildren;
-    final nodeId = node.id;
-    final expanded = _isExpanded(nodeId);
-
-    return Column(
-      children: [
-        InkWell(
-          borderRadius: BorderRadius.circular(16),
-          onTap: isExpandable ? () => _toggleExpanded(nodeId) : null,
-          child: Container(
-            padding: EdgeInsets.fromLTRB(12 + depth * 16, 12, 12, 12),
-            decoration: BoxDecoration(
-              color: depth == 0 ? Colors.transparent : null,
-              borderRadius: BorderRadius.circular(16),
-            ),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: [
-                Icon(
-                  node.icon ?? (isExpandable
-                      ? (expanded ? Icons.folder_open_rounded : Icons.folder_rounded)
-                      : Icons.description_rounded),
-                  color: node.iconColor ?? (depth == 0 ? AppTheme.primaryBlue : Colors.grey),
-                  size: 24,
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(node.title,
-                          style: GoogleFonts.poppins(
-                              fontSize: 15,
-                              fontWeight: FontWeight.w600,
-                              color: depth == 0 ? null : null)),
-                      if (depth > 0 && isExpandable) const SizedBox(height: 2),
-                    ],
-                  ),
-                ),
-                Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                  decoration: BoxDecoration(
-                    color: node.isCurrency
-                        ? AppTheme.primaryBlue.withValues(alpha: 0.1)
-                        : Colors.grey.shade200,
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Text(node.trailingLabel,
-                      style: GoogleFonts.poppins(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w600,
-                        color: node.isCurrency
-                            ? AppTheme.primaryBlue
-                            : Colors.black87,
-                      )),
-                ),
-              ],
-            ),
-          ),
-        ),
-        AnimatedSize(
-          duration: 200.ms,
-          curve: Curves.easeInOut,
-          child: Column(
-            children: expanded
-                ? node.children
-                    .map((child) => _buildTreeNode(child, depth: depth + 1))
-                    .toList()
-                : const [],
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildGradeExplorer() {
-    return StreamBuilder<List<StudentModel>>(
-      stream: _studentSnapshotStream,
-      builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Center(child: CircularProgressIndicator());
-        }
-        if (snapshot.hasError) {
-          return Padding(
-            padding: const EdgeInsets.symmetric(vertical: 16),
-            child: Text('Unable to load grade view: ${snapshot.error}',
-                style: const TextStyle(color: Colors.red)),
-          );
-        }
-
-        final students = snapshot.data ?? [];
-        final gradeTree = _buildGradeTree(students);
-        final collectedTree = _buildAmountTree(
-            students, 'collected_amount', 'Collected Amount', true);
-        final pendingTree = _buildAmountTree(
-            students, 'pending_amount', 'Pending Amount', false);
-
-        return Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _buildExplorerSection('Students Strength', gradeTree),
-            _buildExplorerSection('Collected Amount', collectedTree),
-            _buildExplorerSection('Pending Amount', pendingTree),
-          ],
-        );
-      },
-    );
-  }
-
-  Future<List<_ActivityItem>> _fetchRecentActivities() async {
-    final since = Timestamp.fromDate(
-      DateTime.now().subtract(const Duration(hours: 24)),
-    );
-    final items = <_ActivityItem>[];
-
-    try {
-      final snap = await FirebaseFirestore.instance
-          .collection('students')
-          .where('createdAt', isGreaterThanOrEqualTo: since)
-          .orderBy('createdAt', descending: true)
-          .get();
-
-      for (final doc in snap.docs) {
-        final d = doc.data();
-        final ts = d['createdAt'];
-        final firstName = d['firstName'] ?? '';
-        final lastName = d['lastName'] ?? '';
-        final fullName = '$firstName $lastName'.trim().isNotEmpty
-            ? '$firstName $lastName'.trim()
-            : (d['name'] ?? 'Unknown');
-        items.add(_ActivityItem(
-          title: 'Student Admission',
-          subtitle:
-              '$fullName registered in ${d['classType'] ?? ''} (${d['grade'] ?? ''})',
-          time: ts is Timestamp ? ts.toDate() : DateTime.now(),
-          icon: Icons.person_add_rounded,
-          color: Colors.blue,
-        ));
-      }
-    } catch (_) {}
-
-    try {
-      final snap = await FirebaseFirestore.instance
-          .collection('fees')
-          .where('createdAt', isGreaterThanOrEqualTo: since)
-          .orderBy('createdAt', descending: true)
-          .get();
-
-      for (final doc in snap.docs) {
-        final d = doc.data();
-        final ts = d['createdAt'];
-        items.add(_ActivityItem(
-          title: 'Fee Payment',
-          subtitle:
-              '${d['studentName'] ?? 'Unknown'} paid Rs ${d['amount'] ?? 0}',
-          time: ts is Timestamp ? ts.toDate() : DateTime.now(),
-          icon: Icons.payments_rounded,
-          color: Colors.green,
-        ));
-      }
-    } catch (_) {}
-
-    items.sort((a, b) => b.time.compareTo(a.time));
-    return items;
-  }
-
-  String _relativeTime(DateTime t) {
-    final diff = DateTime.now().difference(t);
-    if (diff.inMinutes < 1) return 'Just now';
-    if (diff.inMinutes < 60) return '${diff.inMinutes}m ago';
-    if (diff.inHours < 24) return '${diff.inHours}h ago';
-    return '${diff.inDays}d ago';
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Academy Dashboard'),
-        actions: [
-          IconButton(
-            onPressed: _refreshData,
-            icon: _isRefreshing
-                ? const SizedBox(
-                    width: 20,
-                    height: 20,
-                    child: CircularProgressIndicator(
-                        color: Colors.white, strokeWidth: 2),
-                  )
-                : const Icon(Icons.sync),
-          ),
-        ],
-      ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _buildGreeting(),
-            const SizedBox(height: 24),
-            _buildStatsGrid(),
-            const SizedBox(height: 32),
-            _buildSectionTitle('Students & Fee Explorer'),
-            const SizedBox(height: 16),
-            _buildGradeExplorer(),
-            const SizedBox(height: 32),
-            _buildSectionTitle('Revenue Overview'),
-            const SizedBox(height: 16),
-            _buildRevenueChart(),
-            const SizedBox(height: 32),
-            _buildSectionTitle('Recent Activities (Last 24 h)'),
-            const SizedBox(height: 16),
-            _buildRecentActivityList(),
-          ],
-        ),
-      ),
-    );
   }
 
   Widget _buildGreeting() {
@@ -761,9 +84,7 @@ return filters.any(raw.contains);
           'Welcome Back,',
           style: GoogleFonts.poppins(
             fontSize: 16,
-            color: isDark
-                ? AppTheme.darkTextSecondary
-                : AppTheme.lightTextSecondary,
+            color: isDark ? AppTheme.darkTextSecondary : AppTheme.lightTextSecondary,
           ),
         ),
         Text(
@@ -771,8 +92,7 @@ return filters.any(raw.contains);
           style: GoogleFonts.poppins(
             fontSize: 28,
             fontWeight: FontWeight.bold,
-            color:
-                isDark ? AppTheme.darkTextPrimary : AppTheme.lightTextPrimary,
+            color: isDark ? AppTheme.darkTextPrimary : AppTheme.lightTextPrimary,
           ),
         ),
       ],
@@ -786,233 +106,349 @@ return filters.any(raw.contains);
     );
   }
 
-  /*Widget _buildStatsGrid() {
-    final w = MediaQuery.of(context).size.width;
-    return Center(
-      child: Container(
-        width: w * 0.5,
-        constraints: const BoxConstraints(maxWidth: 400, minWidth: 280),
-        child: GridView.count(
-          shrinkWrap: true,
-          physics: const NeverScrollableScrollPhysics(),
-          crossAxisCount: 2,
-          crossAxisSpacing: 12, 
-          mainAxisSpacing: 12,  
-          childAspectRatio: 2.1, 
-          
-          children: [
-            _buildStatCard('Total Students', '${DatabaseService.totalStudents}',
-                Icons.school_rounded, Colors.blue),
-            _buildStatCard(
-                'Collected',
-                _fmt.format(DatabaseService.totalFeesCollected),
-                Icons.payments_rounded,
-                Colors.orange),
-            _buildStatCard(
-                'Pending',
-                _fmt.format(DatabaseService.totalPendingFees),
-                Icons.warning_amber_rounded,
-                Colors.red),
-          ],
-        ),
+  Widget _buildStatsGrid(List<StudentModel> students) {
+    final screenWidth = MediaQuery.of(context).size.width;
+    double collected = _sumAmount(students, true);
+    double pending = _sumAmount(students, false);
+
+    return GridView.builder(
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      itemCount: 3,
+      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: screenWidth < 600 ? 1 : 2,
+        crossAxisSpacing: 12,
+        mainAxisSpacing: 12,
+        childAspectRatio: screenWidth < 600 ? 2.8 : 2.2,
       ),
+      itemBuilder: (context, index) {
+        switch (index) {
+          case 0:
+            return _buildStatCard(
+              'Total Students',
+              '${students.length}',
+              Icons.school_rounded,
+              Colors.blue,
+            );
+          case 1:
+            return _buildStatCard(
+              'Collected',
+              _fmt.format(collected),
+              Icons.payments_rounded,
+              Colors.orange,
+            );
+          default:
+            return _buildStatCard(
+              'Pending',
+              _fmt.format(pending),
+              Icons.warning_amber_rounded,
+              Colors.red,
+            );
+        }
+      },
     ).animate().fadeIn(delay: 200.ms).slideY(begin: 0.1);
-  }*/
-Widget _buildStatsGrid() {
-  final screenWidth = MediaQuery.of(context).size.width;
+  }
 
-  return GridView.builder(
-    shrinkWrap: true,
-    physics: const NeverScrollableScrollPhysics(),
-    itemCount: 3,
-
-    gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-      crossAxisCount: screenWidth < 600 ? 1 : 2,
-      crossAxisSpacing: 12,
-      mainAxisSpacing: 12,
-      childAspectRatio: screenWidth < 600 ? 2.8 : 2.2,
-    ),
-
-    itemBuilder: (context, index) {
-      switch (index) {
-        case 0:
-          return _buildStatCard(
-            'Total Students',
-            '${DatabaseService.totalStudents}',
-            Icons.school_rounded,
-            Colors.blue,
-          );
-
-        case 1:
-          return _buildStatCard(
-            'Collected',
-            _fmt.format(DatabaseService.totalFeesCollected),
-            Icons.payments_rounded,
-            Colors.orange,
-          );
-
-        default:
-          return _buildStatCard(
-            'Pending',
-            _fmt.format(DatabaseService.totalPendingFees),
-            Icons.warning_amber_rounded,
-            Colors.red,
-          );
-      }
-    },
-  ).animate().fadeIn(delay: 200.ms).slideY(begin: 0.1);
-}
-  /*Widget _buildStatCard(
-      String title, String value, IconData icon, Color color) {
+  Widget _buildStatCard(
+    String title,
+    String value,
+    IconData icon,
+    Color color,
+  ) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return Card(
+      elevation: 3,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+      ),
       child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        padding: const EdgeInsets.symmetric(
+          horizontal: 14,
+          vertical: 12,
+        ),
+        child: Row(
           children: [
             Container(
-              padding: const EdgeInsets.all(8),
+              padding: const EdgeInsets.all(10),
               decoration: BoxDecoration(
-                color: color.withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(10),
+                color: color.withValues(alpha: 0.12),
+                borderRadius: BorderRadius.circular(12),
               ),
-              child: Icon(icon, color: color, size: 20),
+              child: Icon(
+                icon,
+                color: color,
+                size: 24,
+              ),
             ),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(value,
-                    style: GoogleFonts.poppins(
-                        fontSize: 18, fontWeight: FontWeight.bold),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    value,
                     maxLines: 1,
-                    overflow: TextOverflow.ellipsis),
-                Text(title,
+                    overflow: TextOverflow.ellipsis,
+                    style: GoogleFonts.poppins(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    title,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                     style: GoogleFonts.poppins(
                       fontSize: 12,
-                      color: isDark
-                          ? AppTheme.darkTextSecondary
-                          : AppTheme.lightTextSecondary,
-                    )),
-              ],
+                      color: isDark ? AppTheme.darkTextSecondary : AppTheme.lightTextSecondary,
+                    ),
+                  ),
+                ],
+              ),
             ),
           ],
         ),
       ),
-    );
-  }*/
-  Widget _buildStatCard(
-  String title,
-  String value,
-  IconData icon,
-  Color color,
-) {
-  final isDark = Theme.of(context).brightness == Brightness.dark;
-
-  return Card(
-    elevation: 3,
-    shape: RoundedRectangleBorder(
-      borderRadius: BorderRadius.circular(16),
-    ),
-    child: Padding(
-      padding: const EdgeInsets.symmetric(
-        horizontal: 14,
-        vertical: 12,
-      ),
-      child: Row(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(10),
-            decoration: BoxDecoration(
-              color: color.withValues(alpha: 0.12),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Icon(
-              icon,
-              color: color,
-              size: 24,
-            ),
-          ),
-
-          const SizedBox(width: 12),
-
-          Expanded(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  value,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: GoogleFonts.poppins(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-
-                const SizedBox(height: 2),
-
-                Text(
-                  title,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: GoogleFonts.poppins(
-                    fontSize: 12,
-                    color: isDark
-                        ? AppTheme.darkTextSecondary
-                        : AppTheme.lightTextSecondary,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    ),
-  );
-}
-
-  Widget _buildRevenueChart() {
-    return StreamBuilder<List<StudentModel>>(
-      stream: _studentSnapshotStream,
-      builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Center(child: CircularProgressIndicator());
-        }
-        final students = snapshot.data ?? [];
-        final fscStudents = students.where((s) => _isFsc(s.classType)).toList();
-        final matricStudents =
-            students.where((s) => _isMatric(s.classType)).toList();
-
-        return Column(
-          children: [
-            _buildClassRevenueChart('FSC Revenue', fscStudents, () => _showFscDetails(students)),
-            const SizedBox(height: 20),
-            _buildClassRevenueChart('Matric Revenue', matricStudents, () => _showMatricDetails(students)),
-          ],
-        );
-      },
     );
   }
 
-  Widget _buildClassRevenueChart(String title, List<StudentModel> students, VoidCallback onTap) {
+  Widget _buildStudentStrengthChart(List<StudentModel> students) {
+    final fsc1st = students.where((s) => _isFsc(s.classType) && s.grade.toLowerCase().contains('first')).length.toDouble();
+    final fsc2nd = students.where((s) => _isFsc(s.classType) && s.grade.toLowerCase().contains('second')).length.toDouble();
+    final matric9th = students.where((s) => _isMatric(s.classType) && s.grade.toLowerCase().contains('ninth')).length.toDouble();
+    final matric10th = students.where((s) => _isMatric(s.classType) && s.grade.toLowerCase().contains('tenth')).length.toDouble();
+
+    final maxVal = [fsc1st, fsc2nd, matric9th, matric10th].reduce((a, b) => a > b ? a : b);
+    final maxY = maxVal > 0 ? maxVal * 1.25 : 10.0;
+
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    return Card(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+      elevation: 2,
+      child: Padding(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Student Strength Breakdown',
+                      style: GoogleFonts.poppins(fontSize: 16, fontWeight: FontWeight.bold),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      'Active enrollments by class level',
+                      style: TextStyle(fontSize: 11, color: Colors.grey.shade500),
+                    ),
+                  ],
+                ),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: AppTheme.primaryBlue.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Text(
+                    '${students.length} Total',
+                    style: GoogleFonts.poppins(
+                      fontSize: 13,
+                      fontWeight: FontWeight.bold,
+                      color: AppTheme.primaryBlue,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 24),
+            SizedBox(
+              height: 200,
+              child: BarChart(
+                BarChartData(
+                  alignment: BarChartAlignment.spaceAround,
+                  maxY: maxY,
+                  barTouchData: BarTouchData(
+                    touchCallback: (FlTouchEvent event, barTouchResponse) {
+                      if (event is! FlTapUpEvent) {
+                        return;
+                      }
+                      if (barTouchResponse == null || barTouchResponse.spot == null) {
+                        return;
+                      }
+                      final index = barTouchResponse.spot!.touchedBarGroupIndex;
+                      
+                      String title = '';
+                      String classType = '';
+                      String grade = '';
+                      if (index == 0) {
+                        title = 'FSc 1st Year';
+                        classType = 'FSc';
+                        grade = 'First Year';
+                      } else if (index == 1) {
+                        title = 'FSc 2nd Year';
+                        classType = 'FSc';
+                        grade = 'Second Year';
+                      } else if (index == 2) {
+                        title = 'Matric 9th Class';
+                        classType = 'Matric';
+                        grade = 'Ninth';
+                      } else if (index == 3) {
+                        title = 'Matric 10th Class';
+                        classType = 'Matric';
+                        grade = 'Tenth';
+                      }
+
+                      if (title.isNotEmpty) {
+                        showDialog(
+                          context: context,
+                          builder: (context) => StudentStrengthDetailDialog(
+                            title: title,
+                            classType: classType,
+                            grade: grade,
+                            students: students,
+                          ),
+                        );
+                      }
+                    },
+                    touchTooltipData: BarTouchTooltipData(
+                      getTooltipColor: (group) => isDark ? Colors.grey.shade800 : Colors.white,
+                      getTooltipItem: (group, groupIndex, rod, rodIndex) {
+                        return BarTooltipItem(
+                          '${rod.toY.toInt()} Students',
+                          TextStyle(
+                            color: rod.color,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 12,
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+                  titlesData: FlTitlesData(
+                    show: true,
+                    bottomTitles: AxisTitles(
+                      sideTitles: SideTitles(
+                        showTitles: true,
+                        reservedSize: 28,
+                        getTitlesWidget: (double value, TitleMeta meta) {
+                          const style = TextStyle(fontWeight: FontWeight.bold, fontSize: 10);
+                          final labels = ['1st Year', '2nd Year', '9th Class', '10th Class'];
+                          final label = (value >= 0 && value < labels.length) ? labels[value.toInt()] : '';
+                          return SideTitleWidget(meta: meta, space: 6, child: Text(label, style: style));
+                        },
+                      ),
+                    ),
+                    leftTitles: AxisTitles(
+                      sideTitles: SideTitles(
+                        showTitles: true,
+                        reservedSize: 24,
+                        getTitlesWidget: (value, meta) {
+                          return Text(
+                            value.toInt().toString(),
+                            style: TextStyle(color: Colors.grey.shade600, fontSize: 9),
+                          );
+                        },
+                      ),
+                    ),
+                    topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                    rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                  ),
+                  gridData: FlGridData(
+                    show: true,
+                    drawVerticalLine: false,
+                    getDrawingHorizontalLine: (value) => FlLine(
+                      color: Colors.grey.withValues(alpha: 0.1),
+                      strokeWidth: 1,
+                    ),
+                  ),
+                  borderData: FlBorderData(show: false),
+                  barGroups: [
+                    _barGroup(0, fsc1st, maxY, Colors.blue),
+                    _barGroup(1, fsc2nd, maxY, Colors.cyan),
+                    _barGroup(2, matric9th, maxY, Colors.indigo),
+                    _barGroup(3, matric10th, maxY, Colors.teal),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(height: 16),
+            // Legend
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceAround,
+              children: [
+                _buildLegendItem('FSC 1st Yr', Colors.blue),
+                _buildLegendItem('FSC 2nd Yr', Colors.cyan),
+                _buildLegendItem('Matric 9th', Colors.indigo),
+                _buildLegendItem('Matric 10th', Colors.teal),
+              ],
+            ),
+          ],
+        ),
+      ),
+    ).animate().fadeIn(duration: 450.ms).slideY(begin: 0.05);
+  }
+
+  BarChartGroupData _barGroup(int x, double y, double maxY, Color color) {
+    return BarChartGroupData(
+      x: x,
+      barRods: [
+        BarChartRodData(
+          toY: y,
+          color: color,
+          width: 18,
+          borderRadius: const BorderRadius.only(
+            topLeft: Radius.circular(6),
+            topRight: Radius.circular(6),
+          ),
+          backDrawRodData: BackgroundBarChartRodData(
+            show: true,
+            toY: maxY,
+            color: Colors.grey.withValues(alpha: 0.05),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildLegendItem(String label, Color color) {
+    return Row(
+      children: [
+        Container(
+          width: 8,
+          height: 8,
+          decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+        ),
+        const SizedBox(width: 4),
+        Text(
+          label,
+          style: const TextStyle(fontSize: 9, fontWeight: FontWeight.w600, color: Colors.grey),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildClassRevenueChart(String title, List<StudentModel> students, void Function(String metric) onMetricTap) {
     double collected = _sumAmount(students, true);
     double pending = _sumAmount(students, false);
     double total = collected + pending;
-
     double maxVal = total > 0 ? total : 5000;
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return InkWell(
-      onTap: onTap,
+      onTap: () => onMetricTap('Total'),
       borderRadius: BorderRadius.circular(20),
       child: Container(
         padding: const EdgeInsets.all(20),
         decoration: BoxDecoration(
-          color: Theme.of(context).cardTheme.color ??
-              (isDark ? AppTheme.darkCard : AppTheme.lightCard),
+          color: Theme.of(context).cardTheme.color ?? (isDark ? AppTheme.darkCard : AppTheme.lightCard),
           borderRadius: BorderRadius.circular(20),
           boxShadow: [
             BoxShadow(
@@ -1028,7 +464,14 @@ Widget _buildStatsGrid() {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text(title, style: GoogleFonts.poppins(fontSize: 16, fontWeight: FontWeight.bold)),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(title, style: GoogleFonts.poppins(fontSize: 16, fontWeight: FontWeight.bold)),
+                    const SizedBox(height: 2),
+                    Text('Tap a bar to open direct breakdown', style: TextStyle(fontSize: 11, color: Colors.grey.shade500)),
+                  ],
+                ),
                 const Icon(Icons.open_in_new_rounded, size: 18, color: Colors.grey),
               ],
             ),
@@ -1039,7 +482,16 @@ Widget _buildStatsGrid() {
                 BarChartData(
                   alignment: BarChartAlignment.spaceAround,
                   maxY: maxVal * 1.2,
-                  barTouchData: BarTouchData(enabled: false),
+                  barTouchData: BarTouchData(
+                    touchCallback: (FlTouchEvent event, barTouchResponse) {
+                      if (event is! FlTapUpEvent) return;
+                      if (barTouchResponse == null || barTouchResponse.spot == null) return;
+                      final index = barTouchResponse.spot!.touchedBarGroupIndex;
+                      if (index == 0) onMetricTap('Total');
+                      if (index == 1) onMetricTap('Collected');
+                      if (index == 2) onMetricTap('Pending');
+                    },
+                  ),
                   titlesData: FlTitlesData(
                     show: true,
                     bottomTitles: AxisTitles(
@@ -1079,60 +531,51 @@ Widget _buildStatsGrid() {
           BarChartRodData(
             toY: y,
             color: color,
-            width: 14, // ✅ FIXED: was 18, now 14 so 5 bars fit nicely
+            width: 14,
             borderRadius: BorderRadius.circular(4),
           )
         ],
       );
 
-  Widget _buildRecentActivityList() {
-    return FutureBuilder<List<_ActivityItem>>(
-      future: _fetchRecentActivities(),
-      builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Center(
-            child: Padding(
-              padding: EdgeInsets.symmetric(vertical: 32),
-              child: CircularProgressIndicator(),
+  Widget _buildRecentActivityListDirect(List<StudentModel> students) {
+    final since = DateTime.now().subtract(const Duration(hours: 24));
+    final items = <_ActivityItem>[];
+
+    for (final s in students) {
+      if (s.createdAt.isAfter(since)) {
+        items.add(_ActivityItem(
+          title: 'Student Admission',
+          subtitle: '${s.name} registered in ${s.classType} (${s.grade})',
+          time: s.createdAt,
+          icon: Icons.person_add_rounded,
+          color: Colors.blue,
+        ));
+      }
+    }
+
+    // Sort descending by time
+    items.sort((a, b) => b.time.compareTo(a.time));
+
+    if (items.isEmpty) {
+      return Container(
+        padding: const EdgeInsets.symmetric(vertical: 32),
+        alignment: Alignment.center,
+        child: Column(
+          children: [
+            Icon(Icons.inbox_rounded, size: 48, color: Colors.grey.shade400),
+            const SizedBox(height: 8),
+            Text(
+              'No activities in the last 24 hours',
+              style: TextStyle(color: Colors.grey.shade500),
             ),
-          );
-        }
+          ],
+        ),
+      );
+    }
 
-        if (snapshot.hasError) {
-          return Center(
-            child: Padding(
-              padding: const EdgeInsets.symmetric(vertical: 16),
-              child: Text('Could not load activities: ${snapshot.error}',
-                  style: const TextStyle(color: Colors.red)),
-            ),
-          );
-        }
-
-        final items = snapshot.data ?? [];
-
-        if (items.isEmpty) {
-          return Container(
-            padding: const EdgeInsets.symmetric(vertical: 32),
-            alignment: Alignment.center,
-            child: Column(
-              children: [
-                Icon(Icons.inbox_rounded,
-                    size: 48, color: Colors.grey.shade400),
-                const SizedBox(height: 8),
-                Text(
-                  'No activities in the last 24 hours',
-                  style: TextStyle(color: Colors.grey.shade500),
-                ),
-              ],
-            ),
-          );
-        }
-
-        return Column(
-          children: items.map((item) => _buildActivityItem(item)).toList(),
-        ).animate().fadeIn(delay: 600.ms);
-      },
-    );
+    return Column(
+      children: items.map((item) => _buildActivityItem(item)).toList(),
+    ).animate().fadeIn(delay: 600.ms);
   }
 
   Widget _buildActivityItem(_ActivityItem item) {
@@ -1147,12 +590,873 @@ Widget _buildStatsGrid() {
           ),
           child: Icon(item.icon, color: item.color, size: 24),
         ),
-        title: Text(item.title,
-            style: const TextStyle(fontWeight: FontWeight.bold)),
+        title: Text(item.title, style: const TextStyle(fontWeight: FontWeight.bold)),
         subtitle: Text(item.subtitle, style: const TextStyle(fontSize: 12)),
         trailing: Text(
           _relativeTime(item.time),
           style: TextStyle(fontSize: 10, color: Colors.grey.shade500),
+        ),
+      ),
+    );
+  }
+
+  String _relativeTime(DateTime t) {
+    final diff = DateTime.now().difference(t);
+    if (diff.inMinutes < 1) return 'Just now';
+    if (diff.inMinutes < 60) return '${diff.inMinutes}m ago';
+    if (diff.inHours < 24) return '${diff.inHours}h ago';
+    return '${diff.inDays}d ago';
+  }
+
+  void _openDrillDown(String title, String classType, List<StudentModel> students, {String? initialMetric}) {
+    showDialog(
+      context: context,
+      builder: (context) => RevenueDrillDownDialog(
+        title: title,
+        classType: classType,
+        students: students,
+        initialMetric: initialMetric,
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Academy Dashboard'),
+      ),
+      body: StreamBuilder<List<StudentModel>>(
+        stream: _studentSnapshotStream,
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const Center(child: CircularProgressIndicator());
+          }
+          if (snapshot.hasError) {
+            return Center(
+              child: Text(
+                'Error loading dashboard: ${snapshot.error}',
+                style: const TextStyle(color: Colors.red),
+              ),
+            );
+          }
+
+          final students = snapshot.data ?? [];
+
+          return SingleChildScrollView(
+            padding: const EdgeInsets.all(20),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _buildGreeting(),
+                const SizedBox(height: 24),
+                _buildStatsGrid(students),
+                const SizedBox(height: 32),
+                _buildSectionTitle('Students Strength'),
+                const SizedBox(height: 16),
+                _buildStudentStrengthChart(students),
+                const SizedBox(height: 32),
+                _buildSectionTitle('Revenue Overview'),
+                const SizedBox(height: 16),
+                _buildRevenueChartDirect(students),
+                const SizedBox(height: 32),
+                _buildSectionTitle('Recent Activities (Last 24 h)'),
+                const SizedBox(height: 16),
+                _buildRecentActivityListDirect(students),
+              ],
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _buildRevenueChartDirect(List<StudentModel> students) {
+    final fscStudents = students.where((s) => _isFsc(s.classType)).toList();
+    final matricStudents = students.where((s) => _isMatric(s.classType)).toList();
+
+    return Column(
+      children: [
+        _buildClassRevenueChart(
+          'FSC Revenue',
+          fscStudents,
+          (metric) => _openDrillDown('FSC Revenue', 'FSc', students, initialMetric: metric),
+        ),
+        const SizedBox(height: 20),
+        _buildClassRevenueChart(
+          'Matric Revenue',
+          matricStudents,
+          (metric) => _openDrillDown('Matric Revenue', 'Matric', students, initialMetric: metric),
+        ),
+      ],
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Interactive Drill Down Modal Screen
+// ─────────────────────────────────────────────────────────────────────────────
+class RevenueDrillDownDialog extends StatefulWidget {
+  final String title;
+  final String classType;
+  final List<StudentModel> students;
+  final String? initialMetric;
+
+  const RevenueDrillDownDialog({
+    super.key,
+    required this.title,
+    required this.classType,
+    required this.students,
+    this.initialMetric,
+  });
+
+  @override
+  State<RevenueDrillDownDialog> createState() => _RevenueDrillDownDialogState();
+}
+
+class _RevenueDrillDownDialogState extends State<RevenueDrillDownDialog> {
+  final _fmt = NumberFormat.currency(symbol: 'Rs', decimalDigits: 0);
+
+  String? _selectedMetric;
+  String? _selectedGrade;
+  String? _selectedSubject;
+
+  @override
+  void initState() {
+    super.initState();
+    _selectedMetric = widget.initialMetric;
+  }
+
+  bool _isFsc(String classType) => classType.toLowerCase().contains('fsc');
+  bool _isMatric(String classType) => classType.toLowerCase().contains('matric');
+
+  bool _matchesSubject(StudentModel student, String subjectKey) {
+    final raw = student.subject.toLowerCase();
+    final key = subjectKey == 'Math' ? 'Maths' : (subjectKey == 'Maths' ? 'Maths' : subjectKey);
+    final filters = _subjectFilters[key] ?? [subjectKey.toLowerCase()];
+    return filters.any(raw.contains);
+  }
+
+  List<StudentModel> _filterStudents({
+    required String classType,
+    String? grade,
+    String? subject,
+  }) {
+    return widget.students.where((s) {
+      final isType = classType == 'FSc' ? _isFsc(s.classType) : _isMatric(s.classType);
+      if (!isType) return false;
+
+      if (grade != null) {
+        if (classType == 'FSc') {
+          if (!s.grade.toLowerCase().contains(grade.toLowerCase().split(' ').first)) {
+            return false;
+          }
+        } else {
+          if (!s.grade.toLowerCase().contains(grade.toLowerCase().split(' ').first)) {
+            return false;
+          }
+        }
+      }
+
+      if (subject != null) {
+        if (!_matchesSubject(s, subject)) {
+          return false;
+        }
+      }
+
+      return true;
+    }).toList();
+  }
+
+  double _getMetricValue(List<StudentModel> students, String metric) {
+    if (metric == 'Total') {
+      return _sumAmount(students, true) + _sumAmount(students, false);
+    } else if (metric == 'Collected') {
+      return _sumAmount(students, true);
+    } else {
+      return _sumAmount(students, false);
+    }
+  }
+
+  double _sumAmount(List<StudentModel> students, bool collected) {
+    return students.fold(0, (total, student) {
+      return total + (collected ? student.feeSubmitted : student.feeRemaining);
+    });
+  }
+
+  BarChartGroupData _bar(int x, double y, Color color) => BarChartGroupData(
+        x: x,
+        barRods: [
+          BarChartRodData(
+            toY: y,
+            color: color,
+            width: 14,
+            borderRadius: BorderRadius.circular(4),
+          )
+        ],
+      );
+
+  @override
+  Widget build(BuildContext context) {
+    // Determine level layout:
+    Widget content;
+    String currentSubTitle = '';
+
+    if (_selectedMetric == null) {
+      // Level 0: Main total/collected/pending for this class type
+      final filtered = _filterStudents(classType: widget.classType);
+      double col = _sumAmount(filtered, true);
+      double pen = _sumAmount(filtered, false);
+      double tot = col + pen;
+      double maxVal = tot > 0 ? tot : 5000;
+      currentSubTitle = 'Click a bar (Total, Collected, Pending) to drill down';
+
+      content = SizedBox(
+        key: const ValueKey('level0'),
+        height: 200,
+        child: BarChart(
+          BarChartData(
+            alignment: BarChartAlignment.spaceAround,
+            maxY: maxVal * 1.2,
+            barTouchData: BarTouchData(
+              touchCallback: (FlTouchEvent event, barTouchResponse) {
+                if (event is! FlTapUpEvent) {
+                  return;
+                }
+                if (barTouchResponse == null || barTouchResponse.spot == null) {
+                  return;
+                }
+                final index = barTouchResponse.spot!.touchedBarGroupIndex;
+                setState(() {
+                  if (index == 0) _selectedMetric = 'Total';
+                  if (index == 1) _selectedMetric = 'Collected';
+                  if (index == 2) _selectedMetric = 'Pending';
+                });
+              },
+            ),
+            titlesData: FlTitlesData(
+              show: true,
+              bottomTitles: AxisTitles(
+                sideTitles: SideTitles(
+                  showTitles: true,
+                  getTitlesWidget: (double value, TitleMeta meta) {
+                    const style = TextStyle(fontWeight: FontWeight.bold, fontSize: 11);
+                    final labels = ['Total', 'Collected', 'Pending'];
+                    final label = (value >= 0 && value < labels.length) ? labels[value.toInt()] : '';
+                    return SideTitleWidget(meta: meta, space: 4, child: Text(label, style: style));
+                  },
+                ),
+              ),
+              leftTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+              topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+              rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+            ),
+            gridData: const FlGridData(show: false),
+            borderData: FlBorderData(show: false),
+            barGroups: [
+              _bar(0, tot, AppTheme.primaryBlue),
+              _bar(1, col, Colors.green),
+              _bar(2, pen, Colors.red),
+            ],
+          ),
+        ),
+      );
+    } else if (_selectedGrade == null) {
+      // Level 1: Breakdown by Grade
+      final isFsc = widget.classType == 'FSc';
+      final grade1 = isFsc ? 'First Year' : 'Ninth';
+      final grade2 = isFsc ? 'Second Year' : 'Tenth';
+      final label1 = isFsc ? 'First Year' : '9th Class';
+      final label2 = isFsc ? 'Second Year' : '10th Class';
+
+      final list1 = _filterStudents(classType: widget.classType, grade: grade1);
+      final list2 = _filterStudents(classType: widget.classType, grade: grade2);
+
+      double val1 = _getMetricValue(list1, _selectedMetric!);
+      double val2 = _getMetricValue(list2, _selectedMetric!);
+      double maxVal = (val1 > val2 ? val1 : val2);
+      if (maxVal == 0) maxVal = 5000;
+      currentSubTitle = '${widget.classType} > $_selectedMetric';
+
+      final metricColor = _selectedMetric == 'Collected'
+          ? Colors.green
+          : (_selectedMetric == 'Pending' ? Colors.red : AppTheme.primaryBlue);
+      final metricColor2 = _selectedMetric == 'Collected'
+          ? Colors.green.withValues(alpha: 0.6)
+          : (_selectedMetric == 'Pending' ? Colors.red.withValues(alpha: 0.6) : AppTheme.primaryBlue.withValues(alpha: 0.6));
+
+      content = SizedBox(
+        key: const ValueKey('level1'),
+        height: 200,
+        child: BarChart(
+          BarChartData(
+            alignment: BarChartAlignment.spaceAround,
+            maxY: maxVal * 1.2,
+            barTouchData: BarTouchData(
+              touchCallback: (FlTouchEvent event, barTouchResponse) {
+                if (event is! FlTapUpEvent) {
+                  return;
+                }
+                if (barTouchResponse == null || barTouchResponse.spot == null) {
+                  return;
+                }
+                final index = barTouchResponse.spot!.touchedBarGroupIndex;
+                setState(() {
+                  if (index == 0) _selectedGrade = grade1;
+                  if (index == 1) _selectedGrade = grade2;
+                });
+              },
+            ),
+            titlesData: FlTitlesData(
+              show: true,
+              bottomTitles: AxisTitles(
+                sideTitles: SideTitles(
+                  showTitles: true,
+                  getTitlesWidget: (double value, TitleMeta meta) {
+                    const style = TextStyle(fontWeight: FontWeight.bold, fontSize: 11);
+                    final labels = [label1, label2];
+                    final label = (value >= 0 && value < labels.length) ? labels[value.toInt()] : '';
+                    return SideTitleWidget(meta: meta, space: 4, child: Text(label, style: style));
+                  },
+                ),
+              ),
+              leftTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+              topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+              rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+            ),
+            gridData: const FlGridData(show: false),
+            borderData: FlBorderData(show: false),
+            barGroups: [
+              _bar(0, val1, metricColor),
+              _bar(1, val2, metricColor2),
+            ],
+          ),
+        ),
+      );
+    } else if (_selectedSubject == null) {
+      // Level 2: Breakdown by Subject
+      final filtered = _filterStudents(classType: widget.classType, grade: _selectedGrade);
+      final subVals = _subjectsList.map((sub) {
+        final list = filtered.where((s) => _matchesSubject(s, sub)).toList();
+        return _getMetricValue(list, _selectedMetric!);
+      }).toList();
+
+      double maxVal = subVals.reduce((a, b) => a > b ? a : b);
+      if (maxVal == 0) maxVal = 5000;
+      currentSubTitle = '${widget.classType} > $_selectedMetric > $_selectedGrade';
+
+      final baseColor = _selectedMetric == 'Collected'
+          ? Colors.green
+          : (_selectedMetric == 'Pending' ? Colors.red : AppTheme.primaryBlue);
+
+      content = SizedBox(
+        key: const ValueKey('level2'),
+        height: 200,
+        child: BarChart(
+          BarChartData(
+            alignment: BarChartAlignment.spaceAround,
+            maxY: maxVal * 1.2,
+            barTouchData: BarTouchData(
+              touchCallback: (FlTouchEvent event, barTouchResponse) {
+                if (event is! FlTapUpEvent) {
+                  return;
+                }
+                if (barTouchResponse == null || barTouchResponse.spot == null) {
+                  return;
+                }
+                final index = barTouchResponse.spot!.touchedBarGroupIndex;
+                if (index >= 0 && index < _subjectsList.length) {
+                  setState(() {
+                    _selectedSubject = _subjectsList[index];
+                  });
+                }
+              },
+            ),
+            titlesData: FlTitlesData(
+              show: true,
+              bottomTitles: AxisTitles(
+                sideTitles: SideTitles(
+                  showTitles: true,
+                  getTitlesWidget: (double value, TitleMeta meta) {
+                    const style = TextStyle(fontWeight: FontWeight.bold, fontSize: 10);
+                    final label = (value >= 0 && value < _subjectsList.length) ? _subjectsList[value.toInt()] : '';
+                    return SideTitleWidget(meta: meta, space: 4, child: Text(label, style: style));
+                  },
+                ),
+              ),
+              leftTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+              topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+              rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+            ),
+            gridData: const FlGridData(show: false),
+            borderData: FlBorderData(show: false),
+            barGroups: List.generate(_subjectsList.length, (idx) {
+              final color = baseColor.withValues(alpha: 0.4 + (idx * 0.12));
+              return _bar(idx, subVals[idx], color);
+            }),
+          ),
+        ),
+      );
+    } else {
+      // Level 3: Subject Detail View
+      final finalStudents = _filterStudents(
+        classType: widget.classType,
+        grade: _selectedGrade,
+        subject: _selectedSubject,
+      );
+      double col = _sumAmount(finalStudents, true);
+      double pen = _sumAmount(finalStudents, false);
+      double tot = col + pen;
+      currentSubTitle = '${widget.classType} > $_selectedMetric > $_selectedGrade > $_selectedSubject';
+
+      List<StudentModel> studentsToShow;
+      Widget metricRow;
+
+      if (_selectedMetric == 'Collected') {
+        studentsToShow = finalStudents.where((s) => s.feeSubmitted > 0).toList();
+        metricRow = Row(
+          children: [
+            _buildDetailMetricCard('Collected Fee', col, Colors.green),
+          ],
+        );
+      } else if (_selectedMetric == 'Pending') {
+        studentsToShow = finalStudents.where((s) => s.feeRemaining > 0).toList();
+        metricRow = Row(
+          children: [
+            _buildDetailMetricCard('Pending Fee', pen, Colors.red),
+          ],
+        );
+      } else {
+        studentsToShow = finalStudents;
+        metricRow = Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            _buildDetailMetricCard('Total Fee', tot, AppTheme.primaryBlue),
+            _buildDetailMetricCard('Collected', col, Colors.green),
+            _buildDetailMetricCard('Pending', pen, Colors.red),
+          ],
+        );
+      }
+
+      content = Column(
+        key: const ValueKey('level3'),
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          metricRow,
+          const SizedBox(height: 16),
+          Text(
+            'Students (${studentsToShow.length})',
+            style: GoogleFonts.poppins(fontSize: 12, fontWeight: FontWeight.bold),
+          ),
+          const SizedBox(height: 8),
+          if (studentsToShow.isEmpty)
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 16),
+              child: Center(
+                child: Text(
+                  _selectedMetric == 'Collected'
+                      ? 'No collected fees for this subject'
+                      : (_selectedMetric == 'Pending' ? 'No pending fees for this subject' : 'No students in this class/subject'),
+                  style: TextStyle(fontSize: 12, color: Colors.grey.shade500),
+                ),
+              ),
+            )
+          else
+            ConstrainedBox(
+              constraints: const BoxConstraints(maxHeight: 150),
+              child: ListView.builder(
+                shrinkWrap: true,
+                itemCount: studentsToShow.length,
+                itemBuilder: (context, idx) {
+                  final s = studentsToShow[idx];
+                  
+                  Widget trailingText;
+                  if (_selectedMetric == 'Collected') {
+                    trailingText = Text(
+                      'Rs ${s.feeSubmitted.toStringAsFixed(0)}',
+                      style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.green),
+                    );
+                  } else if (_selectedMetric == 'Pending') {
+                    trailingText = Text(
+                      'Rs ${s.feeRemaining.toStringAsFixed(0)}',
+                      style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.red),
+                    );
+                  } else {
+                    final isPaid = s.feeRemaining <= 0;
+                    trailingText = Text(
+                      isPaid ? 'PAID' : 'Rs ${s.feeRemaining.toStringAsFixed(0)}',
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.bold,
+                        color: isPaid ? Colors.green : Colors.red,
+                      ),
+                    );
+                  }
+
+                  return Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 4),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Expanded(
+                          child: Text(
+                            s.name,
+                            style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                        trailingText,
+                      ],
+                    ),
+                  );
+                },
+              ),
+            ),
+        ],
+      );
+    }
+
+    return Dialog(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+      child: Container(
+        constraints: const BoxConstraints(maxWidth: 500),
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        widget.title,
+                        style: GoogleFonts.poppins(fontSize: 20, fontWeight: FontWeight.bold),
+                      ),
+                      if (currentSubTitle.isNotEmpty) ...[
+                        const SizedBox(height: 2),
+                        Text(
+                          currentSubTitle,
+                          style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+                        ),
+                      ]
+                    ],
+                  ),
+                ),
+                if (_selectedMetric != null)
+                  IconButton(
+                    onPressed: () {
+                      setState(() {
+                        if (_selectedSubject != null) {
+                          _selectedSubject = null;
+                        } else if (_selectedGrade != null) {
+                          _selectedGrade = null;
+                        } else {
+                          _selectedMetric = null;
+                        }
+                      });
+                    },
+                    icon: const Icon(Icons.arrow_back_rounded),
+                    tooltip: 'Back',
+                  )
+                else
+                  IconButton(
+                    onPressed: () => Navigator.pop(context),
+                    icon: const Icon(Icons.close_rounded),
+                  ),
+              ],
+            ),
+            const SizedBox(height: 24),
+            AnimatedSwitcher(
+              duration: 250.ms,
+              child: content,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildDetailMetricCard(String label, double amount, Color color) {
+    return Expanded(
+      child: Container(
+        margin: const EdgeInsets.symmetric(horizontal: 4),
+        padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 8),
+        decoration: BoxDecoration(
+          color: color.withValues(alpha: 0.08),
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(color: color.withValues(alpha: 0.2)),
+        ),
+        child: Column(
+          children: [
+            Text(label, style: TextStyle(fontSize: 10, color: Colors.grey.shade600, fontWeight: FontWeight.w600)),
+            const SizedBox(height: 4),
+            Text(
+              _fmt.format(amount),
+              style: GoogleFonts.poppins(fontSize: 12, fontWeight: FontWeight.bold, color: color),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Interactive Student Strength Breakdown Dialog
+// ─────────────────────────────────────────────────────────────────────────────
+class StudentStrengthDetailDialog extends StatefulWidget {
+  final String title;
+  final String classType;
+  final String grade;
+  final List<StudentModel> students;
+
+  const StudentStrengthDetailDialog({
+    super.key,
+    required this.title,
+    required this.classType,
+    required this.grade,
+    required this.students,
+  });
+
+  @override
+  State<StudentStrengthDetailDialog> createState() => _StudentStrengthDetailDialogState();
+}
+
+class _StudentStrengthDetailDialogState extends State<StudentStrengthDetailDialog> {
+  String? _selectedSubject;
+
+  bool _matchesSubject(StudentModel student, String subjectKey) {
+    final raw = student.subject.toLowerCase();
+    final key = subjectKey == 'Math' ? 'Maths' : (subjectKey == 'Maths' ? 'Maths' : subjectKey);
+    final filters = _subjectFilters[key] ?? [subjectKey.toLowerCase()];
+    return filters.any(raw.contains);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final filtered = widget.students.where((s) {
+      final isFsc = widget.classType.toLowerCase().contains('fsc');
+      final isType = isFsc
+          ? s.classType.toLowerCase().contains('fsc')
+          : s.classType.toLowerCase().contains('matric');
+      if (!isType) return false;
+      return s.grade.toLowerCase().contains(widget.grade.toLowerCase().split(' ').first);
+    }).toList();
+
+    final Map<String, int> subjectCounts = {};
+    int maxCount = 0;
+    for (final sub in _subjectsList) {
+      final count = filtered.where((s) => _matchesSubject(s, sub)).length;
+      subjectCounts[sub] = count;
+      if (count > maxCount) maxCount = count;
+    }
+
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    return Dialog(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+      child: Container(
+        constraints: const BoxConstraints(maxWidth: 450),
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        widget.title,
+                        style: GoogleFonts.poppins(
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        'Class Strength Breakdown',
+                        style: TextStyle(fontSize: 12, color: Colors.grey.shade500),
+                      ),
+                    ],
+                  ),
+                ),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: AppTheme.primaryBlue.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Text(
+                    '${filtered.length} Students',
+                    style: GoogleFonts.poppins(
+                      fontSize: 13,
+                      fontWeight: FontWeight.bold,
+                      color: AppTheme.primaryBlue,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 24),
+            // Subjects breakdown list
+            ..._subjectsList.map((sub) {
+              final count = subjectCounts[sub] ?? 0;
+              final pct = maxCount > 0 ? count / maxCount : 0.0;
+              final color = _subjectColors[sub] ?? Colors.blue;
+              final isSelected = _selectedSubject == sub;
+
+              return Padding(
+                padding: const EdgeInsets.symmetric(vertical: 4),
+                child: InkWell(
+                  onTap: () {
+                    setState(() {
+                      if (_selectedSubject == sub) {
+                        _selectedSubject = null;
+                      } else {
+                        _selectedSubject = sub;
+                      }
+                    });
+                  },
+                  borderRadius: BorderRadius.circular(12),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 10),
+                    decoration: BoxDecoration(
+                      color: isSelected
+                          ? color.withValues(alpha: 0.08)
+                          : Colors.transparent,
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(
+                        color: isSelected ? color.withValues(alpha: 0.3) : Colors.transparent,
+                      ),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Row(
+                              children: [
+                                Container(
+                                  width: 8,
+                                  height: 8,
+                                  decoration: BoxDecoration(
+                                    color: color,
+                                    shape: BoxShape.circle,
+                                  ),
+                                ),
+                                const SizedBox(width: 8),
+                                Text(
+                                  sub,
+                                  style: GoogleFonts.poppins(
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            Text(
+                              '$count ${count == 1 ? 'Student' : 'Students'}',
+                              style: TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.bold,
+                                color: isDark ? Colors.grey.shade300 : Colors.grey.shade700,
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 6),
+                        Stack(
+                          children: [
+                            Container(
+                              height: 6,
+                              decoration: BoxDecoration(
+                                color: Colors.grey.withValues(alpha: 0.1),
+                                borderRadius: BorderRadius.circular(3),
+                              ),
+                            ),
+                            AnimatedContainer(
+                              duration: 300.ms,
+                              height: 6,
+                              width: pct > 0 ? (MediaQuery.of(context).size.width * 0.55 * pct) : 0,
+                              constraints: const BoxConstraints(maxWidth: 240),
+                              decoration: BoxDecoration(
+                                color: color,
+                                borderRadius: BorderRadius.circular(3),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              );
+            }),
+            
+            // Selected Subject Student List
+            if (_selectedSubject != null) ...[
+              const SizedBox(height: 16),
+              const Divider(),
+              const SizedBox(height: 8),
+              Text(
+                'Enrolled in $_selectedSubject',
+                style: GoogleFonts.poppins(fontSize: 13, fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 8),
+              Builder(
+                builder: (context) {
+                  final list = filtered.where((s) => _matchesSubject(s, _selectedSubject!)).toList();
+                  if (list.isEmpty) {
+                    return Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 8),
+                      child: Text(
+                        'No students enrolled',
+                        style: TextStyle(fontSize: 12, color: Colors.grey.shade500),
+                      ),
+                    );
+                  }
+                  return ConstrainedBox(
+                    constraints: const BoxConstraints(maxHeight: 120),
+                    child: ListView.builder(
+                      shrinkWrap: true,
+                      itemCount: list.length,
+                      itemBuilder: (context, idx) {
+                        final s = list[idx];
+                        return Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 4),
+                          child: Text(
+                            '•  ${s.name}',
+                            style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500),
+                          ),
+                        );
+                      },
+                    ),
+                  );
+                },
+              ),
+            ],
+            const SizedBox(height: 16),
+            Align(
+              alignment: Alignment.centerRight,
+              child: TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text('Close'),
+              ),
+            ),
+          ],
         ),
       ),
     );
