@@ -6,6 +6,7 @@ import 'package:intl/intl.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../theme/app_theme.dart';
 import '../models/student_model.dart';
+import '../components/subject_constants.dart';
 
 class _ActivityItem {
   final String title;
@@ -39,7 +40,13 @@ const Map<String, Color> _subjectColors = {
   'English': Color(0xFF9C27B0),
 };
 
-const List<String> _subjectsList = ['Bio', 'Physics', 'Chemistry', 'Maths', 'English'];
+const List<String> _subjectsList = [
+  'Bio',
+  'Physics',
+  'Chemistry',
+  'Maths',
+  'English'
+];
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
@@ -56,18 +63,17 @@ class _DashboardScreenState extends State<DashboardScreen> {
   @override
   void initState() {
     super.initState();
-    _studentSnapshotStream = FirebaseFirestore.instance
-        .collection('students')
-        .snapshots()
-        .map(
-          (snap) => snap.docs
-              .map((doc) => StudentModel.fromMap(doc.data(), doc.id))
-              .toList(),
-        );
+    _studentSnapshotStream =
+        FirebaseFirestore.instance.collection('students').snapshots().map(
+              (snap) => snap.docs
+                  .map((doc) => StudentModel.fromFirestore(doc))
+                  .toList(),
+            );
   }
 
   bool _isFsc(String classType) => classType.toLowerCase().contains('fsc');
-  bool _isMatric(String classType) => classType.toLowerCase().contains('matric');
+  bool _isMatric(String classType) =>
+      classType.toLowerCase().contains('matric');
 
   double _sumAmount(List<StudentModel> students, bool collected) {
     return students.fold(0, (total, student) {
@@ -84,7 +90,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
           'Welcome Back,',
           style: GoogleFonts.poppins(
             fontSize: 16,
-            color: isDark ? AppTheme.darkTextSecondary : AppTheme.lightTextSecondary,
+            color: isDark
+                ? AppTheme.darkTextSecondary
+                : AppTheme.lightTextSecondary,
           ),
         ),
         Text(
@@ -92,7 +100,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
           style: GoogleFonts.poppins(
             fontSize: 28,
             fontWeight: FontWeight.bold,
-            color: isDark ? AppTheme.darkTextPrimary : AppTheme.lightTextPrimary,
+            color:
+                isDark ? AppTheme.darkTextPrimary : AppTheme.lightTextPrimary,
           ),
         ),
       ],
@@ -172,7 +181,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
             Container(
               padding: const EdgeInsets.all(10),
               decoration: BoxDecoration(
-                color: color.withValues(alpha: 0.12),
+                color: color.withOpacity(0.12),
                 borderRadius: BorderRadius.circular(12),
               ),
               child: Icon(
@@ -203,7 +212,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     overflow: TextOverflow.ellipsis,
                     style: GoogleFonts.poppins(
                       fontSize: 12,
-                      color: isDark ? AppTheme.darkTextSecondary : AppTheme.lightTextSecondary,
+                      color: isDark
+                          ? AppTheme.darkTextSecondary
+                          : AppTheme.lightTextSecondary,
                     ),
                   ),
                 ],
@@ -216,12 +227,29 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 
   Widget _buildStudentStrengthChart(List<StudentModel> students) {
-    final fsc1st = students.where((s) => _isFsc(s.classType) && s.grade.toLowerCase().contains('first')).length.toDouble();
-    final fsc2nd = students.where((s) => _isFsc(s.classType) && s.grade.toLowerCase().contains('second')).length.toDouble();
-    final matric9th = students.where((s) => _isMatric(s.classType) && s.grade.toLowerCase().contains('ninth')).length.toDouble();
-    final matric10th = students.where((s) => _isMatric(s.classType) && s.grade.toLowerCase().contains('tenth')).length.toDouble();
+    final fsc1st = students
+        .where((s) =>
+            _isFsc(s.classType) && s.grade.toLowerCase().contains('first'))
+        .length
+        .toDouble();
+    final fsc2nd = students
+        .where((s) =>
+            _isFsc(s.classType) && s.grade.toLowerCase().contains('second'))
+        .length
+        .toDouble();
+    final matric9th = students
+        .where((s) =>
+            _isMatric(s.classType) && s.grade.toLowerCase().contains('ninth'))
+        .length
+        .toDouble();
+    final matric10th = students
+        .where((s) =>
+            _isMatric(s.classType) && s.grade.toLowerCase().contains('tenth'))
+        .length
+        .toDouble();
 
-    final maxVal = [fsc1st, fsc2nd, matric9th, matric10th].reduce((a, b) => a > b ? a : b);
+    final maxVal =
+        [fsc1st, fsc2nd, matric9th, matric10th].reduce((a, b) => a > b ? a : b);
     final maxY = maxVal > 0 ? maxVal * 1.25 : 10.0;
 
     final isDark = Theme.of(context).brightness == Brightness.dark;
@@ -234,39 +262,46 @@ class _DashboardScreenState extends State<DashboardScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Student Strength Breakdown',
-                      style: GoogleFonts.poppins(fontSize: 16, fontWeight: FontWeight.bold),
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      'Active enrollments by class level',
-                      style: TextStyle(fontSize: 11, color: Colors.grey.shade500),
-                    ),
-                  ],
-                ),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                  decoration: BoxDecoration(
-                    color: AppTheme.primaryBlue.withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(12),
+            SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+               // mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Student Strength Breakdown',
+                        style: GoogleFonts.poppins(
+                            fontSize: 16, fontWeight: FontWeight.bold),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        'Active enrollments by class level',
+                        style:
+                            TextStyle(fontSize: 11, color: Colors.grey.shade500),
+                      ),
+                    ],
                   ),
-                  child: Text(
-                    '${students.length} Total',
-                    style: GoogleFonts.poppins(
-                      fontSize: 13,
-                      fontWeight: FontWeight.bold,
-                      color: AppTheme.primaryBlue,
+                  Container(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                    decoration: BoxDecoration(
+                      color: AppTheme.primaryBlue.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Text(
+                      '${students.length} Total',
+                      style: GoogleFonts.poppins(
+                        fontSize: 13,
+                        fontWeight: FontWeight.bold,
+                        color: AppTheme.primaryBlue,
+                      ),
                     ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
             const SizedBox(height: 24),
             SizedBox(
@@ -280,11 +315,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       if (event is! FlTapUpEvent) {
                         return;
                       }
-                      if (barTouchResponse == null || barTouchResponse.spot == null) {
+                      if (barTouchResponse == null ||
+                          barTouchResponse.spot == null) {
                         return;
                       }
                       final index = barTouchResponse.spot!.touchedBarGroupIndex;
-                      
+
                       String title = '';
                       String classType = '';
                       String grade = '';
@@ -319,7 +355,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       }
                     },
                     touchTooltipData: BarTouchTooltipData(
-                      getTooltipColor: (group) => isDark ? Colors.grey.shade800 : Colors.white,
+                      getTooltipColor: (group) =>
+                          isDark ? Colors.grey.shade800 : Colors.white,
                       getTooltipItem: (group, groupIndex, rod, rodIndex) {
                         return BarTooltipItem(
                           '${rod.toY.toInt()} Students',
@@ -339,10 +376,21 @@ class _DashboardScreenState extends State<DashboardScreen> {
                         showTitles: true,
                         reservedSize: 28,
                         getTitlesWidget: (double value, TitleMeta meta) {
-                          const style = TextStyle(fontWeight: FontWeight.bold, fontSize: 10);
-                          final labels = ['1st Year', '2nd Year', '9th Class', '10th Class'];
-                          final label = (value >= 0 && value < labels.length) ? labels[value.toInt()] : '';
-                          return SideTitleWidget(meta: meta, space: 6, child: Text(label, style: style));
+                          const style = TextStyle(
+                              fontWeight: FontWeight.bold, fontSize: 10);
+                          final labels = [
+                            '1st Year',
+                            '2nd Year',
+                            '9th Class',
+                            '10th Class'
+                          ];
+                          final label = (value >= 0 && value < labels.length)
+                              ? labels[value.toInt()]
+                              : '';
+                          return SideTitleWidget(
+                              meta: meta,
+                              space: 6,
+                              child: Text(label, style: style));
                         },
                       ),
                     ),
@@ -353,19 +401,22 @@ class _DashboardScreenState extends State<DashboardScreen> {
                         getTitlesWidget: (value, meta) {
                           return Text(
                             value.toInt().toString(),
-                            style: TextStyle(color: Colors.grey.shade600, fontSize: 9),
+                            style: TextStyle(
+                                color: Colors.grey.shade600, fontSize: 9),
                           );
                         },
                       ),
                     ),
-                    topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-                    rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                    topTitles: const AxisTitles(
+                        sideTitles: SideTitles(showTitles: false)),
+                    rightTitles: const AxisTitles(
+                        sideTitles: SideTitles(showTitles: false)),
                   ),
                   gridData: FlGridData(
                     show: true,
                     drawVerticalLine: false,
                     getDrawingHorizontalLine: (value) => FlLine(
-                      color: Colors.grey.withValues(alpha: 0.1),
+                      color: Colors.grey.withOpacity(0.1),
                       strokeWidth: 1,
                     ),
                   ),
@@ -411,7 +462,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
           backDrawRodData: BackgroundBarChartRodData(
             show: true,
             toY: maxY,
-            color: Colors.grey.withValues(alpha: 0.05),
+            color: Colors.grey.withOpacity(0.05),
           ),
         ),
       ],
@@ -429,13 +480,15 @@ class _DashboardScreenState extends State<DashboardScreen> {
         const SizedBox(width: 4),
         Text(
           label,
-          style: const TextStyle(fontSize: 9, fontWeight: FontWeight.w600, color: Colors.grey),
+          style: const TextStyle(
+              fontSize: 9, fontWeight: FontWeight.w600, color: Colors.grey),
         ),
       ],
     );
   }
 
-  Widget _buildClassRevenueChart(String title, List<StudentModel> students, void Function(String metric) onMetricTap) {
+  Widget _buildClassRevenueChart(String title, List<StudentModel> students,
+      void Function(String metric) onMetricTap) {
     double collected = _sumAmount(students, true);
     double pending = _sumAmount(students, false);
     double total = collected + pending;
@@ -448,11 +501,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
       child: Container(
         padding: const EdgeInsets.all(20),
         decoration: BoxDecoration(
-          color: Theme.of(context).cardTheme.color ?? (isDark ? AppTheme.darkCard : AppTheme.lightCard),
+          color: Theme.of(context).cardTheme.color ??
+              (isDark ? AppTheme.darkCard : AppTheme.lightCard),
           borderRadius: BorderRadius.circular(20),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withValues(alpha: 0.05),
+              color: Colors.black.withValues(),
               blurRadius: 10,
               offset: const Offset(0, 5),
             ),
@@ -467,12 +521,17 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(title, style: GoogleFonts.poppins(fontSize: 16, fontWeight: FontWeight.bold)),
+                    Text(title,
+                        style: GoogleFonts.poppins(
+                            fontSize: 16, fontWeight: FontWeight.bold)),
                     const SizedBox(height: 2),
-                    Text('Tap a bar to open direct breakdown', style: TextStyle(fontSize: 11, color: Colors.grey.shade500)),
+                    Text('Tap a bar to open direct breakdown',
+                        style: TextStyle(
+                            fontSize: 11, color: Colors.grey.shade500)),
                   ],
                 ),
-                const Icon(Icons.open_in_new_rounded, size: 18, color: Colors.grey),
+                const Icon(Icons.open_in_new_rounded,
+                    size: 18, color: Colors.grey),
               ],
             ),
             const SizedBox(height: 20),
@@ -485,7 +544,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   barTouchData: BarTouchData(
                     touchCallback: (FlTouchEvent event, barTouchResponse) {
                       if (event is! FlTapUpEvent) return;
-                      if (barTouchResponse == null || barTouchResponse.spot == null) return;
+                      if (barTouchResponse == null ||
+                          barTouchResponse.spot == null) {
+                        return;
+                      }
                       final index = barTouchResponse.spot!.touchedBarGroupIndex;
                       if (index == 0) onMetricTap('Total');
                       if (index == 1) onMetricTap('Collected');
@@ -498,16 +560,25 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       sideTitles: SideTitles(
                         showTitles: true,
                         getTitlesWidget: (double value, TitleMeta meta) {
-                          const style = TextStyle(fontWeight: FontWeight.bold, fontSize: 11);
+                          const style = TextStyle(
+                              fontWeight: FontWeight.bold, fontSize: 11);
                           final labels = ['Total', 'Collected', 'Pending'];
-                          final label = (value >= 0 && value < labels.length) ? labels[value.toInt()] : '';
-                          return SideTitleWidget(meta: meta, space: 4, child: Text(label, style: style));
+                          final label = (value >= 0 && value < labels.length)
+                              ? labels[value.toInt()]
+                              : '';
+                          return SideTitleWidget(
+                              meta: meta,
+                              space: 4,
+                              child: Text(label, style: style));
                         },
                       ),
                     ),
-                    leftTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-                    topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-                    rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                    leftTitles: const AxisTitles(
+                        sideTitles: SideTitles(showTitles: false)),
+                    topTitles: const AxisTitles(
+                        sideTitles: SideTitles(showTitles: false)),
+                    rightTitles: const AxisTitles(
+                        sideTitles: SideTitles(showTitles: false)),
                   ),
                   gridData: const FlGridData(show: false),
                   borderData: FlBorderData(show: false),
@@ -585,12 +656,13 @@ class _DashboardScreenState extends State<DashboardScreen> {
         leading: Container(
           padding: const EdgeInsets.all(8),
           decoration: BoxDecoration(
-            color: item.color.withValues(alpha: 0.1),
+            color: item.color.withValues(),
             borderRadius: BorderRadius.circular(10),
           ),
           child: Icon(item.icon, color: item.color, size: 24),
         ),
-        title: Text(item.title, style: const TextStyle(fontWeight: FontWeight.bold)),
+        title: Text(item.title,
+            style: const TextStyle(fontWeight: FontWeight.bold)),
         subtitle: Text(item.subtitle, style: const TextStyle(fontSize: 12)),
         trailing: Text(
           _relativeTime(item.time),
@@ -608,7 +680,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
     return '${diff.inDays}d ago';
   }
 
-  void _openDrillDown(String title, String classType, List<StudentModel> students, {String? initialMetric}) {
+  void _openDrillDown(
+      String title, String classType, List<StudentModel> students,
+      {String? initialMetric}) {
     showDialog(
       context: context,
       builder: (context) => RevenueDrillDownDialog(
@@ -673,20 +747,23 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
   Widget _buildRevenueChartDirect(List<StudentModel> students) {
     final fscStudents = students.where((s) => _isFsc(s.classType)).toList();
-    final matricStudents = students.where((s) => _isMatric(s.classType)).toList();
+    final matricStudents =
+        students.where((s) => _isMatric(s.classType)).toList();
 
     return Column(
       children: [
         _buildClassRevenueChart(
           'FSC Revenue',
           fscStudents,
-          (metric) => _openDrillDown('FSC Revenue', 'FSc', students, initialMetric: metric),
+          (metric) => _openDrillDown('FSC Revenue', 'FSc', students,
+              initialMetric: metric),
         ),
         const SizedBox(height: 20),
         _buildClassRevenueChart(
           'Matric Revenue',
           matricStudents,
-          (metric) => _openDrillDown('Matric Revenue', 'Matric', students, initialMetric: metric),
+          (metric) => _openDrillDown('Matric Revenue', 'Matric', students,
+              initialMetric: metric),
         ),
       ],
     );
@@ -728,11 +805,14 @@ class _RevenueDrillDownDialogState extends State<RevenueDrillDownDialog> {
   }
 
   bool _isFsc(String classType) => classType.toLowerCase().contains('fsc');
-  bool _isMatric(String classType) => classType.toLowerCase().contains('matric');
+  bool _isMatric(String classType) =>
+      classType.toLowerCase().contains('matric');
 
   bool _matchesSubject(StudentModel student, String subjectKey) {
     final raw = student.subject.toLowerCase();
-    final key = subjectKey == 'Math' ? 'Maths' : (subjectKey == 'Maths' ? 'Maths' : subjectKey);
+    final key = subjectKey == 'Math'
+        ? 'Maths'
+        : (subjectKey == 'Maths' ? 'Maths' : subjectKey);
     final filters = _subjectFilters[key] ?? [subjectKey.toLowerCase()];
     return filters.any(raw.contains);
   }
@@ -743,16 +823,21 @@ class _RevenueDrillDownDialogState extends State<RevenueDrillDownDialog> {
     String? subject,
   }) {
     return widget.students.where((s) {
-      final isType = classType == 'FSc' ? _isFsc(s.classType) : _isMatric(s.classType);
+      final isType =
+          classType == 'FSc' ? _isFsc(s.classType) : _isMatric(s.classType);
       if (!isType) return false;
 
       if (grade != null) {
         if (classType == 'FSc') {
-          if (!s.grade.toLowerCase().contains(grade.toLowerCase().split(' ').first)) {
+          if (!s.grade
+              .toLowerCase()
+              .contains(grade.toLowerCase().split(' ').first)) {
             return false;
           }
         } else {
-          if (!s.grade.toLowerCase().contains(grade.toLowerCase().split(' ').first)) {
+          if (!s.grade
+              .toLowerCase()
+              .contains(grade.toLowerCase().split(' ').first)) {
             return false;
           }
         }
@@ -840,16 +925,23 @@ class _RevenueDrillDownDialogState extends State<RevenueDrillDownDialog> {
                 sideTitles: SideTitles(
                   showTitles: true,
                   getTitlesWidget: (double value, TitleMeta meta) {
-                    const style = TextStyle(fontWeight: FontWeight.bold, fontSize: 11);
+                    const style =
+                        TextStyle(fontWeight: FontWeight.bold, fontSize: 11);
                     final labels = ['Total', 'Collected', 'Pending'];
-                    final label = (value >= 0 && value < labels.length) ? labels[value.toInt()] : '';
-                    return SideTitleWidget(meta: meta, space: 4, child: Text(label, style: style));
+                    final label = (value >= 0 && value < labels.length)
+                        ? labels[value.toInt()]
+                        : '';
+                    return SideTitleWidget(
+                        meta: meta, space: 4, child: Text(label, style: style));
                   },
                 ),
               ),
-              leftTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-              topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-              rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+              leftTitles:
+                  const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+              topTitles:
+                  const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+              rightTitles:
+                  const AxisTitles(sideTitles: SideTitles(showTitles: false)),
             ),
             gridData: const FlGridData(show: false),
             borderData: FlBorderData(show: false),
@@ -882,8 +974,10 @@ class _RevenueDrillDownDialogState extends State<RevenueDrillDownDialog> {
           ? Colors.green
           : (_selectedMetric == 'Pending' ? Colors.red : AppTheme.primaryBlue);
       final metricColor2 = _selectedMetric == 'Collected'
-          ? Colors.green.withValues(alpha: 0.6)
-          : (_selectedMetric == 'Pending' ? Colors.red.withValues(alpha: 0.6) : AppTheme.primaryBlue.withValues(alpha: 0.6));
+          ? Colors.green.withValues()
+          : (_selectedMetric == 'Pending'
+              ? Colors.red.withValues()
+              : AppTheme.primaryBlue.withValues());
 
       content = SizedBox(
         key: const ValueKey('level1'),
@@ -913,16 +1007,23 @@ class _RevenueDrillDownDialogState extends State<RevenueDrillDownDialog> {
                 sideTitles: SideTitles(
                   showTitles: true,
                   getTitlesWidget: (double value, TitleMeta meta) {
-                    const style = TextStyle(fontWeight: FontWeight.bold, fontSize: 11);
+                    const style =
+                        TextStyle(fontWeight: FontWeight.bold, fontSize: 11);
                     final labels = [label1, label2];
-                    final label = (value >= 0 && value < labels.length) ? labels[value.toInt()] : '';
-                    return SideTitleWidget(meta: meta, space: 4, child: Text(label, style: style));
+                    final label = (value >= 0 && value < labels.length)
+                        ? labels[value.toInt()]
+                        : '';
+                    return SideTitleWidget(
+                        meta: meta, space: 4, child: Text(label, style: style));
                   },
                 ),
               ),
-              leftTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-              topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-              rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+              leftTitles:
+                  const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+              topTitles:
+                  const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+              rightTitles:
+                  const AxisTitles(sideTitles: SideTitles(showTitles: false)),
             ),
             gridData: const FlGridData(show: false),
             borderData: FlBorderData(show: false),
@@ -935,7 +1036,8 @@ class _RevenueDrillDownDialogState extends State<RevenueDrillDownDialog> {
       );
     } else if (_selectedSubject == null) {
       // Level 2: Breakdown by Subject
-      final filtered = _filterStudents(classType: widget.classType, grade: _selectedGrade);
+      final filtered =
+          _filterStudents(classType: widget.classType, grade: _selectedGrade);
       final subVals = _subjectsList.map((sub) {
         final list = filtered.where((s) => _matchesSubject(s, sub)).toList();
         return _getMetricValue(list, _selectedMetric!);
@@ -943,7 +1045,8 @@ class _RevenueDrillDownDialogState extends State<RevenueDrillDownDialog> {
 
       double maxVal = subVals.reduce((a, b) => a > b ? a : b);
       if (maxVal == 0) maxVal = 5000;
-      currentSubTitle = '${widget.classType} > $_selectedMetric > $_selectedGrade';
+      currentSubTitle =
+          '${widget.classType} > $_selectedMetric > $_selectedGrade';
 
       final baseColor = _selectedMetric == 'Collected'
           ? Colors.green
@@ -978,20 +1081,27 @@ class _RevenueDrillDownDialogState extends State<RevenueDrillDownDialog> {
                 sideTitles: SideTitles(
                   showTitles: true,
                   getTitlesWidget: (double value, TitleMeta meta) {
-                    const style = TextStyle(fontWeight: FontWeight.bold, fontSize: 10);
-                    final label = (value >= 0 && value < _subjectsList.length) ? _subjectsList[value.toInt()] : '';
-                    return SideTitleWidget(meta: meta, space: 4, child: Text(label, style: style));
+                    const style =
+                        TextStyle(fontWeight: FontWeight.bold, fontSize: 10);
+                    final label = (value >= 0 && value < _subjectsList.length)
+                        ? _subjectsList[value.toInt()]
+                        : '';
+                    return SideTitleWidget(
+                        meta: meta, space: 4, child: Text(label, style: style));
                   },
                 ),
               ),
-              leftTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-              topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-              rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+              leftTitles:
+                  const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+              topTitles:
+                  const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+              rightTitles:
+                  const AxisTitles(sideTitles: SideTitles(showTitles: false)),
             ),
             gridData: const FlGridData(show: false),
             borderData: FlBorderData(show: false),
             barGroups: List.generate(_subjectsList.length, (idx) {
-              final color = baseColor.withValues(alpha: 0.4 + (idx * 0.12));
+              final color = baseColor.withOpacity(0.4 + (idx * 0.12));
               return _bar(idx, subVals[idx], color);
             }),
           ),
@@ -1007,20 +1117,23 @@ class _RevenueDrillDownDialogState extends State<RevenueDrillDownDialog> {
       double col = _sumAmount(finalStudents, true);
       double pen = _sumAmount(finalStudents, false);
       double tot = col + pen;
-      currentSubTitle = '${widget.classType} > $_selectedMetric > $_selectedGrade > $_selectedSubject';
+      currentSubTitle =
+          '${widget.classType} > $_selectedMetric > $_selectedGrade > $_selectedSubject';
 
       List<StudentModel> studentsToShow;
       Widget metricRow;
 
       if (_selectedMetric == 'Collected') {
-        studentsToShow = finalStudents.where((s) => s.feeSubmitted > 0).toList();
+        studentsToShow =
+            finalStudents.where((s) => s.feeSubmitted > 0).toList();
         metricRow = Row(
           children: [
             _buildDetailMetricCard('Collected Fee', col, Colors.green),
           ],
         );
       } else if (_selectedMetric == 'Pending') {
-        studentsToShow = finalStudents.where((s) => s.feeRemaining > 0).toList();
+        studentsToShow =
+            finalStudents.where((s) => s.feeRemaining > 0).toList();
         metricRow = Row(
           children: [
             _buildDetailMetricCard('Pending Fee', pen, Colors.red),
@@ -1047,7 +1160,8 @@ class _RevenueDrillDownDialogState extends State<RevenueDrillDownDialog> {
           const SizedBox(height: 16),
           Text(
             'Students (${studentsToShow.length})',
-            style: GoogleFonts.poppins(fontSize: 12, fontWeight: FontWeight.bold),
+            style:
+                GoogleFonts.poppins(fontSize: 12, fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 8),
           if (studentsToShow.isEmpty)
@@ -1057,7 +1171,9 @@ class _RevenueDrillDownDialogState extends State<RevenueDrillDownDialog> {
                 child: Text(
                   _selectedMetric == 'Collected'
                       ? 'No collected fees for this subject'
-                      : (_selectedMetric == 'Pending' ? 'No pending fees for this subject' : 'No students in this class/subject'),
+                      : (_selectedMetric == 'Pending'
+                          ? 'No pending fees for this subject'
+                          : 'No students in this class/subject'),
                   style: TextStyle(fontSize: 12, color: Colors.grey.shade500),
                 ),
               ),
@@ -1070,22 +1186,30 @@ class _RevenueDrillDownDialogState extends State<RevenueDrillDownDialog> {
                 itemCount: studentsToShow.length,
                 itemBuilder: (context, idx) {
                   final s = studentsToShow[idx];
-                  
+
                   Widget trailingText;
                   if (_selectedMetric == 'Collected') {
                     trailingText = Text(
                       'Rs ${s.feeSubmitted.toStringAsFixed(0)}',
-                      style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.green),
+                      style: const TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.green),
                     );
                   } else if (_selectedMetric == 'Pending') {
                     trailingText = Text(
                       'Rs ${s.feeRemaining.toStringAsFixed(0)}',
-                      style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.red),
+                      style: const TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.red),
                     );
                   } else {
                     final isPaid = s.feeRemaining <= 0;
                     trailingText = Text(
-                      isPaid ? 'PAID' : 'Rs ${s.feeRemaining.toStringAsFixed(0)}',
+                      isPaid
+                          ? 'PAID'
+                          : 'Rs ${s.feeRemaining.toStringAsFixed(0)}',
                       style: TextStyle(
                         fontSize: 11,
                         fontWeight: FontWeight.bold,
@@ -1102,7 +1226,8 @@ class _RevenueDrillDownDialogState extends State<RevenueDrillDownDialog> {
                         Expanded(
                           child: Text(
                             s.name,
-                            style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500),
+                            style: const TextStyle(
+                                fontSize: 12, fontWeight: FontWeight.w500),
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                           ),
@@ -1136,13 +1261,15 @@ class _RevenueDrillDownDialogState extends State<RevenueDrillDownDialog> {
                     children: [
                       Text(
                         widget.title,
-                        style: GoogleFonts.poppins(fontSize: 20, fontWeight: FontWeight.bold),
+                        style: GoogleFonts.poppins(
+                            fontSize: 20, fontWeight: FontWeight.bold),
                       ),
                       if (currentSubTitle.isNotEmpty) ...[
                         const SizedBox(height: 2),
                         Text(
                           currentSubTitle,
-                          style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+                          style: TextStyle(
+                              fontSize: 12, color: Colors.grey.shade600),
                         ),
                       ]
                     ],
@@ -1188,17 +1315,22 @@ class _RevenueDrillDownDialogState extends State<RevenueDrillDownDialog> {
         margin: const EdgeInsets.symmetric(horizontal: 4),
         padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 8),
         decoration: BoxDecoration(
-          color: color.withValues(alpha: 0.08),
+          color: color.withOpacity(0.08),
           borderRadius: BorderRadius.circular(10),
-          border: Border.all(color: color.withValues(alpha: 0.2)),
+          border: Border.all(color: color.withOpacity(0.2)),
         ),
         child: Column(
           children: [
-            Text(label, style: TextStyle(fontSize: 10, color: Colors.grey.shade600, fontWeight: FontWeight.w600)),
+            Text(label,
+                style: TextStyle(
+                    fontSize: 10,
+                    color: Colors.grey.shade600,
+                    fontWeight: FontWeight.w600)),
             const SizedBox(height: 4),
             Text(
               _fmt.format(amount),
-              style: GoogleFonts.poppins(fontSize: 12, fontWeight: FontWeight.bold, color: color),
+              style: GoogleFonts.poppins(
+                  fontSize: 12, fontWeight: FontWeight.bold, color: color),
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
             ),
@@ -1227,15 +1359,19 @@ class StudentStrengthDetailDialog extends StatefulWidget {
   });
 
   @override
-  State<StudentStrengthDetailDialog> createState() => _StudentStrengthDetailDialogState();
+  State<StudentStrengthDetailDialog> createState() =>
+      _StudentStrengthDetailDialogState();
 }
 
-class _StudentStrengthDetailDialogState extends State<StudentStrengthDetailDialog> {
+class _StudentStrengthDetailDialogState
+    extends State<StudentStrengthDetailDialog> {
   String? _selectedSubject;
 
   bool _matchesSubject(StudentModel student, String subjectKey) {
     final raw = student.subject.toLowerCase();
-    final key = subjectKey == 'Math' ? 'Maths' : (subjectKey == 'Maths' ? 'Maths' : subjectKey);
+    final key = subjectKey == 'Math'
+        ? 'Maths'
+        : (subjectKey == 'Maths' ? 'Maths' : subjectKey);
     final filters = _subjectFilters[key] ?? [subjectKey.toLowerCase()];
     return filters.any(raw.contains);
   }
@@ -1248,7 +1384,9 @@ class _StudentStrengthDetailDialogState extends State<StudentStrengthDetailDialo
           ? s.classType.toLowerCase().contains('fsc')
           : s.classType.toLowerCase().contains('matric');
       if (!isType) return false;
-      return s.grade.toLowerCase().contains(widget.grade.toLowerCase().split(' ').first);
+      return s.grade
+          .toLowerCase()
+          .contains(widget.grade.toLowerCase().split(' ').first);
     }).toList();
 
     final Map<String, int> subjectCounts = {};
@@ -1266,197 +1404,224 @@ class _StudentStrengthDetailDialogState extends State<StudentStrengthDetailDialo
       child: Container(
         constraints: const BoxConstraints(maxWidth: 450),
         padding: const EdgeInsets.all(24),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                child: SingleChildScrollView(
+                  
+                   
+                  scrollDirection: Axis.horizontal,
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Text(
-                        widget.title,
-                        style: GoogleFonts.poppins(
-                          fontSize: 20,
-                          fontWeight: FontWeight.bold,
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              widget.title,
+                              style: GoogleFonts.poppins(
+                                fontSize: 20,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              'Class Strength Breakdown',
+                              style: TextStyle(
+                                  fontSize: 12, color: Colors.grey.shade500),
+                            ),
+                          ],
                         ),
                       ),
-                      const SizedBox(height: 2),
-                      Text(
-                        'Class Strength Breakdown',
-                        style: TextStyle(fontSize: 12, color: Colors.grey.shade500),
+                      Container(
+                        padding:
+                            const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                        decoration: BoxDecoration(
+                          color: AppTheme.primaryBlue.withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Text(
+                          '${filtered.length} Students',
+                          style: GoogleFonts.poppins(
+                            fontSize: 13,
+                            fontWeight: FontWeight.bold,
+                            color: AppTheme.primaryBlue,
+                          ),
+                        ),
                       ),
                     ],
                   ),
                 ),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                  decoration: BoxDecoration(
-                    color: AppTheme.primaryBlue.withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Text(
-                    '${filtered.length} Students',
-                    style: GoogleFonts.poppins(
-                      fontSize: 13,
-                      fontWeight: FontWeight.bold,
-                      color: AppTheme.primaryBlue,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 24),
-            // Subjects breakdown list
-            ..._subjectsList.map((sub) {
-              final count = subjectCounts[sub] ?? 0;
-              final pct = maxCount > 0 ? count / maxCount : 0.0;
-              final color = _subjectColors[sub] ?? Colors.blue;
-              final isSelected = _selectedSubject == sub;
+              ),
+              const SizedBox(height: 24),
+              // Subjects breakdown list
+              ..._subjectsList.map((sub) {
+                final count = subjectCounts[sub] ?? 0;
+                final pct = maxCount > 0 ? count / maxCount : 0.0;
+                final color = _subjectColors[sub] ?? Colors.blue;
+                final isSelected = _selectedSubject == sub;
 
-              return Padding(
-                padding: const EdgeInsets.symmetric(vertical: 4),
-                child: InkWell(
-                  onTap: () {
-                    setState(() {
-                      if (_selectedSubject == sub) {
-                        _selectedSubject = null;
-                      } else {
-                        _selectedSubject = sub;
-                      }
-                    });
-                  },
-                  borderRadius: BorderRadius.circular(12),
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 10),
-                    decoration: BoxDecoration(
-                      color: isSelected
-                          ? color.withValues(alpha: 0.08)
-                          : Colors.transparent,
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(
-                        color: isSelected ? color.withValues(alpha: 0.3) : Colors.transparent,
+                return Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 4),
+                  child: InkWell(
+                    onTap: () {
+                      setState(() {
+                        if (_selectedSubject == sub) {
+                          _selectedSubject = null;
+                        } else {
+                          _selectedSubject = sub;
+                        }
+                      });
+                    },
+                    borderRadius: BorderRadius.circular(12),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                          vertical: 8, horizontal: 10),
+                      decoration: BoxDecoration(
+                        color: isSelected
+                            ? color.withOpacity(0.08)
+                            : Colors.transparent,
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                          color: isSelected
+                              ? color.withOpacity(0.3)
+                              : Colors.transparent,
+                        ),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Row(
+                                children: [
+                                  Container(
+                                    width: 8,
+                                    height: 8,
+                                    decoration: BoxDecoration(
+                                      color: color,
+                                      shape: BoxShape.circle,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Text(
+                                    sub,
+                                    style: GoogleFonts.poppins(
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              Text(
+                                '$count ${count == 1 ? 'Student' : 'Students'}',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.bold,
+                                  color: isDark
+                                      ? Colors.grey.shade300
+                                      : Colors.grey.shade700,
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 6),
+                          Stack(
+                            children: [
+                              Container(
+                                height: 6,
+                                decoration: BoxDecoration(
+                                  color: Colors.grey.withOpacity(0.1),
+                                  borderRadius: BorderRadius.circular(3),
+                                ),
+                              ),
+                              AnimatedContainer(
+                                duration: 300.ms,
+                                height: 6,
+                                width: pct > 0
+                                    ? (MediaQuery.of(context).size.width *
+                                        0.55 *
+                                        pct)
+                                    : 0,
+                                constraints:
+                                    const BoxConstraints(maxWidth: 240),
+                                decoration: BoxDecoration(
+                                  color: color,
+                                  borderRadius: BorderRadius.circular(3),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
                       ),
                     ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Row(
-                              children: [
-                                Container(
-                                  width: 8,
-                                  height: 8,
-                                  decoration: BoxDecoration(
-                                    color: color,
-                                    shape: BoxShape.circle,
-                                  ),
-                                ),
-                                const SizedBox(width: 8),
-                                Text(
-                                  sub,
-                                  style: GoogleFonts.poppins(
-                                    fontSize: 13,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                              ],
-                            ),
-                            Text(
-                              '$count ${count == 1 ? 'Student' : 'Students'}',
-                              style: TextStyle(
-                                fontSize: 12,
-                                fontWeight: FontWeight.bold,
-                                color: isDark ? Colors.grey.shade300 : Colors.grey.shade700,
-                              ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 6),
-                        Stack(
-                          children: [
-                            Container(
-                              height: 6,
-                              decoration: BoxDecoration(
-                                color: Colors.grey.withValues(alpha: 0.1),
-                                borderRadius: BorderRadius.circular(3),
-                              ),
-                            ),
-                            AnimatedContainer(
-                              duration: 300.ms,
-                              height: 6,
-                              width: pct > 0 ? (MediaQuery.of(context).size.width * 0.55 * pct) : 0,
-                              constraints: const BoxConstraints(maxWidth: 240),
-                              decoration: BoxDecoration(
-                                color: color,
-                                borderRadius: BorderRadius.circular(3),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ],
-                    ),
                   ),
+                );
+              }),
+
+              // Selected Subject Student List
+              if (_selectedSubject != null) ...[
+                const SizedBox(height: 16),
+                const Divider(),
+                const SizedBox(height: 8),
+                Text(
+                  'Enrolled in $_selectedSubject',
+                  style: GoogleFonts.poppins(
+                      fontSize: 13, fontWeight: FontWeight.bold),
                 ),
-              );
-            }),
-            
-            // Selected Subject Student List
-            if (_selectedSubject != null) ...[
-              const SizedBox(height: 16),
-              const Divider(),
-              const SizedBox(height: 8),
-              Text(
-                'Enrolled in $_selectedSubject',
-                style: GoogleFonts.poppins(fontSize: 13, fontWeight: FontWeight.bold),
-              ),
-              const SizedBox(height: 8),
-              Builder(
-                builder: (context) {
-                  final list = filtered.where((s) => _matchesSubject(s, _selectedSubject!)).toList();
-                  if (list.isEmpty) {
-                    return Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 8),
-                      child: Text(
-                        'No students enrolled',
-                        style: TextStyle(fontSize: 12, color: Colors.grey.shade500),
+                const SizedBox(height: 8),
+                Builder(
+                  builder: (context) {
+                    final list = filtered
+                        .where((s) => _matchesSubject(s, _selectedSubject!))
+                        .toList();
+                    if (list.isEmpty) {
+                      return Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 8),
+                        child: Text(
+                          'No students enrolled',
+                          style: TextStyle(
+                              fontSize: 12, color: Colors.grey.shade500),
+                        ),
+                      );
+                    }
+                    return ConstrainedBox(
+                      constraints: const BoxConstraints(maxHeight: 120),
+                      child: ListView.builder(
+                        shrinkWrap: true,
+                        itemCount: list.length,
+                        itemBuilder: (context, idx) {
+                          final s = list[idx];
+                          return Padding(
+                            padding: const EdgeInsets.symmetric(vertical: 4),
+                            child: Text(
+                              '•  ${s.name}',
+                              style: const TextStyle(
+                                  fontSize: 12, fontWeight: FontWeight.w500),
+                            ),
+                          );
+                        },
                       ),
                     );
-                  }
-                  return ConstrainedBox(
-                    constraints: const BoxConstraints(maxHeight: 120),
-                    child: ListView.builder(
-                      shrinkWrap: true,
-                      itemCount: list.length,
-                      itemBuilder: (context, idx) {
-                        final s = list[idx];
-                        return Padding(
-                          padding: const EdgeInsets.symmetric(vertical: 4),
-                          child: Text(
-                            '•  ${s.name}',
-                            style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500),
-                          ),
-                        );
-                      },
-                    ),
-                  );
-                },
+                  },
+                ),
+              ],
+              const SizedBox(height: 16),
+              Align(
+                alignment: Alignment.centerRight,
+                child: TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text('Close'),
+                ),
               ),
             ],
-            const SizedBox(height: 16),
-            Align(
-              alignment: Alignment.centerRight,
-              child: TextButton(
-                onPressed: () => Navigator.pop(context),
-                child: const Text('Close'),
-              ),
-            ),
-          ],
+          ),
         ),
       ),
     );

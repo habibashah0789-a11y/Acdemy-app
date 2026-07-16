@@ -30,7 +30,8 @@ class _LoginScreenState extends State<LoginScreen> {
     setState(() => _isLoading = true);
     try {
       await AuthService.loginWithEmailPassword(
-        _emailController.text, _passwordController.text,
+        _emailController.text,
+        _passwordController.text,
       );
     } catch (e) {
       if (mounted) {
@@ -38,7 +39,8 @@ class _LoginScreenState extends State<LoginScreen> {
           content: Text(e.toString().replaceFirst('Exception: ', '')),
           backgroundColor: Colors.redAccent,
           behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
         ));
       }
     } finally {
@@ -49,7 +51,7 @@ class _LoginScreenState extends State<LoginScreen> {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    
+
     return Scaffold(
       body: Stack(
         children: [
@@ -62,11 +64,11 @@ class _LoginScreenState extends State<LoginScreen> {
               height: 300,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                color: AppTheme.primaryBlue.withOpacity(0.05),
+                color: AppTheme.primaryBlue.withValues(alpha: 0.05),
               ),
             ),
           ),
-          
+
           SafeArea(
             child: Center(
               child: SingleChildScrollView(
@@ -80,7 +82,7 @@ class _LoginScreenState extends State<LoginScreen> {
                       height: 100,
                       width: 100,
                       decoration: BoxDecoration(
-                        color: AppTheme.primaryBlue.withOpacity(0.1),
+                        color: AppTheme.primaryBlue.withValues(alpha: 0.1),
                         borderRadius: BorderRadius.circular(24),
                       ),
                       child: const Icon(
@@ -88,28 +90,33 @@ class _LoginScreenState extends State<LoginScreen> {
                         size: 60,
                         color: AppTheme.primaryBlue,
                       ),
-                    ).animate().fadeIn(duration: 600.ms).scale(begin: const Offset(0.8, 0.8)),
-                    
+                    )
+                        .animate()
+                        .fadeIn(duration: 600.ms)
+                        .scale(begin: const Offset(0.8, 0.8)),
+
                     const SizedBox(height: 24),
-                    
+
                     Text(
-                      'Academy Manager',
+                      ' Quaid Academy ',
                       style: Theme.of(context).textTheme.displaySmall?.copyWith(
-                        fontWeight: FontWeight.bold,
-                        color: AppTheme.primaryBlue,
-                      ),
+                            fontWeight: FontWeight.bold,
+                            color: AppTheme.primaryBlue,
+                          ),
                     ).animate().fadeIn(delay: 200.ms),
-                    
+
                     Text(
                       'Professional Education Portal',
                       style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                        color: isDark ? AppTheme.darkTextSecondary : AppTheme.lightTextSecondary,
-                        letterSpacing: 1.2,
-                      ),
+                            color: isDark
+                                ? AppTheme.darkTextSecondary
+                                : AppTheme.lightTextSecondary,
+                            letterSpacing: 1.2,
+                          ),
                     ).animate().fadeIn(delay: 400.ms),
-                    
+
                     const SizedBox(height: 40),
-                    
+
                     // Login Card
                     Card(
                       child: Padding(
@@ -127,7 +134,6 @@ class _LoginScreenState extends State<LoginScreen> {
                                 ),
                               ),
                               const SizedBox(height: 24),
-                              
                               TextFormField(
                                 controller: _emailController,
                                 keyboardType: TextInputType.emailAddress,
@@ -136,27 +142,32 @@ class _LoginScreenState extends State<LoginScreen> {
                                   hintText: 'admin@academy.com',
                                   prefixIcon: Icon(Icons.email_outlined),
                                 ),
-                                validator: (v) => (v == null || !v.contains('@')) ? 'Enter a valid email' : null,
+                                validator: (v) =>
+                                    (v == null || !v.contains('@'))
+                                        ? 'Enter a valid email'
+                                        : null,
                               ),
-                              
                               const SizedBox(height: 20),
-                              
                               TextFormField(
                                 controller: _passwordController,
                                 obscureText: _obscurePassword,
                                 decoration: InputDecoration(
                                   labelText: 'Password',
-                                  prefixIcon: const Icon(Icons.lock_outline_rounded),
+                                  prefixIcon:
+                                      const Icon(Icons.lock_outline_rounded),
                                   suffixIcon: IconButton(
-                                    icon: Icon(_obscurePassword ? Icons.visibility_off : Icons.visibility),
-                                    onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
+                                    icon: Icon(_obscurePassword
+                                        ? Icons.visibility_off
+                                        : Icons.visibility),
+                                    onPressed: () => setState(() =>
+                                        _obscurePassword = !_obscurePassword),
                                   ),
                                 ),
-                                validator: (v) => (v == null || v.length < 6) ? 'Password too short' : null,
+                                validator: (v) => (v == null || v.length < 6)
+                                    ? 'Password too short'
+                                    : null,
                               ),
-                              
                               const SizedBox(height: 12),
-                              
                               Align(
                                 alignment: Alignment.centerRight,
                                 child: TextButton(
@@ -164,16 +175,19 @@ class _LoginScreenState extends State<LoginScreen> {
                                   child: const Text('Forgot Password?'),
                                 ),
                               ),
-                              
                               const SizedBox(height: 24),
-                              
                               SizedBox(
                                 width: double.infinity,
                                 child: ElevatedButton(
                                   onPressed: _isLoading ? null : _handleLogin,
-                                  child: _isLoading 
-                                    ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
-                                    : const Text('SIGN IN'),
+                                  child: _isLoading
+                                      ? const SizedBox(
+                                          height: 20,
+                                          width: 20,
+                                          child: CircularProgressIndicator(
+                                              color: Colors.white,
+                                              strokeWidth: 2))
+                                      : const Text('SIGN IN'),
                                 ),
                               ),
                             ],
@@ -181,14 +195,16 @@ class _LoginScreenState extends State<LoginScreen> {
                         ),
                       ),
                     ).animate().fadeIn(delay: 600.ms).slideY(begin: 0.1),
-                    
+
                     const SizedBox(height: 32),
-                    
+
                     Text(
                       '© 2026 Academy Pro Systems',
                       style: GoogleFonts.poppins(
                         fontSize: 12,
-                        color: isDark ? AppTheme.darkTextSecondary : AppTheme.lightTextSecondary,
+                        color: isDark
+                            ? AppTheme.darkTextSecondary
+                            : AppTheme.lightTextSecondary,
                       ),
                     ),
                   ],

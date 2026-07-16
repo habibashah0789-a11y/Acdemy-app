@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
-//import 'package:google_fonts/google_fonts.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import '../models/student_model.dart';
 import '../services/database_service.dart';
@@ -31,10 +30,16 @@ class _StudentDetailScreenState extends State<StudentDetailScreen> {
       MaterialPageRoute(builder: (_) => EditStudentScreen(student: student)),
     );
     if (result == true) {
-      // Refresh student data from DB
-      final all = DatabaseService.getAllStudents();
-      final updated = all.firstWhere((s) => s.id == student.id, orElse: () => student);
-      setState(() => student = updated);
+      // Refresh student data from Firestore (cloud) first
+      final updatedFromCloud = await DatabaseService.getStudentById(student.id);
+      if (updatedFromCloud != null) {
+        setState(() => student = updatedFromCloud);
+      } else {
+        // Fallback to local Hive
+        final all = DatabaseService.getAllStudentsLocal();
+        final updated = all.firstWhere((s) => s.id == student.id, orElse: () => student);
+        setState(() => student = updated);
+      }
     }
   }
 
@@ -120,7 +125,7 @@ class _StudentDetailScreenState extends State<StudentDetailScreen> {
                   end: Alignment.bottomCenter,
                   colors: [
                     AppTheme.primaryBlue,
-                    AppTheme.primaryBlue.withOpacity(0.8),
+                    AppTheme.primaryBlue.withValues(alpha: 0.8),
                   ],
                 ),
               ),
@@ -139,7 +144,7 @@ class _StudentDetailScreenState extends State<StudentDetailScreen> {
                       border: Border.all(color: Colors.white, width: 3),
                       boxShadow: [
                         BoxShadow(
-                          color: Colors.black.withOpacity(0.2),
+                          color: Colors.black.withValues(alpha: 0.2),
                           blurRadius: 10,
                         ),
                       ],
@@ -150,9 +155,20 @@ class _StudentDetailScreenState extends State<StudentDetailScreen> {
                         ? CachedNetworkImage(
                             imageUrl: student.profilePicUrl,
                             fit: BoxFit.cover,
+                            placeholder: (_, __) => const Center(
+                              child: SizedBox(
+                                width: 30,
+                                height: 30,
+                                child: CircularProgressIndicator(strokeWidth: 2),
+                              ),
+                            ),
+                            errorWidget: (_, __, ___) => Container(
+                              color: Colors.white.withValues(alpha: 0.2),
+                              child: const Icon(Icons.person, size: 60, color: Colors.white),
+                            ),
                           )
                         : Container(
-                            color: Colors.white.withOpacity(0.2),
+                            color: Colors.white.withValues(alpha: 0.2),
                             child: const Icon(Icons.person, size: 60, color: Colors.white),
                           ),
                     ),
@@ -170,7 +186,7 @@ class _StudentDetailScreenState extends State<StudentDetailScreen> {
                 Text(
                   '${student.classType} · ${student.grade} · ${student.subject}',
                   style: TextStyle(
-                    color: Colors.white.withOpacity(0.85),
+                    color: Colors.white.withValues(alpha: 0.85),
                     fontSize: 14,
                   ),
                 ),
@@ -206,10 +222,10 @@ class _StudentDetailScreenState extends State<StudentDetailScreen> {
   Widget _buildStatCard(String label, String value, Color color) {
     return Card(
       elevation: 0,
-      color: color.withOpacity(0.05),
+      color: color.withValues(alpha: 0.05),
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(16),
-        side: BorderSide(color: color.withOpacity(0.1)),
+        side: BorderSide(color: color.withValues(alpha: 0.1)),
       ),
       child: Padding(
         padding: const EdgeInsets.all(12),
@@ -318,18 +334,20 @@ class _StudentDetailScreenState extends State<StudentDetailScreen> {
         children: [
           Icon(icon, size: 20, color: AppTheme.primaryBlue),
           const SizedBox(width: 16),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(label, style: const TextStyle(fontSize: 10, color: Colors.grey)),
-              Text(value, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500)),
-            ],
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(label, style: const TextStyle(fontSize: 10, color: Colors.grey)),
+                Text(value, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500)),
+              ],
+            ),
           ),
         ],
       ),
     );
   }
-
+  
   Widget _buildActionButtons(BuildContext context) {
     return Row(
       children: [
@@ -338,6 +356,10 @@ class _StudentDetailScreenState extends State<StudentDetailScreen> {
             onPressed: _editStudent,
             icon: const Icon(Icons.edit_rounded),
             label: const Text('EDIT PROFILE'),
+            style: ElevatedButton.styleFrom(
+              padding: const EdgeInsets.symmetric(vertical: 14),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            ),
           ),
         ),
         const SizedBox(width: 16),

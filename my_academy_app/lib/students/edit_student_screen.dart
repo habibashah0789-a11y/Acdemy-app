@@ -181,7 +181,7 @@ class _EditStudentScreenState extends State<EditStudentScreen> {
                       children: [
                         CircleAvatar(
                           radius: 60,
-                          backgroundColor: AppTheme.primaryBlue.withOpacity(0.1),
+                          backgroundColor: AppTheme.primaryBlue.withValues(alpha: 0.1),
                           child: _imageBytes != null
                               ? ClipOval(child: Image.memory(_imageBytes!, width: 120, height: 120, fit: BoxFit.cover))
                               : _existingUrl.isNotEmpty
@@ -231,7 +231,7 @@ class _EditStudentScreenState extends State<EditStudentScreen> {
                 _sectionTitle('Class Information'),
                 // Class Type dropdown
                 DropdownButtonFormField<String>(
-                  value: _selectedClassType,
+                  initialValue: _selectedClassType,
                   decoration: const InputDecoration(
                     labelText: 'Class Type *',
                     prefixIcon: Icon(Icons.category_rounded),
@@ -250,7 +250,7 @@ class _EditStudentScreenState extends State<EditStudentScreen> {
 
                 // Grade dropdown
                 DropdownButtonFormField<String>(
-                  value: _selectedGrade,
+                  initialValue: _selectedGrade,
                   decoration: const InputDecoration(
                     labelText: 'Grade / Year *',
                     prefixIcon: Icon(Icons.school_rounded),
@@ -266,7 +266,7 @@ class _EditStudentScreenState extends State<EditStudentScreen> {
 
                 // Subject dropdown
                 DropdownButtonFormField<String>(
-                  value: _selectedSubject,
+                  initialValue: _selectedSubject,
                   decoration: const InputDecoration(
                     labelText: 'Subject *',
                     prefixIcon: Icon(Icons.book_rounded),
@@ -280,7 +280,7 @@ class _EditStudentScreenState extends State<EditStudentScreen> {
 
                 // Schedule dropdown
                 DropdownButtonFormField<String>(
-                  value: _selectedSchedule,
+                  initialValue: _selectedSchedule,
                   decoration: const InputDecoration(
                     labelText: 'Class Schedule *',
                     prefixIcon: Icon(Icons.access_time_rounded),
@@ -324,7 +324,7 @@ class _EditStudentScreenState extends State<EditStudentScreen> {
             ),
           ),
         ),
-        if (_isSaving) Container(color: Colors.black.withOpacity(0.1), child: const Center(child: SpinKitPulse(color: AppTheme.primaryBlue, size: 60))),
+        if (_isSaving) Container(color: Colors.black.withValues(alpha: 0.1), child: const Center(child: SpinKitPulse(color: AppTheme.primaryBlue, size: 60))),
       ]),
     );
   }

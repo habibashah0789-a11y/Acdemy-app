@@ -4,16 +4,6 @@ import 'package:firebase_core/firebase_core.dart' show FirebaseOptions;
 import 'package:flutter/foundation.dart'
     show defaultTargetPlatform, kIsWeb, TargetPlatform;
 
-/// Default [FirebaseOptions] for use with your Firebase apps.
-///
-/// Example:
-/// ```dart
-/// import 'firebase_options.dart';
-/// // ...
-/// await Firebase.initializeApp(
-///   options: DefaultFirebaseOptions.currentPlatform,
-/// );
-/// ```
 class DefaultFirebaseOptions {
   static FirebaseOptions get currentPlatform {
     if (kIsWeb) {
@@ -63,7 +53,8 @@ class DefaultFirebaseOptions {
     messagingSenderId: '335773136778',
     projectId: 'habiba-12',
     storageBucket: 'habiba-12.firebasestorage.app',
-    iosClientId: '335773136778-vfq2lk75atmqrofksu3aile5v1ansgv3.apps.googleusercontent.com',
+    iosClientId:
+        '335773136778-vfq2lk75atmqrofksu3aile5v1ansgv3.apps.googleusercontent.com',
     iosBundleId: 'com.example.myAcademyApp',
   );
 
@@ -73,7 +64,8 @@ class DefaultFirebaseOptions {
     messagingSenderId: '335773136778',
     projectId: 'habiba-12',
     storageBucket: 'habiba-12.firebasestorage.app',
-    iosClientId: '335773136778-vfq2lk75atmqrofksu3aile5v1ansgv3.apps.googleusercontent.com',
+    iosClientId:
+        '335773136778-vfq2lk75atmqrofksu3aile5v1ansgv3.apps.googleusercontent.com',
     iosBundleId: 'com.example.myAcademyApp',
   );
 
@@ -85,5 +77,4 @@ class DefaultFirebaseOptions {
     authDomain: 'habiba-12.firebaseapp.com',
     storageBucket: 'habiba-12.firebasestorage.app',
   );
-
 }

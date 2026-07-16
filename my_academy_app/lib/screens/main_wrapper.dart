@@ -3,7 +3,7 @@ import '../dashboard/dashboard_screen.dart';
 import '../students/student_list_screen.dart';
 import '../teachers/teacher_folder_screen.dart';
 import '../theme/app_theme.dart';
-import '../settings/settingScreen.dart';
+import '../settings/setting_screen.dart';
 
 class MainWrapper extends StatefulWidget {
   const MainWrapper({super.key});
@@ -19,7 +19,7 @@ class _MainWrapperState extends State<MainWrapper> {
     const DashboardScreen(),
     const StudentListScreen(),
     const TeacherFolderScreen(),
-    const PlaceholderScreen(title: 'Fees Management', icon: Icons.payments_rounded),
+    //const PlaceholderScreen(title: 'Fees Management', icon: Icons.payments_rounded),
     const SettingsScreen(),
   ];
 
@@ -53,11 +53,11 @@ class _MainWrapperState extends State<MainWrapper> {
             activeIcon: Icon(Icons.supervisor_account_rounded),
             label: 'Teachers',
           ),
-          BottomNavigationBarItem(
+          /*BottomNavigationBarItem(
             icon: Icon(Icons.payments_outlined),
             activeIcon: Icon(Icons.payments_rounded),
             label: 'Fees',
-          ),
+          ),*/
           BottomNavigationBarItem(
             icon: Icon(Icons.settings_outlined),
             activeIcon: Icon(Icons.settings_rounded),
@@ -86,7 +86,7 @@ class PlaceholderScreen extends StatelessWidget {
             Container(
               padding: const EdgeInsets.all(24),
               decoration: BoxDecoration(
-                color: AppTheme.primaryBlue.withOpacity(0.1),
+                color: AppTheme.primaryBlue.withValues(alpha: 0.1),
                 shape: BoxShape.circle,
               ),
               child: Icon(icon, size: 64, color: AppTheme.primaryBlue),

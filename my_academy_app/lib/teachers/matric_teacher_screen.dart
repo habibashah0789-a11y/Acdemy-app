@@ -31,7 +31,7 @@ class MatricSubjectListScreen extends StatelessWidget {
             title: subject,
             subtitle: 'Ninth · Tenth Class',
             icon: icon,
-            gradient: [color, color.withOpacity(0.7)],
+            gradient: [color, color.withValues(alpha: 0.7)],
             onTap: () => Navigator.push(
               context,
               MaterialPageRoute(
@@ -86,7 +86,7 @@ class MatricGradeListScreen extends StatelessWidget {
                   title: grade,
                   subtitle: '$subject — Matric',
                   icon: Icons.folder_open_rounded,
-                  gradient: [color, color.withOpacity(0.6)],
+                  gradient: [color, color.withValues(alpha: 0.6)],
                   onTap: () => Navigator.push(
                     context,
                     MaterialPageRoute(
@@ -166,11 +166,11 @@ class _MatricClassRoomScreenState extends State<MatricClassRoomScreen> {
             width: double.infinity,
             padding: const EdgeInsets.all(20),
             decoration: BoxDecoration(
-              gradient: LinearGradient(colors: [color, color.withOpacity(0.7)]),
+              gradient: LinearGradient(colors: [color, color.withValues(alpha: 0.7)]),
               borderRadius: BorderRadius.circular(16),
               boxShadow: [
                 BoxShadow(
-                  color: color.withOpacity(0.25),
+                  color: color.withValues(alpha: 0.25),
                   blurRadius: 12,
                   offset: const Offset(0, 6),
                 ),
@@ -206,7 +206,7 @@ class _MatricClassRoomScreenState extends State<MatricClassRoomScreen> {
                 Text(
                   'Matric · ${widget.subject} · ${widget.grade}',
                   style: TextStyle(
-                    color: Colors.white.withOpacity(0.85),
+                    color: Colors.white.withValues(alpha: 0.85),
                     fontSize: 13,
                   ),
                 ),
@@ -249,13 +249,13 @@ class _MatricClassRoomScreenState extends State<MatricClassRoomScreen> {
                     padding: const EdgeInsets.symmetric(horizontal: 16),
                     alignment: Alignment.center,
                     decoration: BoxDecoration(
-                      color: isSelected ? color : color.withOpacity(0.08),
+                      color: isSelected ? color : color.withValues(alpha: 0.08),
                       borderRadius: BorderRadius.circular(22),
-                      border: Border.all(color: isSelected ? color : color.withOpacity(0.2)),
+                      border: Border.all(color: isSelected ? color : color.withValues(alpha: 0.2)),
                       boxShadow: isSelected
                           ? [
                               BoxShadow(
-                                color: color.withOpacity(0.3),
+                                color: color.withValues(alpha: 0.3),
                                 blurRadius: 6,
                                 offset: const Offset(0, 3),
                               )
@@ -341,7 +341,7 @@ class _MatricClassRoomScreenState extends State<MatricClassRoomScreen> {
           MaterialPageRoute(builder: (_) => StudentDetailScreen(student: s)),
         ).then((_) => setState(() {})),
         leading: CircleAvatar(
-          backgroundColor: AppTheme.primaryBlue.withOpacity(0.1),
+          backgroundColor: AppTheme.primaryBlue.withValues(alpha: 0.1),
           child: s.profilePicUrl.isNotEmpty
               ? ClipOval(
                   child: CachedNetworkImage(
@@ -367,7 +367,7 @@ class _MatricClassRoomScreenState extends State<MatricClassRoomScreen> {
         trailing: Container(
           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
           decoration: BoxDecoration(
-            color: isPaid ? Colors.green.withOpacity(0.1) : Colors.red.withOpacity(0.1),
+            color: isPaid ? Colors.green.withValues(alpha: 0.1) : Colors.red.withValues(alpha: 0.1),
             borderRadius: BorderRadius.circular(8),
           ),
           child: Text(

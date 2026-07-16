@@ -30,11 +30,9 @@ class AppTheme {
         secondary: secondaryGreen,
         tertiary: accentOrange,
         surface: lightCard,
-        background: lightBackground,
         onPrimary: Colors.white,
         onSecondary: Colors.white,
         onSurface: lightTextPrimary,
-        onBackground: lightTextPrimary,
       ),
       textTheme: GoogleFonts.poppinsTextTheme(
         const TextTheme(
@@ -59,7 +57,7 @@ class AppTheme {
       // cardTheme: CardTheme(
       //   color: lightCard,
       //   elevation: 2,
-      //   shadowColor: Colors.black.withOpacity(0.1),
+      //   shadowColor: Colors.black.withValues(alpha: 0.1),
       //   shape: RoundedRectangleBorder(
       //     borderRadius: BorderRadius.circular(16),
         
@@ -118,11 +116,9 @@ class AppTheme {
         secondary: secondaryGreen,
         tertiary: accentOrange,
         surface: darkCard,
-        background: darkBackground,
         onPrimary: Colors.white,
         onSecondary: Colors.white,
         onSurface: darkTextPrimary,
-        onBackground: darkTextPrimary,
       ),
       textTheme: GoogleFonts.poppinsTextTheme(
         const TextTheme(
@@ -168,11 +164,11 @@ class AppTheme {
         contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide(color: Colors.white.withOpacity(0.1)),
+          borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.1)),
         ),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide(color: Colors.white.withOpacity(0.1)),
+          borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.1)),
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),

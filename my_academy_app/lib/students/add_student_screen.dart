@@ -177,9 +177,10 @@ class _AddStudentScreenState extends State<AddStudentScreen> {
         if (mounted) setState(() => _imageBytes = bytes);
       }
     } catch (e) {
-      if (mounted)
+      if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(
             content: Text('Failed: $e'), backgroundColor: Colors.red));
+      }
     }
   }
 
@@ -215,9 +216,10 @@ class _AddStudentScreenState extends State<AddStudentScreen> {
       await DatabaseService.addStudent(student);
       if (mounted) Navigator.pop(context, true);
     } catch (e) {
-      if (mounted)
+      if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(
             content: Text('Failed: $e'), backgroundColor: Colors.red));
+      }
     } finally {
       if (mounted) setState(() => _isSaving = false);
     }
@@ -256,7 +258,7 @@ class _AddStudentScreenState extends State<AddStudentScreen> {
                       children: [
                         CircleAvatar(
                           radius: 60,
-                          backgroundColor: AppTheme.primaryBlue.withOpacity(0.1),
+                          backgroundColor: AppTheme.primaryBlue.withValues(alpha: 0.1),
                           child: _imageBytes != null
                               ? ClipOval(
                                   child: Image.memory(_imageBytes!,
@@ -325,7 +327,7 @@ class _AddStudentScreenState extends State<AddStudentScreen> {
                 _sectionTitle('Class Information'),
                 // Class Type dropdown
                 DropdownButtonFormField<String>(
-                  value: _selectedClassType,
+                  initialValue: _selectedClassType,
                   decoration: const InputDecoration(
                     labelText: 'Class Type *',
                     prefixIcon: Icon(Icons.category_rounded),
@@ -344,7 +346,7 @@ class _AddStudentScreenState extends State<AddStudentScreen> {
 
                 // Grade dropdown
                 DropdownButtonFormField<String>(
-                  value: _selectedGrade,
+                  initialValue: _selectedGrade,
                   decoration: const InputDecoration(
                     labelText: 'Grade / Year *',
                     prefixIcon: Icon(Icons.school_rounded),
@@ -360,7 +362,7 @@ class _AddStudentScreenState extends State<AddStudentScreen> {
 
                 // Subject dropdown
                 DropdownButtonFormField<String>(
-                  value: _selectedSubject,
+                  initialValue: _selectedSubject,
                   decoration: const InputDecoration(
                     labelText: 'Subject *',
                     prefixIcon: Icon(Icons.book_rounded),
@@ -407,9 +409,9 @@ class _AddStudentScreenState extends State<AddStudentScreen> {
                           padding: const EdgeInsets.symmetric(horizontal: 14),
                           alignment: Alignment.center,
                           decoration: BoxDecoration(
-                            color: isSelected ? color : color.withOpacity(0.08),
+                            color: isSelected ? color : color.withValues(alpha: 0.08),
                             borderRadius: BorderRadius.circular(20),
-                            border: Border.all(color: isSelected ? color : color.withOpacity(0.2)),
+                            border: Border.all(color: isSelected ? color : color.withValues(alpha: 0.2)),
                           ),
                           child: Text(
                             _scheduleSlots[index],
@@ -465,7 +467,7 @@ class _AddStudentScreenState extends State<AddStudentScreen> {
         ),
         if (_isSaving)
           Container(
-              color: Colors.black.withOpacity(0.1),
+              color: Colors.black.withValues(alpha: 0.1),
               child: const Center(
                   child: SpinKitPulse(color: AppTheme.primaryBlue, size: 60))),
       ]),

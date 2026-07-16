@@ -1,0 +1,26 @@
+[debug] [2026-07-15T07:03:57.069Z] ----------------------------------------------------------------------
+[debug] [2026-07-15T07:03:57.081Z] Command:       C:\Program Files\nodejs\node.exe C:\Users\DELL\AppData\Roaming\npm\node_modules\firebase-tools\lib\bin\firebase.js apps:create ios Quaid Academy iOS --bundle-id=com.example.my_academy_app
+[debug] [2026-07-15T07:03:57.081Z] CLI Version:   15.23.0
+[debug] [2026-07-15T07:03:57.081Z] Platform:      win32
+[debug] [2026-07-15T07:03:57.081Z] Node Version:  v24.15.0
+[debug] [2026-07-15T07:03:57.082Z] Detected Agent: unknown
+[debug] [2026-07-15T07:03:57.082Z] Time:          Wed Jul 15 2026 12:03:57 GMT+0500 (Pakistan Standard Time)
+[debug] [2026-07-15T07:03:57.082Z] ----------------------------------------------------------------------
+[debug] 
+[debug] [2026-07-15T07:03:57.450Z] Object "" in "firebase.json" has unknown property: {"additionalProperty":"flutter"}
+[debug] [2026-07-15T07:03:57.454Z] > command requires scopes: ["email","openid","https://www.googleapis.com/auth/cloudplatformprojects.readonly","https://www.googleapis.com/auth/firebase","https://www.googleapis.com/auth/cloud-platform"]
+[debug] [2026-07-15T07:03:57.454Z] > authorizing via signed-in user (quaidacademy241992@gmail.com)
+[info] Create your IOS app in project quaid-academy:
+[debug] [2026-07-15T07:03:57.513Z] Checked if tokens are valid: true, expires at: 1784100272839
+[debug] [2026-07-15T07:03:57.514Z] Checked if tokens are valid: true, expires at: 1784100272839
+[debug] [2026-07-15T07:03:57.515Z] >>> [apiv2][query] POST https://firebase.googleapis.com/v1beta1/projects/quaid-academy/iosApps [none]
+[debug] [2026-07-15T07:03:57.515Z] >>> [apiv2][body] POST https://firebase.googleapis.com/v1beta1/projects/quaid-academy/iosApps {"displayName":"Quaid Academy iOS","bundleId":"com.example.my_academy_app"}
+[debug] [2026-07-15T07:03:58.324Z] <<< [apiv2][status] POST https://firebase.googleapis.com/v1beta1/projects/quaid-academy/iosApps 400
+[debug] [2026-07-15T07:03:58.325Z] <<< [apiv2][body] POST https://firebase.googleapis.com/v1beta1/projects/quaid-academy/iosApps {"error":{"code":400,"message":"Request contains an invalid argument.","status":"INVALID_ARGUMENT"}}
+[debug] [2026-07-15T07:03:58.331Z] Request to https://firebase.googleapis.com/v1beta1/projects/quaid-academy/iosApps had HTTP Error: 400, Request contains an invalid argument.
+[debug] [2026-07-15T07:03:58.852Z] FirebaseError: Request to https://firebase.googleapis.com/v1beta1/projects/quaid-academy/iosApps had HTTP Error: 400, Request contains an invalid argument.
+    at responseToError (C:\Users\DELL\AppData\Roaming\npm\node_modules\firebase-tools\lib\responseToError.js:53:12)
+    at RetryOperation._fn (C:\Users\DELL\AppData\Roaming\npm\node_modules\firebase-tools\lib\apiv2.js:415:77)
+    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+[error] 
+[error] Error: Failed to create iOS app for project quaid-academy. See firebase-debug.log for more info.
