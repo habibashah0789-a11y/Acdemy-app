@@ -4,6 +4,7 @@ import '../students/student_list_screen.dart';
 import '../teachers/teacher_folder_screen.dart';
 import '../theme/app_theme.dart';
 import '../settings/setting_screen.dart';
+import '../services/notification_service.dart';
 
 class MainWrapper extends StatefulWidget {
   const MainWrapper({super.key});
@@ -22,6 +23,15 @@ class _MainWrapperState extends State<MainWrapper> {
     //const PlaceholderScreen(title: 'Fees Management', icon: Icons.payments_rounded),
     const SettingsScreen(),
   ];
+
+  @override
+  void initState() {
+    super.initState();
+    // Initialize NotificationService to sync and listen to Firestore notifications
+    NotificationService.notificationsStream();
+    // Request permissions and subscribe to the push notifications topic
+    NotificationService.initializePushNotifications();
+  }
 
   @override
   Widget build(BuildContext context) {

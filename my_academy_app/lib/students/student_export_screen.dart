@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:url_launcher/url_launcher.dart'; 
 import 'package:flutter_speed_dial/flutter_speed_dial.dart';
 import 'package:hive_flutter/hive_flutter.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import '../models/student_model.dart';
 import '../services/database_service.dart';
 import '../theme/app_theme.dart';
@@ -17,14 +17,17 @@ class StudentExportScreen extends StatefulWidget {
 class _StudentExportScreenState extends State<StudentExportScreen> {
   final TextEditingController _messageController = TextEditingController();
   final Box _settingsBox = Hive.box('settings');
-  bool _isProcessing = false;
+  List<StudentModel> _recipients = [];
+  final Set<String> _sentIds = {};
+  String _currentFilter = 'All Students';
 
   @override
   void initState() {
     super.initState();
     _messageController.text = _settingsBox.get('last_whatsapp_message',
         defaultValue:
-            'Dear {studentName},\n\nAssalam-o-Alaikum.Ihope you are doing well.\n\nThis is a gentle reminder from Quaid Academy regarding your fee payement.\nYour remaining fee is Rs. {remainingFee}.\n\n We kindly  request you to please the pendingfee at your earliest convenience.Your cooperation helps us continue providing quality education.\n\nIf you have already paid, please ignore this message.\n\nJazakllah Khair\nQuaid Academy Administration.');
+            'Dear {studentName},\n\nAssalam-o-Alaikum. I hope you are doing well.\n\nThis is a gentle reminder from Quaid Academy regarding your fee payment.\nYour remaining fee is Rs. {remainingFee}.\n\nWe kindly request you to please clear the pending fee at your earliest convenience. Your cooperation helps us continue providing quality education.\n\nIf you have already paid, please ignore this message.\n\nJazakAllah Khair\nQuaid Academy Administration.');
+    _recipients = _getStudents();
   }
 
   @override
@@ -47,70 +50,6 @@ class _StudentExportScreenState extends State<StudentExportScreen> {
         .replaceAll('{academyName}', academy['name'] ?? 'Quaid Academy');
   }
 
-  Future<void> _processBulkMessages(List<StudentModel> students) async {
-    if (students.isEmpty) return;
-
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Confirm Sending'),
-        content: Text('Send message to ${students.length} students?'),
-        actions: [
-          TextButton(
-              onPressed: () => Navigator.pop(context, false),
-              child: const Text('Cancel')),
-          ElevatedButton(
-              onPressed: () => Navigator.pop(context, true),
-              child: const Text('Send')),
-        ],
-      ),
-    );
-
-    if (confirmed != true) return;
-
-    setState(() => _isProcessing = true);
-
-    int success = 0;
-    int skipped = 0;
-    int failed = 0;
-
-    for (final student in students) {
-      if (student.phone.isEmpty || student.phone.length < 7) {
-        skipped++;
-        continue;
-      }
-      try {
-        final message = _formatMessage(_messageController.text, student);
-        // Note: url_launcher only supports opening the chat, not sending directly
-        // due to platform restrictions. We inform the user to send.
-        await WhatsAppHelper.openWhatsApp(context, student.phone, message);
-        if (!mounted) return;
-        await Future.delayed(
-            const Duration(seconds: 2)); // Wait for WhatsApp to open
-        success++;
-      } catch (e) {
-        failed++;
-      }
-    }
-
-    setState(() => _isProcessing = false);
-
-    if (!mounted) return;
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Summary'),
-        content: Text(
-            'Total: ${students.length}\nSuccess: $success\nSkipped: $skipped\nFailed: $failed'),
-        actions: [
-          TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text('OK'))
-        ],
-      ),
-    );
-  }
-
   List<StudentModel> _getStudents({String? classType, bool? isPaid}) {
     var students = DatabaseService.getAllStudentsLocal();
     if (classType != null) {
@@ -123,30 +62,175 @@ class _StudentExportScreenState extends State<StudentExportScreen> {
     return students;
   }
 
+  void _applyFilter(String title, List<StudentModel> students) {
+    setState(() {
+      _currentFilter = title;
+      _recipients = students;
+      _sentIds.clear();
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      //
       appBar: AppBar(title: const Text('Bulk WhatsApp')),
       body: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Expanded(
-              child: TextField(
-                controller: _messageController,
-                maxLines: null,
-                //expands: true,
-                decoration: const InputDecoration(
-                  labelText: 'Message Template',
-                  border: OutlineInputBorder(),
-                  hintText:
-                      'Enter message with placeholders: {studentName}, {fatherName}, {class}, {remainingFee}, {academyName}',
+            // Template card
+            Card(
+              elevation: 2,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+              child: Padding(
+                padding: const EdgeInsets.all(12.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Message Template',
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        color: AppTheme.primaryBlue,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    TextField(
+                      controller: _messageController,
+                      maxLines: 4,
+                      decoration: const InputDecoration(
+                        border: OutlineInputBorder(),
+                        hintText:
+                            'Enter message with placeholders: {studentName}, {fatherName}, {class}, {remainingFee}, {academyName}',
+                        contentPadding: EdgeInsets.all(12),
+                      ),
+                      onChanged: _saveMessage,
+                    ),
+                  ],
                 ),
-                onChanged: _saveMessage,
               ),
             ),
-            const SizedBox(height: 80),
+            const SizedBox(height: 16),
+            // Header for recipients list
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        _currentFilter,
+                        style: const TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      Text(
+                        'Total Recipients: ${_recipients.length}',
+                        style: const TextStyle(fontSize: 12, color: Colors.grey),
+                      ),
+                    ],
+                  ),
+                ),
+                if (_recipients.isNotEmpty)
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: Colors.green.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Text(
+                      'Sent: ${_sentIds.length} / ${_recipients.length}',
+                      style: const TextStyle(
+                        color: Colors.green,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 12,
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            // Recipients list
+            Expanded(
+              child: _recipients.isEmpty
+                  ? Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(Icons.people_outline, size: 48, color: Colors.grey[400]),
+                          const SizedBox(height: 12),
+                          const Text(
+                            'No recipients found matching the filter.',
+                            style: TextStyle(color: Colors.grey),
+                          ),
+                        ],
+                      ),
+                    )
+                  : ListView.builder(
+                      itemCount: _recipients.length,
+                      itemBuilder: (context, index) {
+                        final student = _recipients[index];
+                        final isSent = _sentIds.contains(student.id);
+                        final hasValidPhone = student.phone.isNotEmpty && student.phone.trim().length >= 7;
+
+                        return Card(
+                          margin: const EdgeInsets.only(bottom: 8),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                          child: ListTile(
+                            leading: Container(
+                              width: 40,
+                              height: 40,
+                              decoration: BoxDecoration(
+                                color: AppTheme.primaryBlue.withValues(alpha: 0.1),
+                                shape: BoxShape.circle,
+                              ),
+                              child: ClipRRect(
+                                borderRadius: BorderRadius.circular(20),
+                                child: student.profilePicUrl.isNotEmpty
+                                    ? CachedNetworkImage(
+                                        imageUrl: student.profilePicUrl,
+                                        fit: BoxFit.cover,
+                                        errorWidget: (_, __, ___) => const Icon(Icons.person, color: AppTheme.primaryBlue),
+                                      )
+                                    : Center(
+                                        child: Text(
+                                          student.initials,
+                                          style: const TextStyle(
+                                            fontWeight: FontWeight.bold,
+                                            color: AppTheme.primaryBlue,
+                                          ),
+                                        ),
+                                      ),
+                              ),
+                            ),
+                            title: Text(student.name, style: const TextStyle(fontWeight: FontWeight.bold)),
+                            subtitle: Text(
+                              'Class: ${student.classType} • Due: Rs ${student.feeRemaining.toStringAsFixed(0)}',
+                              style: const TextStyle(fontSize: 12),
+                            ),
+                            trailing: isSent
+                                ? const Icon(Icons.check_circle, color: Colors.green)
+                                : IconButton(
+                                    icon: const Icon(Icons.send_rounded, color: Color(0xFF25D366)),
+                                    onPressed: !hasValidPhone
+                                        ? null
+                                        : () async {
+                                            final msg = _formatMessage(_messageController.text, student);
+                                            await WhatsAppHelper.openWhatsApp(context, student.phone, msg);
+                                            setState(() {
+                                              _sentIds.add(student.id);
+                                            });
+                                          },
+                                    tooltip: 'Send WhatsApp message',
+                                  ),
+                          ),
+                        );
+                      },
+                    ),
+            ),
           ],
         ),
       ),
@@ -157,53 +241,32 @@ class _StudentExportScreenState extends State<StudentExportScreen> {
           SpeedDialChild(
             child: const Icon(Icons.group),
             label: 'Message All',
-            onTap: () => _processBulkMessages(_getStudents()),
+            onTap: () => _applyFilter('All Students', _getStudents()),
           ),
           SpeedDialChild(
             child: const Icon(Icons.school),
             label: 'Message 9th',
             onTap: () =>
-                _processBulkMessages(_getStudents(classType: 'Matric 9th')),
+                _applyFilter('Matric 9th Recipients', _getStudents(classType: 'Matric 9th')),
           ),
           SpeedDialChild(
             child: const Icon(Icons.school),
             label: 'Message 10th',
             onTap: () =>
-                _processBulkMessages(_getStudents(classType: 'Matric 10th')),
+                _applyFilter('Matric 10th Recipients', _getStudents(classType: 'Matric 10th')),
           ),
           SpeedDialChild(
             child: const Icon(Icons.money_off),
             label: 'Pending Fee',
-            onTap: () => _processBulkMessages(_getStudents(isPaid: false)),
+            onTap: () => _applyFilter('Pending Fee Recipients', _getStudents(isPaid: false)),
           ),
           SpeedDialChild(
             child: const Icon(Icons.payments),
             label: 'Fully Paid',
-            onTap: () => _processBulkMessages(_getStudents(isPaid: true)),
+            onTap: () => _applyFilter('Fully Paid Recipients', _getStudents(isPaid: true)),
           ),
         ],
       ),
     );
-  }
-}
-class WhatsAppHelper {
-  static Future<void> openWhatsApp(BuildContext context, String phone, String message) async {
-    String formattedPhone = phone.trim();
-    if (formattedPhone.startsWith('0')) {
-      formattedPhone = '92${formattedPhone.substring(1)}';
-    }
-    if (formattedPhone.startsWith('+')) {
-      formattedPhone = formattedPhone.substring(1);
-    }
-    
-    final url = "https://wa.me/$formattedPhone?text=${Uri.encodeComponent(message)}";
-    
-    if (await canLaunchUrl(Uri.parse(url))) {
-      await launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication);
-    } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('WhatsApp not installed or invalid number')),
-      );
-    }
   }
 }

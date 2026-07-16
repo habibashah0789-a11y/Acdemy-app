@@ -187,7 +187,7 @@ class _StudentListScreenState extends State<StudentListScreen> {
             context,
             MaterialPageRoute(builder: (_) => const AddStudentScreen())
           );
-          if (!mounted) return;
+          if (!context.mounted) return;
           if (result == true) {
             ScaffoldMessenger.of(context).showSnackBar(
               const SnackBar(

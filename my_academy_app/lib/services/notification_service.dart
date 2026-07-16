@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:flutter/foundation.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
@@ -12,13 +13,13 @@ class NotificationService {
   static const String _hiveBoxName = 'notifications';
   static late Box<Map> _notificationBox;
   static StreamSubscription<QuerySnapshot>? _firestoreSubscription;
-  static StreamController<List<NotificationModel>>? _controller;
+  static final StreamController<List<NotificationModel>> _controller =
+      StreamController<List<NotificationModel>>.broadcast();
   static bool _initialized = false;
 
   static Future<void> init() async {
     if (_initialized) return;
     _notificationBox = await Hive.openBox<Map>(_hiveBoxName);
-    _controller = StreamController<List<NotificationModel>>.broadcast();
     _initialized = true;
     _syncFromFirestoreToHive();
     _listenToFirestore();
@@ -36,7 +37,7 @@ class NotificationService {
     if (!_initialized) {
          init();
     }
-    return _controller!.stream;
+    return _controller.stream;
   }
 
   static Future<void> _syncFromFirestoreToHive() async {
@@ -53,7 +54,7 @@ class NotificationService {
       for (final notification in notifications) {
         await _notificationBox.put(notification.id, notification.toHiveMap());
       }
-      _controller?.add(_sortedNotifications(_fromHive()));
+      _controller.add(_sortedNotifications(_fromHive()));
     } catch (_) {}
   }
 
@@ -75,10 +76,10 @@ class NotificationService {
             .toList();
 
         _persistHiveBatch(notifications);
-        _controller?.add(_sortedNotifications(notifications));
+        _controller.add(_sortedNotifications(notifications));
       },
       onError: (e) {
-        print("Notification Firestore Error: $e");
+        debugPrint("Notification Firestore Error: $e");
       },
     );
   }
@@ -164,7 +165,7 @@ class NotificationService {
       } catch (_) {}
       await _notificationBox.put(notification.id, notification.toHiveMap());
       if (emitLocal) {
-        _controller?.add(_sortedNotifications([..._fromHive()]));
+        _controller.add(_sortedNotifications([..._fromHive()]));
       }
     }
   }
@@ -181,7 +182,7 @@ class NotificationService {
         ..['isRead'] = true;
       await _notificationBox.put(notificationId, updated);
     }
-    _controller?.add(_sortedNotifications([..._fromHive()]));
+    _controller.add(_sortedNotifications([..._fromHive()]));
   }
 
   static Future<void> markAllAsRead() async {
@@ -201,7 +202,7 @@ class NotificationService {
         await _notificationBox.put(notification.id, updated);
       }
     }
-    _controller?.add(_sortedNotifications([..._fromHive()]));
+    _controller.add(_sortedNotifications([..._fromHive()]));
   }
 
   static Future<void> deleteNotification(String notificationId) async {
@@ -210,7 +211,7 @@ class NotificationService {
     }
     await _firestore.collection(_collection).doc(notificationId).delete();
     await _notificationBox.delete(notificationId);
-    _controller?.add(_sortedNotifications([..._fromHive()]));
+    _controller.add(_sortedNotifications([..._fromHive()]));
   }
 
   static Future<void> clearAllNotifications() async {
@@ -224,12 +225,12 @@ class NotificationService {
     }
     await batch.commit();
     await _notificationBox.clear();
-    _controller?.add([]);
+    _controller.add([]);
   }
 
   static Future<void> dispose() async {
     await _firestoreSubscription?.cancel();
-    await _controller?.close();
+    await _controller.close();
     _initialized = false;
   }
 }

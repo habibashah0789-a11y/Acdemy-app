@@ -3,6 +3,7 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:provider/provider.dart';
+import 'package:flutter_native_splash/flutter_native_splash.dart';
 import 'theme/app_theme.dart';
 
 // Models
@@ -10,6 +11,7 @@ import 'models/student_model.dart';
 
 // Services
 import 'services/database_service.dart';
+import 'services/notification_service.dart';
 
 // Providers
 import 'provider/theme_provider.dart';
@@ -22,7 +24,8 @@ import 'screens/main_wrapper.dart';
 import 'firebase_options.dart';
 
 Future<void> main() async {
-  WidgetsFlutterBinding.ensureInitialized();
+  WidgetsBinding widgetsBinding = WidgetsFlutterBinding.ensureInitialized();
+  FlutterNativeSplash.preserve(widgetsBinding: widgetsBinding);
 
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
@@ -44,6 +47,8 @@ Future<void> main() async {
       child: const MyApp(),
     ),
   );
+
+  FlutterNativeSplash.remove();
 }
 
 class MyApp extends StatelessWidget {
@@ -64,8 +69,23 @@ class MyApp extends StatelessWidget {
   }
 }
 
-class AuthWrapper extends StatelessWidget {
+
+class AuthWrapper extends StatefulWidget {
   const AuthWrapper({super.key});
+
+  @override
+  State<AuthWrapper> createState() => _AuthWrapperState();
+}
+
+class _AuthWrapperState extends State<AuthWrapper> {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      // Safely request notification permission after the splash screen finishes rendering
+      NotificationService.initializePushNotifications();
+    });
+  }
 
   @override
   Widget build(BuildContext context) {

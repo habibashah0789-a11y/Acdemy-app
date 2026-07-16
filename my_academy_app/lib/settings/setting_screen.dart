@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:my_academy_app/settings/logout_screen.dart';
 import 'backup_restore_screen.dart';
 import 'appearance_screen.dart';
+import 'recycle_bin_screen.dart';
 //import 'about_screen.dart';
 
 class SettingsScreen extends StatelessWidget {
@@ -15,6 +16,12 @@ class SettingsScreen extends StatelessWidget {
       ),
       body: ListView(
         children: [
+          _tile(
+            context,
+            Icons.delete_outline_rounded,
+            "Recycle Bin",
+            const RecycleBinScreen(),
+          ),
           _tile(
             context,
             Icons.logout,

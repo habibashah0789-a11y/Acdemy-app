@@ -54,7 +54,7 @@ class _RecycleBinScreenState extends State<RecycleBinScreen> {
       ),
     );
     if (confirmed == true) {
-      await DatabaseService.deleteStudent(recycled.id);
+      await DatabaseService.deleteRecycledStudent(recycled.id);
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -127,24 +127,32 @@ class _RecycleBinScreenState extends State<RecycleBinScreen> {
       body: StreamBuilder<QuerySnapshot>(
         stream: DatabaseService.getRecycledStudentsStream(),
         builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
+          final local = DatabaseService.getRecycledStudents();
+          
+          if (snapshot.connectionState == ConnectionState.waiting && local.isEmpty) {
             return const Center(child: CircularProgressIndicator());
           }
-          if (snapshot.hasError) {
-            // Fallback: use local Hive data if Firestore fails
-            final local = DatabaseService.getRecycledStudents();
-            if (local.isEmpty) return _buildEmptyState();
-            return _buildList(local, isDark);
-          }
+          
           final docs = snapshot.data?.docs ?? [];
-          if (docs.isEmpty) return _buildEmptyState();
-          final recycled = docs.map((doc) {
+          final cloud = docs.map((doc) {
             return RecycledStudent.fromMap(
               doc.data() as Map<String, dynamic>,
               doc.id,
             );
           }).toList();
-          return _buildList(recycled, isDark);
+
+          final Map<String, RecycledStudent> combinedMap = {};
+          for (var item in local) {
+            combinedMap[item.id] = item;
+          }
+          for (var item in cloud) {
+            combinedMap[item.id] = item;
+          }
+          final combinedList = combinedMap.values.toList();
+          combinedList.sort((a, b) => b.deletedAt.compareTo(a.deletedAt));
+
+          if (combinedList.isEmpty) return _buildEmptyState();
+          return _buildList(combinedList, isDark);
         },
       ),
     );

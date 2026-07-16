@@ -1,7 +1,4 @@
-/// Constants for subject filters and colors used in the dashboard.
-/// This file defines both private (underscored) and public versions of the
-/// constants to maintain compatibility with existing code that expects the
-/// underscore-prefixed names.
+// Constants for subject filters and colors used in the dashboard.
 
 import 'package:flutter/material.dart';
 
@@ -21,7 +18,3 @@ const Map<String, Color> subjectColors = {
   'Maths': Color(0xFF00897B),
   'English': Color(0xFF9C27B0),
 };
-
-// Private aliases (with underscore) to match existing code expectations.
-const Map<String, List<String>> _subjectFilters = subjectFilters;
-const Map<String, Color> _subjectColors = subjectColors;

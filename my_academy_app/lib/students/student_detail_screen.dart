@@ -47,20 +47,20 @@ class _StudentDetailScreenState extends State<StudentDetailScreen> {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Remove Student'),
-        content: Text('Are you sure you want to remove ${student.name}? This action cannot be undone.'),
+        title: const Text('Move to Recycle Bin'),
+        content: Text('Are you sure you want to move ${student.name} to the Recycle Bin?'),
         actions: [
           TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
           TextButton(
             onPressed: () => Navigator.pop(ctx, true),
             style: TextButton.styleFrom(foregroundColor: Colors.red),
-            child: const Text('Remove'),
+            child: const Text('Move'),
           ),
         ],
       ),
     );
     if (confirmed == true) {
-      await DatabaseService.deleteStudent(student.id);
+      await DatabaseService.recycleStudent(student);
       if (mounted) Navigator.pop(context, true);
     }
   }

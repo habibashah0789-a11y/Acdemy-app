@@ -41,7 +41,7 @@ class _DailyRecordsScreenState extends State<DailyRecordsScreen> {
 
     List<DailyRecordData> records = [];
     grouped.forEach((date, students) {
-      double totalCollected = students.fold(0.0, (sum, s) => sum + s.feeSubmitted);
+      double totalCollected = students.fold(0.0, (total, s) => total + s.feeSubmitted);
       records.add(DailyRecordData(
         date: date,
         studentCount: students.length,

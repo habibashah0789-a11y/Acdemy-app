@@ -356,9 +356,9 @@ class StudentModel extends HiveObject {
 
 // Extension for List<StudentModel>
 extension StudentListExtension on List<StudentModel> {
-  double get totalFeeSubmitted => fold(0, (sum, student) => sum + student.feeSubmitted);
-  double get totalFeeRemaining => fold(0, (sum, student) => sum + student.feeRemaining);
-  double get totalFee => fold(0, (sum, student) => sum + student.totalFee);
+  double get totalFeeSubmitted => fold(0, (total, student) => total + student.feeSubmitted);
+  double get totalFeeRemaining => fold(0, (total, student) => total + student.feeRemaining);
+  double get totalFee => fold(0, (total, student) => total + student.totalFee);
   
   List<StudentModel> get activeStudents => where((s) => s.isActive).toList();
   List<StudentModel> get inactiveStudents => where((s) => !s.isActive).toList();

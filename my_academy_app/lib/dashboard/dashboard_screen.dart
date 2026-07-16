@@ -6,7 +6,9 @@ import 'package:intl/intl.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../theme/app_theme.dart';
 import '../models/student_model.dart';
-import '../components/subject_constants.dart';
+import '../models/notification_model.dart';
+import '../services/notification_service.dart';
+import '../screens/notifications_screen.dart';
 
 class _ActivityItem {
   final String title;
@@ -181,7 +183,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
             Container(
               padding: const EdgeInsets.all(10),
               decoration: BoxDecoration(
-                color: color.withOpacity(0.12),
+                color: color.withValues(alpha: 0.12),
                 borderRadius: BorderRadius.circular(12),
               ),
               child: Icon(
@@ -288,7 +290,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     padding:
                         const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                     decoration: BoxDecoration(
-                      color: AppTheme.primaryBlue.withOpacity(0.1),
+                      color: AppTheme.primaryBlue.withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: Text(
@@ -416,7 +418,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     show: true,
                     drawVerticalLine: false,
                     getDrawingHorizontalLine: (value) => FlLine(
-                      color: Colors.grey.withOpacity(0.1),
+                      color: Colors.grey.withValues(alpha: 0.1),
                       strokeWidth: 1,
                     ),
                   ),
@@ -462,7 +464,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
           backDrawRodData: BackgroundBarChartRodData(
             show: true,
             toY: maxY,
-            color: Colors.grey.withOpacity(0.05),
+            color: Colors.grey.withValues(alpha: 0.05),
           ),
         ),
       ],
@@ -699,6 +701,56 @@ class _DashboardScreenState extends State<DashboardScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Academy Dashboard'),
+        actions: [
+          StreamBuilder<List<NotificationModel>>(
+            stream: NotificationService.notificationsStream(),
+            builder: (context, snapshot) {
+              final list = snapshot.data ?? NotificationService.getCachedNotifications();
+              final unread = list.where((n) => !n.isRead).length;
+
+              return Stack(
+                alignment: Alignment.center,
+                children: [
+                  IconButton(
+                    icon: const Icon(Icons.notifications_rounded),
+                    onPressed: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (_) => const NotificationsScreen()),
+                      );
+                    },
+                  ),
+                  if (unread > 0)
+                    Positioned(
+                      right: 8,
+                      top: 8,
+                      child: Container(
+                        padding: const EdgeInsets.all(4),
+                        decoration: const BoxDecoration(
+                          color: Colors.redAccent,
+                          shape: BoxShape.circle,
+                        ),
+                        constraints: const BoxConstraints(
+                          minWidth: 16,
+                          minHeight: 16,
+                        ),
+                        child: Text(
+                          '$unread',
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 9,
+                            fontWeight: FontWeight.bold,
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                      ),
+                    ),
+                ],
+              );
+            },
+          ),
+          const SizedBox(width: 8),
+        ],
       ),
       body: StreamBuilder<List<StudentModel>>(
         stream: _studentSnapshotStream,
@@ -1101,7 +1153,7 @@ class _RevenueDrillDownDialogState extends State<RevenueDrillDownDialog> {
             gridData: const FlGridData(show: false),
             borderData: FlBorderData(show: false),
             barGroups: List.generate(_subjectsList.length, (idx) {
-              final color = baseColor.withOpacity(0.4 + (idx * 0.12));
+              final color = baseColor.withValues(alpha: 0.4 + (idx * 0.12));
               return _bar(idx, subVals[idx], color);
             }),
           ),
@@ -1315,9 +1367,9 @@ class _RevenueDrillDownDialogState extends State<RevenueDrillDownDialog> {
         margin: const EdgeInsets.symmetric(horizontal: 4),
         padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 8),
         decoration: BoxDecoration(
-          color: color.withOpacity(0.08),
+          color: color.withValues(alpha: 0.08),
           borderRadius: BorderRadius.circular(10),
-          border: Border.all(color: color.withOpacity(0.2)),
+          border: Border.all(color: color.withValues(alpha: 0.2)),
         ),
         child: Column(
           children: [
@@ -1442,7 +1494,7 @@ class _StudentStrengthDetailDialogState
                         padding:
                             const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                         decoration: BoxDecoration(
-                          color: AppTheme.primaryBlue.withOpacity(0.1),
+                          color: AppTheme.primaryBlue.withValues(alpha: 0.1),
                           borderRadius: BorderRadius.circular(12),
                         ),
                         child: Text(
@@ -1484,12 +1536,12 @@ class _StudentStrengthDetailDialogState
                           vertical: 8, horizontal: 10),
                       decoration: BoxDecoration(
                         color: isSelected
-                            ? color.withOpacity(0.08)
+                            ? color.withValues(alpha: 0.08)
                             : Colors.transparent,
                         borderRadius: BorderRadius.circular(12),
                         border: Border.all(
                           color: isSelected
-                              ? color.withOpacity(0.3)
+                              ? color.withValues(alpha: 0.3)
                               : Colors.transparent,
                         ),
                       ),
@@ -1537,7 +1589,7 @@ class _StudentStrengthDetailDialogState
                               Container(
                                 height: 6,
                                 decoration: BoxDecoration(
-                                  color: Colors.grey.withOpacity(0.1),
+                                  color: Colors.grey.withValues(alpha: 0.1),
                                   borderRadius: BorderRadius.circular(3),
                                 ),
                               ),

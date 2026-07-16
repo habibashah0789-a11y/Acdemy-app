@@ -1,5 +1,5 @@
 import 'dart:convert';
-import 'dart:typed_data';
+import 'package:flutter/foundation.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_storage/firebase_storage.dart';
@@ -91,7 +91,9 @@ static Future<StudentModel?> getStudentById(String studentId) async {
 
   // ── Image Delete ──
   static Future<void> deleteImage(String imageUrl) async {
-    try { await _storage.refFromURL(imageUrl).delete(); } catch (e) {}
+    try { await _storage.refFromURL(imageUrl).delete(); } catch (e) {
+      // Ignore if image does not exist or deletion fails.
+    }
   }
 
   // ── Sync ──
@@ -102,7 +104,9 @@ static Future<StudentModel?> getStudentById(String studentId) async {
       for (var doc in s.docs) {
         await _studentBox.put(doc.id, StudentModel.fromFirestore(doc));
       }
-    } catch (e) {}
+    } catch (e) {
+      // Ignore offline or other sync failures.
+    }
   }
 
   static Future<void> syncToFirestore() async {
@@ -110,7 +114,9 @@ static Future<StudentModel?> getStudentById(String studentId) async {
       for (var s in _studentBox.values) {
         await _firestore.collection('students').doc(s.id).set(s.toMap());
       }
-    } catch (e) {}
+    } catch (e) {
+      // Ignore offline or other sync failures.
+    }
   }
 
   // ── Student Filtering (for Teacher Folder hierarchy) ──
@@ -159,7 +165,7 @@ static Future<StudentModel?> getStudentById(String studentId) async {
       try {
         await _firestore.collection('academy_profile').doc(uid).set(profile).timeout(const Duration(seconds: 4));
       } catch (e) {
-        print('Firestore academy profile sync timed out/failed: $e');
+        debugPrint('Firestore academy profile sync timed out/failed: $e');
       }
     }
   }
@@ -229,7 +235,7 @@ static Future<StudentModel?> getStudentById(String studentId) async {
       }
       await _recycledStudentBox.clear();
     } catch (e) {
-      print('Error emptying recycle bin: $e');
+      debugPrint('Error emptying recycle bin: $e');
     }
   }
 
@@ -239,5 +245,54 @@ static Future<StudentModel?> getStudentById(String studentId) async {
 
   static List<RecycledStudent> getRecycledStudents() {
     return _recycledStudentBox.values.toList();
+  }
+
+  static Future<bool> recycleStudent(StudentModel student) async {
+    final recycled = RecycledStudent(
+      id: student.id,
+      firstName: student.firstName,
+      lastName: student.lastName,
+      fatherName: student.fatherName,
+      phone: student.phone,
+      email: student.email,
+      schedule: student.schedule,
+      feeSubmitted: student.feeSubmitted,
+      feeRemaining: student.feeRemaining,
+      biologyFee: student.biologyFee,
+      physicsFee: student.physicsFee,
+      chemistryFee: student.chemistryFee,
+      englishFee: student.englishFee,
+      profilePicUrl: student.profilePicUrl,
+      enrollmentStatus: student.enrollmentStatus,
+      classType: student.classType,
+      grade: student.grade,
+      subject: student.subject,
+      mathFee: student.mathFee,
+      createdAt: student.createdAt,
+      updatedAt: student.updatedAt,
+      isActive: student.isActive,
+      deletedAt: DateTime.now(),
+    );
+
+    await _recycledStudentBox.put(recycled.id, recycled);
+    await _studentBox.delete(student.id);
+
+    try {
+      await _firestore.collection('recycled_students').doc(recycled.id).set(recycled.toRecycleMap());
+      await _firestore.collection('students').doc(student.id).delete();
+      return true;
+    } catch (e) {
+      return false;
+    }
+  }
+
+  static Future<bool> deleteRecycledStudent(String id) async {
+    await _recycledStudentBox.delete(id);
+    try {
+      await _firestore.collection('recycled_students').doc(id).delete().timeout(const Duration(seconds: 4));
+      return true;
+    } catch (e) {
+      return false;
+    }
   }
 }
