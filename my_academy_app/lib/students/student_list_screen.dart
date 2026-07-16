@@ -8,6 +8,8 @@ import '../models/student_model.dart';
 import '../services/database_service.dart';
 import '../theme/app_theme.dart';
 
+import '../utils/whatsapp_helper.dart';
+
 class StudentListScreen extends StatefulWidget {
   const StudentListScreen({super.key});
 
@@ -275,26 +277,33 @@ class _StudentListScreenState extends State<StudentListScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             const SizedBox(height: 4),
-            Row(
-              children: [
-                Icon(
-                  Icons.phone_android_rounded,
-                  size: 12,
-                  color: isDark ? Colors.grey[400] : Colors.grey[600],
-                ),
-                const SizedBox(width: 4),
-                Expanded(
-                  child: Text(
-                    student.phone,
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: isDark ? AppTheme.darkTextSecondary : AppTheme.lightTextSecondary,
+            InkWell(
+              onTap: () => WhatsAppHelper.openWhatsApp(context, student.phone),
+              borderRadius: BorderRadius.circular(4),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(vertical: 2.0),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      Icons.phone_android_rounded,
+                      size: 12,
+                      color: isDark ? Colors.grey[400] : Colors.grey[600],
                     ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
+                    const SizedBox(width: 4),
+                    Text(
+                      student.phone,
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: isDark ? AppTheme.darkTextSecondary : AppTheme.lightTextSecondary,
+                        decoration: TextDecoration.underline,
+                      ),
+                    ),
+                    const SizedBox(width: 6),
+                    const Icon(Icons.send_rounded, color: Color(0xFF25D366), size: 11),
+                  ],
                 ),
-              ],
+              ),
             ),
             const SizedBox(height: 2),
             Row(

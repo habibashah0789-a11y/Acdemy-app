@@ -3,6 +3,7 @@ import 'package:my_academy_app/settings/logout_screen.dart';
 import 'backup_restore_screen.dart';
 import 'appearance_screen.dart';
 import 'recycle_bin_screen.dart';
+import '../screens/daily_records/daily_records_screen.dart';
 //import 'about_screen.dart';
 
 class SettingsScreen extends StatelessWidget {
@@ -16,6 +17,12 @@ class SettingsScreen extends StatelessWidget {
       ),
       body: ListView(
         children: [
+          _tile(
+            context,
+            Icons.receipt_long_rounded,
+            "Daily Records",
+            const DailyRecordsScreen(),
+          ),
           _tile(
             context,
             Icons.delete_outline_rounded,

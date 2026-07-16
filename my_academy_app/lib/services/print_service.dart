@@ -54,18 +54,10 @@ class PrintService {
               pw.Column(
                 crossAxisAlignment: pw.CrossAxisAlignment.start,
                 children: [
-                  // Header with logo on top left and details on the right
+                  // Header with details on the left and logo on top right
                   pw.Row(
                     crossAxisAlignment: pw.CrossAxisAlignment.center,
                     children: [
-                      if (logoImage != null) ...[
-                        pw.Container(
-                          width: 60,
-                          height: 60,
-                          child: pw.Image(logoImage),
-                        ),
-                        pw.SizedBox(width: 16),
-                      ],
                       pw.Expanded(
                         child: pw.Column(
                           crossAxisAlignment: pw.CrossAxisAlignment.start,
@@ -78,6 +70,14 @@ class PrintService {
                           ],
                         ),
                       ),
+                      if (logoImage != null) ...[
+                        pw.SizedBox(width: 16),
+                        pw.Container(
+                          width: 60,
+                          height: 60,
+                          child: pw.Image(logoImage),
+                        ),
+                      ],
                     ],
                   ),
                   pw.SizedBox(height: 15),
