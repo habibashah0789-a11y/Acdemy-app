@@ -113,6 +113,10 @@ class _DeleteStudentsDialogState extends State<DeleteStudentsDialog> {
         const SnackBar(
           content: Text('Please type DELETE to confirm.'),
           backgroundColor: Colors.red,
+
+
+
+          
         ),
       );
       return;
@@ -121,14 +125,23 @@ class _DeleteStudentsDialogState extends State<DeleteStudentsDialog> {
     setState(() => _isDeleting = true);
 
     try {
-      final allStudents = DatabaseService.getAllStudentsLocal();
+      List<StudentModel> allStudents = [];
+      try {
+        allStudents = await DatabaseService.getAllStudentsFromFirestore();
+        await DatabaseService.syncFromFirestore();
+      } catch (e) {
+        allStudents = DatabaseService.getAllStudentsLocal();
+      }
       List<StudentModel> targets = [];
       if (_selectedOption == 'all') {
         targets = allStudents;
       } else {
-        targets = allStudents.where((s) => s.grade == _selectedOption).toList();
+        targets = allStudents
+            .where((s) => s.grade.toLowerCase() == _selectedOption.toLowerCase())
+            .toList();
       }
 
+      if (!mounted) return;
       if (targets.isEmpty) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
@@ -217,7 +230,7 @@ class _DeleteStudentsDialogState extends State<DeleteStudentsDialog> {
                   TextField(
                     controller: _confirmController,
                     decoration: const InputDecoration(
-                      hintText: 'DELETE',
+                      
                       border: OutlineInputBorder(),
                       contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                     ),

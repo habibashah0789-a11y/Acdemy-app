@@ -4,8 +4,6 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'dart:convert';
 import 'dart:io' as io;
 import 'package:flutter/foundation.dart' show kIsWeb;
-import 'package:image_picker/image_picker.dart';
-import 'package:path_provider/path_provider.dart';
 import '../models/student_model.dart';
 import '../services/database_service.dart';
 import '../services/print_service.dart';
@@ -24,7 +22,6 @@ class StudentDetailScreen extends StatefulWidget {
 
 class _StudentDetailScreenState extends State<StudentDetailScreen> {
   late StudentModel student;
-  bool _isUploading = false;
 
   @override
   void initState() {
@@ -33,18 +30,6 @@ class _StudentDetailScreenState extends State<StudentDetailScreen> {
   }
 
   Widget _buildAvatarImage(String url) {
-    if (_isUploading) {
-      return const Center(
-        child: SizedBox(
-          width: 30,
-          height: 30,
-          child: CircularProgressIndicator(
-            strokeWidth: 2,
-            valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-          ),
-        ),
-      );
-    }
     if (url.isEmpty) {
       return Container(
         color: Colors.white.withValues(alpha: 0.2),
@@ -105,62 +90,91 @@ class _StudentDetailScreenState extends State<StudentDetailScreen> {
     );
   }
 
-  Future<void> _pickAndUploadImage() async {
-    final ImagePicker picker = ImagePicker();
-    try {
-      final XFile? image = await picker.pickImage(
-        source: ImageSource.gallery,
-        imageQuality: 70,
+  Widget _buildLargeAvatarImage(String url) {
+    if (url.isEmpty) {
+      return Container(
+        color: Colors.black12,
+        child: const Icon(Icons.person, size: 100, color: Colors.grey),
       );
-      if (image == null) return;
-
-      setState(() {
-        _isUploading = true;
-      });
-
-      String? newUrl;
-      final bytes = await image.readAsBytes();
-      
-      // Try uploading to cloud first
-      newUrl = await DatabaseService.uploadImage(bytes, 'profiles');
-
-      // Offline or local fallback
-      if (newUrl == null) {
-        if (kIsWeb) {
-          final base64String = base64Encode(bytes);
-          newUrl = 'data:image/jpeg;base64,$base64String';
-        } else {
-          final appDocDir = await getApplicationDocumentsDirectory();
-          final String localPath = '${appDocDir.path}/profile_${student.id}_${DateTime.now().millisecondsSinceEpoch}.jpg';
-          final localFile = io.File(image.path);
-          await localFile.copy(localPath);
-          newUrl = localPath;
-        }
-      }
-
-      final updatedStudent = student.copyWith(profilePicUrl: newUrl);
-      await DatabaseService.updateStudent(updatedStudent);
-      setState(() {
-        student = updatedStudent;
-      });
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Profile picture updated successfully!')),
+    }
+    if (url.startsWith('http://') || url.startsWith('https://')) {
+      return CachedNetworkImage(
+        imageUrl: url,
+        fit: BoxFit.contain,
+        placeholder: (_, __) => const Center(
+          child: CircularProgressIndicator(),
+        ),
+        errorWidget: (_, __, ___) => Container(
+          color: Colors.black12,
+          child: const Icon(Icons.person, size: 100, color: Colors.grey),
+        ),
+      );
+    }
+    if (url.startsWith('data:image') || (!url.contains('/') && !url.contains('\\') && url.length > 100)) {
+      try {
+        final base64Str = url.contains(',') ? url.split(',').last : url;
+        final bytes = base64Decode(base64Str.trim());
+        return Image.memory(
+          bytes,
+          fit: BoxFit.contain,
         );
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error picking image: $e')),
-        );
-      }
-    } finally {
-      if (mounted) {
-        setState(() {
-          _isUploading = false;
-        });
+      } catch (e) {
+        // fallback
       }
     }
+    if (url.startsWith('blob:')) {
+      return Image.network(url, fit: BoxFit.contain);
+    }
+    if (!kIsWeb) {
+      try {
+        return Image.file(
+          io.File(url),
+          fit: BoxFit.contain,
+          errorBuilder: (context, error, stackTrace) {
+            return Container(
+              color: Colors.black12,
+              child: const Icon(Icons.person, size: 100, color: Colors.grey),
+            );
+          },
+        );
+      } catch (e) {
+        // fallback
+      }
+    }
+    return Container(
+      color: Colors.black12,
+      child: const Icon(Icons.person, size: 100, color: Colors.grey),
+    );
+  }
+
+  void _showLargeProfilePicture(BuildContext context) {
+    if (student.profilePicUrl.isEmpty) return;
+    
+    showDialog(
+      context: context,
+      builder: (context) {
+        return Dialog(
+          backgroundColor: Colors.transparent,
+          insetPadding: const EdgeInsets.all(24),
+          child: GestureDetector(
+            onTap: () => Navigator.pop(context),
+            child: InteractiveViewer(
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(16),
+                child: Container(
+                  constraints: const BoxConstraints(
+                    maxWidth: 350,
+                    maxHeight: 350,
+                  ),
+                  color: Colors.black,
+                  child: _buildLargeAvatarImage(student.profilePicUrl),
+                ),
+              ),
+            ),
+          ),
+        );
+      },
+    );
   }
 
   void _editStudent() async {
@@ -280,55 +294,28 @@ class _StudentDetailScreenState extends State<StudentDetailScreen> {
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 const SizedBox(height: 40),
-                Hero(
-                  tag: 'student_${student.id}',
-                  child: Stack(
-                    children: [
-                      Container(
-                        width: 100,
-                        height: 100,
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          border: Border.all(color: Colors.white, width: 3),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withValues(alpha: 0.2),
-                              blurRadius: 10,
-                            ),
-                          ],
-                        ),
-                        child: ClipRRect(
-                          borderRadius: BorderRadius.circular(50),
-                          child: _buildAvatarImage(student.profilePicUrl),
-                        ),
-                      ),
-                      Positioned(
-                        bottom: 0,
-                        right: 0,
-                        child: GestureDetector(
-                          onTap: _pickAndUploadImage,
-                          child: Container(
-                            padding: const EdgeInsets.all(6),
-                            decoration: const BoxDecoration(
-                              color: AppTheme.primaryBlue,
-                              shape: BoxShape.circle,
-                              boxShadow: [
-                                BoxShadow(
-                                  color: Colors.black26,
-                                  blurRadius: 4,
-                                  offset: Offset(0, 2),
-                                ),
-                              ],
-                            ),
-                            child: const Icon(
-                              Icons.edit_rounded,
-                              color: Colors.white,
-                              size: 16,
-                            ),
+                GestureDetector(
+                  onTap: () => _showLargeProfilePicture(context),
+                  child: Hero(
+                    tag: 'student_${student.id}',
+                    child: Container(
+                      width: 100,
+                      height: 100,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        border: Border.all(color: Colors.white, width: 3),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withValues(alpha: 0.2),
+                            blurRadius: 10,
                           ),
-                        ),
+                        ],
                       ),
-                    ],
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(50),
+                        child: _buildAvatarImage(student.profilePicUrl),
+                      ),
+                    ),
                   ),
                 ),
                 const SizedBox(height: 12),

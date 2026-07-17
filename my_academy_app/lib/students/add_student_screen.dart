@@ -5,6 +5,10 @@ import 'package:image_picker/image_picker.dart';
 import 'package:flutter_spinkit/flutter_spinkit.dart';
 import '../models/student_model.dart';
 import '../services/database_service.dart';
+import 'dart:io' as io;
+import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:path_provider/path_provider.dart';
+import '../widgets/crop_image_dialog.dart';
 import '../theme/app_theme.dart';
 
 class AddStudentScreen extends StatefulWidget {
@@ -175,7 +179,16 @@ class _AddStudentScreenState extends State<AddStudentScreen> {
       final f = await ImagePicker().pickImage(source: src, imageQuality: 70);
       if (f != null) {
         final bytes = await f.readAsBytes();
-        if (mounted) setState(() => _imageBytes = bytes);
+        if (mounted) {
+          final cropped = await showDialog<Uint8List>(
+            context: context,
+            barrierDismissible: false,
+            builder: (_) => CropImageDialog(imageBytes: bytes),
+          );
+          if (cropped != null) {
+            setState(() => _imageBytes = cropped);
+          }
+        }
       }
     } catch (e) {
       if (mounted) {
@@ -189,14 +202,28 @@ class _AddStudentScreenState extends State<AddStudentScreen> {
     if (!_formKey.currentState!.validate()) return;
     setState(() => _isSaving = true);
     try {
+      final studentId = DateTime.now().millisecondsSinceEpoch.toString();
       String picUrl = '';
       if (_imageBytes != null) {
         String? u = await DatabaseService.uploadImage(_imageBytes!, 'students');
-        if (u != null) picUrl = u;
+        if (u != null) {
+          picUrl = u;
+        } else {
+          if (kIsWeb) {
+            final base64String = base64Encode(_imageBytes!);
+            picUrl = 'data:image/jpeg;base64,$base64String';
+          } else {
+            final appDocDir = await getApplicationDocumentsDirectory();
+            final String localPath = '${appDocDir.path}/profile_${studentId}_${DateTime.now().millisecondsSinceEpoch}.jpg';
+            final localFile = io.File(localPath);
+            await localFile.writeAsBytes(_imageBytes!);
+            picUrl = localPath;
+          }
+        }
       }
       final initialFee = double.tryParse(_feeSubC.text.trim()) ?? 0;
       final student = StudentModel(
-        id: DateTime.now().millisecondsSinceEpoch.toString(),
+        id: studentId,
         firstName: _nameC.text.trim(),
         fatherName: _fatherC.text.trim(),
         lastName: '',
