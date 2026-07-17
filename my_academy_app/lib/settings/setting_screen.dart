@@ -5,6 +5,7 @@ import '../services/database_service.dart';
 import 'backup_restore_screen.dart';
 import 'appearance_screen.dart';
 import 'recycle_bin_screen.dart';
+import '../screens/fee_reminders_screen.dart';
 
 class SettingsScreen extends StatelessWidget {
   const SettingsScreen({super.key});
@@ -48,6 +49,16 @@ class SettingsScreen extends StatelessWidget {
             Icons.palette,
             "Appearance",
             const AppearanceScreen(),
+          ),
+          ListTile(
+            leading: const Icon(Icons.message_rounded, color: Color(0xFF25D366)),
+            title: const Text("Fee Reminders", style: TextStyle(fontWeight: FontWeight.w600)),
+            subtitle: const Text("Send WhatsApp reminders & print defaulters", style: TextStyle(fontSize: 12)),
+            trailing: const Icon(Icons.arrow_forward_ios),
+            onTap: () => Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const FeeRemindersScreen()),
+            ),
           ),
           ListTile(
             leading: const Icon(Icons.delete_forever_rounded, color: Colors.red),
