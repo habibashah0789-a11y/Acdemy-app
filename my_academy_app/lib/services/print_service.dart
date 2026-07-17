@@ -167,6 +167,7 @@ class PrintService {
                   pw.Row(
                     children: [
                       pw.Text('Status:', style: pw.TextStyle(fontWeight: pw.FontWeight.bold)),
+                      pw.SizedBox(width: 8),
                       pw.Container(
                         padding: const pw.EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                         decoration: pw.BoxDecoration(
@@ -183,6 +184,49 @@ class PrintService {
                       ),
                     ],
                   ),
+                  
+                  ...(() {
+                    List<dynamic> history = [];
+                    if (student.paymentHistoryJson != null && student.paymentHistoryJson!.isNotEmpty) {
+                      try {
+                        history = jsonDecode(student.paymentHistoryJson!);
+                      } catch (e) {
+                        debugPrint('PDF Print: Error decoding history: $e');
+                      }
+                    }
+                    if (history.isEmpty && student.feeSubmitted > 0) {
+                      history = [{
+                        'date': student.createdAt.toIso8601String(),
+                        'amount': student.feeSubmitted,
+                        'note': 'Registration Payment'
+                      }];
+                    }
+                    if (history.isEmpty) return <pw.Widget>[];
+
+                    return [
+                      pw.SizedBox(height: 25),
+                      pw.Text('Payment Installments History', style: pw.TextStyle(fontSize: 13, fontWeight: pw.FontWeight.bold)),
+                      pw.Divider(thickness: 1),
+                      pw.SizedBox(height: 5),
+                      ...history.map((item) {
+                        final dateStr = item['date'] != null
+                            ? DateFormat('MMM dd, yyyy').format(DateTime.parse(item['date']))
+                            : 'Unknown Date';
+                        final amount = (item['amount'] ?? 0.0).toDouble();
+                        final note = item['note'] ?? 'Payment';
+                        return pw.Padding(
+                          padding: const pw.EdgeInsets.symmetric(vertical: 3),
+                          child: pw.Row(
+                            mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                            children: [
+                              pw.Text('$dateStr: $note', style: const pw.TextStyle(fontSize: 10)),
+                              pw.Text('Rs. ${amount.toStringAsFixed(0)}', style: pw.TextStyle(fontSize: 10, fontWeight: pw.FontWeight.bold)),
+                            ],
+                          ),
+                        );
+                      }),
+                    ];
+                  }()),
                   
                   pw.Spacer(),
                   

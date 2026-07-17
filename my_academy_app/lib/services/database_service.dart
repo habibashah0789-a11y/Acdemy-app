@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:io' as io;
 import 'package:flutter/foundation.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -82,10 +83,14 @@ static Future<StudentModel?> getStudentById(String studentId) async {
   // ── Image Upload (works on Web + Mobile) ──
   static Future<String?> uploadImage(Uint8List imageBytes, String folder) async {
     try {
+      if (!kIsWeb && io.Platform.isWindows) {
+        return null;
+      }
       String fileName = '${DateTime.now().millisecondsSinceEpoch}.jpg';
       Reference ref = _storage.ref().child('$folder/$fileName');
-      await ref.putData(imageBytes, SettableMetadata(contentType: 'image/jpeg'));
-      return await ref.getDownloadURL();
+      await ref.putData(imageBytes, SettableMetadata(contentType: 'image/jpeg'))
+          .timeout(const Duration(seconds: 3));
+      return await ref.getDownloadURL().timeout(const Duration(seconds: 3));
     } catch (e) { return null; }
   }
 

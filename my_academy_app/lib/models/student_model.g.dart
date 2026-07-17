@@ -37,13 +37,16 @@ class StudentModelAdapter extends TypeAdapter<StudentModel> {
       subject: fields[17] as String,
       mathFee: fields[18] as double,
       createdAt: fields[19] as DateTime?,
+      updatedAt: fields[20] as DateTime?,
+      isActive: fields[21] as bool,
+      paymentHistoryJson: fields[23] as String?,
     );
   }
 
   @override
   void write(BinaryWriter writer, StudentModel obj) {
     writer
-      ..writeByte(20)
+      ..writeByte(23)
       ..writeByte(0)
       ..write(obj.id)
       ..writeByte(1)
@@ -83,7 +86,13 @@ class StudentModelAdapter extends TypeAdapter<StudentModel> {
       ..writeByte(18)
       ..write(obj.mathFee)
       ..writeByte(19)
-      ..write(obj.createdAt);
+      ..write(obj.createdAt)
+      ..writeByte(20)
+      ..write(obj.updatedAt)
+      ..writeByte(21)
+      ..write(obj.isActive)
+      ..writeByte(23)
+      ..write(obj.paymentHistoryJson);
   }
 
   @override

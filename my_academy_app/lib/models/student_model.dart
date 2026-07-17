@@ -72,6 +72,9 @@ class StudentModel extends HiveObject {
   @HiveField(21)
   bool isActive;
 
+  @HiveField(23)
+  String? paymentHistoryJson;
+
   StudentModel({
     required this.id,
     required this.firstName,
@@ -95,6 +98,7 @@ class StudentModel extends HiveObject {
     DateTime? createdAt,
     this.updatedAt,
     this.isActive = true,
+    this.paymentHistoryJson,
   }) : createdAt = createdAt ?? DateTime.now();
 
   // Computed properties
@@ -178,6 +182,7 @@ class StudentModel extends HiveObject {
       'createdAt': Timestamp.fromDate(createdAt),
       'updatedAt': updatedAt != null ? Timestamp.fromDate(updatedAt!) : null,
       'isActive': isActive,
+      'paymentHistoryJson': paymentHistoryJson,
     };
   }
 
@@ -242,6 +247,7 @@ class StudentModel extends HiveObject {
       createdAt: parsedCreatedAt,
       updatedAt: parsedUpdatedAt,
       isActive: map['isActive'] ?? true,
+      paymentHistoryJson: map['paymentHistoryJson'],
     );
   }
     // 🔥 INSERT THIS ENTIRE BLOCK between fromMap and empty() 🔥
@@ -298,6 +304,7 @@ class StudentModel extends HiveObject {
     DateTime? createdAt,
     DateTime? updatedAt,
     bool? isActive,
+    String? paymentHistoryJson,
   }) {
     return StudentModel(
       id: id ?? this.id,
@@ -322,6 +329,7 @@ class StudentModel extends HiveObject {
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
       isActive: isActive ?? this.isActive,
+      paymentHistoryJson: paymentHistoryJson ?? this.paymentHistoryJson,
     );
   }
   

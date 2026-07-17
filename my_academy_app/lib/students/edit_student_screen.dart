@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
@@ -119,6 +120,35 @@ class _EditStudentScreenState extends State<EditStudentScreen> {
         String? u = await DatabaseService.uploadImage(_imageBytes!, 'students');
         if (u != null) picUrl = u;
       }
+      double oldPaid = widget.student.feeSubmitted;
+      double newPaid = double.tryParse(_feeSubC.text.trim()) ?? 0;
+      String? historyJson = widget.student.paymentHistoryJson;
+      List<dynamic> history = [];
+      if (historyJson != null && historyJson.isNotEmpty) {
+        try {
+          history = jsonDecode(historyJson);
+        } catch (e) {
+          debugPrint('Error decoding payment history: $e');
+        }
+      }
+
+      if (history.isEmpty && oldPaid > 0) {
+        history.add({
+          'date': widget.student.createdAt.toIso8601String(),
+          'amount': oldPaid,
+          'note': 'Registration Payment',
+        });
+      }
+
+      if (newPaid != oldPaid) {
+        double diff = newPaid - oldPaid;
+        history.add({
+          'date': DateTime.now().toIso8601String(),
+          'amount': diff,
+          'note': diff > 0 ? 'Additional Payment' : 'Adjustment',
+        });
+      }
+
       final updated = StudentModel(
         id: widget.student.id,
         firstName: _nameC.text.trim(),
@@ -130,7 +160,7 @@ class _EditStudentScreenState extends State<EditStudentScreen> {
         classType: _selectedClassType,
         grade: _selectedGrade,
         subject: _selectedSubject,
-        feeSubmitted: double.tryParse(_feeSubC.text.trim()) ?? 0,
+        feeSubmitted: newPaid,
         feeRemaining: double.tryParse(_feeRemC.text.trim()) ?? 0,
         biologyFee: double.tryParse(_bioC.text.trim()) ?? 0,
         physicsFee: double.tryParse(_phyC.text.trim()) ?? 0,
@@ -138,6 +168,8 @@ class _EditStudentScreenState extends State<EditStudentScreen> {
         englishFee: double.tryParse(_engC.text.trim()) ?? 0,
         mathFee: double.tryParse(_mathC.text.trim()) ?? 0,
         profilePicUrl: picUrl,
+        createdAt: widget.student.createdAt,
+        paymentHistoryJson: history.isNotEmpty ? jsonEncode(history) : null,
       );
       await DatabaseService.updateStudent(updated);
       if (mounted) Navigator.pop(context, true);

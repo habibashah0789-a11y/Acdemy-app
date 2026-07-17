@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
@@ -193,6 +194,7 @@ class _AddStudentScreenState extends State<AddStudentScreen> {
         String? u = await DatabaseService.uploadImage(_imageBytes!, 'students');
         if (u != null) picUrl = u;
       }
+      final initialFee = double.tryParse(_feeSubC.text.trim()) ?? 0;
       final student = StudentModel(
         id: DateTime.now().millisecondsSinceEpoch.toString(),
         firstName: _nameC.text.trim(),
@@ -204,7 +206,7 @@ class _AddStudentScreenState extends State<AddStudentScreen> {
         classType: _selectedClassType,
         grade: _selectedGrade,
         subject: _selectedSubject,
-        feeSubmitted: double.tryParse(_feeSubC.text.trim()) ?? 0,
+        feeSubmitted: initialFee,
         feeRemaining: double.tryParse(_feeRemC.text.trim()) ?? 0,
         biologyFee: double.tryParse(_bioC.text.trim()) ?? 0,
         physicsFee: double.tryParse(_phyC.text.trim()) ?? 0,
@@ -212,6 +214,13 @@ class _AddStudentScreenState extends State<AddStudentScreen> {
         englishFee: double.tryParse(_engC.text.trim()) ?? 0,
         mathFee: double.tryParse(_mathC.text.trim()) ?? 0,
         profilePicUrl: picUrl,
+        paymentHistoryJson: initialFee > 0
+            ? jsonEncode([{
+                'date': DateTime.now().toIso8601String(),
+                'amount': initialFee,
+                'note': 'Registration Payment',
+              }])
+            : null,
       );
       await DatabaseService.addStudent(student);
       if (mounted) Navigator.pop(context, true);

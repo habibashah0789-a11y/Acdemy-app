@@ -556,6 +556,22 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   alignment: BarChartAlignment.spaceAround,
                   maxY: maxVal * 1.2,
                   barTouchData: BarTouchData(
+                    touchTooltipData: BarTouchTooltipData(
+                      getTooltipColor: (group) =>
+                          isDark ? Colors.grey.shade800 : Colors.white,
+                      tooltipPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                      tooltipMargin: 8,
+                      getTooltipItem: (group, groupIndex, rod, rodIndex) {
+                        return BarTooltipItem(
+                          'Rs ${rod.toY.toStringAsFixed(0)}',
+                          TextStyle(
+                            color: isDark ? Colors.white : const Color(0xFF1D1D1F),
+                            fontWeight: FontWeight.bold,
+                            fontSize: 13,
+                          ),
+                        );
+                      },
+                    ),
                     touchCallback: (FlTouchEvent event, barTouchResponse) {
                       if (event is! FlTapUpEvent) return;
                       if (barTouchResponse == null ||
@@ -948,6 +964,7 @@ class _RevenueDrillDownDialogState extends State<RevenueDrillDownDialog> {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     // Determine level layout:
     Widget content;
     String currentSubTitle = '';
@@ -969,6 +986,22 @@ class _RevenueDrillDownDialogState extends State<RevenueDrillDownDialog> {
             alignment: BarChartAlignment.spaceAround,
             maxY: maxVal * 1.2,
             barTouchData: BarTouchData(
+              touchTooltipData: BarTouchTooltipData(
+                getTooltipColor: (group) =>
+                    isDark ? Colors.grey.shade800 : Colors.white,
+                tooltipPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                tooltipMargin: 8,
+                getTooltipItem: (group, groupIndex, rod, rodIndex) {
+                  return BarTooltipItem(
+                    'Rs ${rod.toY.toStringAsFixed(0)}',
+                    TextStyle(
+                      color: isDark ? Colors.white : const Color(0xFF1D1D1F),
+                      fontWeight: FontWeight.bold,
+                      fontSize: 13,
+                    ),
+                  );
+                },
+              ),
               touchCallback: (FlTouchEvent event, barTouchResponse) {
                 if (event is! FlTapUpEvent) {
                   return;
@@ -1052,6 +1085,22 @@ class _RevenueDrillDownDialogState extends State<RevenueDrillDownDialog> {
             alignment: BarChartAlignment.spaceAround,
             maxY: maxVal * 1.2,
             barTouchData: BarTouchData(
+              touchTooltipData: BarTouchTooltipData(
+                getTooltipColor: (group) =>
+                    isDark ? Colors.grey.shade800 : Colors.white,
+                tooltipPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                tooltipMargin: 8,
+                getTooltipItem: (group, groupIndex, rod, rodIndex) {
+                  return BarTooltipItem(
+                    'Rs ${rod.toY.toStringAsFixed(0)}',
+                    TextStyle(
+                      color: isDark ? Colors.white : const Color(0xFF1D1D1F),
+                      fontWeight: FontWeight.bold,
+                      fontSize: 13,
+                    ),
+                  );
+                },
+              ),
               touchCallback: (FlTouchEvent event, barTouchResponse) {
                 if (event is! FlTapUpEvent) {
                   return;
@@ -1125,6 +1174,22 @@ class _RevenueDrillDownDialogState extends State<RevenueDrillDownDialog> {
             alignment: BarChartAlignment.spaceAround,
             maxY: maxVal * 1.2,
             barTouchData: BarTouchData(
+              touchTooltipData: BarTouchTooltipData(
+                getTooltipColor: (group) =>
+                    isDark ? Colors.grey.shade800 : Colors.white,
+                tooltipPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                tooltipMargin: 8,
+                getTooltipItem: (group, groupIndex, rod, rodIndex) {
+                  return BarTooltipItem(
+                    'Rs ${rod.toY.toStringAsFixed(0)}',
+                    TextStyle(
+                      color: isDark ? Colors.white : const Color(0xFF1D1D1F),
+                      fontWeight: FontWeight.bold,
+                      fontSize: 13,
+                    ),
+                  );
+                },
+              ),
               touchCallback: (FlTouchEvent event, barTouchResponse) {
                 if (event is! FlTapUpEvent) {
                   return;
