@@ -42,11 +42,12 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
       ),
       body: StreamBuilder<List<NotificationModel>>(
         stream: _stream,
+        initialData: NotificationService.getCachedNotifications(),
         builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting && !snapshot.hasData) {
+          final items = snapshot.data ?? [];
+          if (items.isEmpty && snapshot.connectionState == ConnectionState.waiting) {
             return const Center(child: CircularProgressIndicator());
           }
-          final items = snapshot.data ?? NotificationService.getCachedNotifications();
           if (items.isEmpty) {
             return const Center(child: Text('No notifications yet'));
           }

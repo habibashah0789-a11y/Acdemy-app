@@ -9,6 +9,7 @@ import '../models/student_model.dart';
 import '../models/notification_model.dart';
 import '../services/notification_service.dart';
 import '../screens/notifications_screen.dart';
+import '../screens/daily_records/daily_records_screen.dart';
 
 class _ActivityItem {
   final String title;
@@ -147,6 +148,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
               _fmt.format(collected),
               Icons.payments_rounded,
               Colors.orange,
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const DailyRecordsScreen()),
+                );
+              },
             );
           default:
             return _buildStatCard(
@@ -164,8 +171,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
     String title,
     String value,
     IconData icon,
-    Color color,
-  ) {
+    Color color, {
+    VoidCallback? onTap,
+  }) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Card(
@@ -173,12 +181,15 @@ class _DashboardScreenState extends State<DashboardScreen> {
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(16),
       ),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(
-          horizontal: 14,
-          vertical: 12,
-        ),
-        child: Row(
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(16),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(
+            horizontal: 14,
+            vertical: 12,
+          ),
+          child: Row(
           children: [
             Container(
               padding: const EdgeInsets.all(10),
@@ -225,8 +236,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
           ],
         ),
       ),
-    );
-  }
+    ),
+  );
+}
 
   Widget _buildStudentStrengthChart(List<StudentModel> students) {
     final fsc1st = students
@@ -704,8 +716,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
         actions: [
           StreamBuilder<List<NotificationModel>>(
             stream: NotificationService.notificationsStream(),
+            initialData: NotificationService.getCachedNotifications(),
             builder: (context, snapshot) {
-              final list = snapshot.data ?? NotificationService.getCachedNotifications();
+              final list = snapshot.data ?? [];
               final unread = list.where((n) => !n.isRead).length;
 
               return Stack(
@@ -1461,54 +1474,47 @@ class _StudentStrengthDetailDialogState
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              SingleChildScrollView(
-                scrollDirection: Axis.horizontal,
-                child: SingleChildScrollView(
-                  
-                   
-                  scrollDirection: Axis.horizontal,
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              widget.title,
-                              style: GoogleFonts.poppins(
-                                fontSize: 20,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                            const SizedBox(height: 2),
-                            Text(
-                              'Class Strength Breakdown',
-                              style: TextStyle(
-                                  fontSize: 12, color: Colors.grey.shade500),
-                            ),
-                          ],
-                        ),
-                      ),
-                      Container(
-                        padding:
-                            const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                        decoration: BoxDecoration(
-                          color: AppTheme.primaryBlue.withValues(alpha: 0.1),
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: Text(
-                          '${filtered.length} Students',
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          widget.title,
                           style: GoogleFonts.poppins(
-                            fontSize: 13,
+                            fontSize: 20,
                             fontWeight: FontWeight.bold,
-                            color: AppTheme.primaryBlue,
                           ),
                         ),
-                      ),
-                    ],
+                        const SizedBox(height: 2),
+                        Text(
+                          'Class Strength Breakdown',
+                          style: TextStyle(
+                              fontSize: 12, color: Colors.grey.shade500),
+                        ),
+                      ],
+                    ),
                   ),
-                ),
+                  const SizedBox(width: 8),
+                  Container(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                    decoration: BoxDecoration(
+                      color: AppTheme.primaryBlue.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Text(
+                      '${filtered.length} Students',
+                      style: GoogleFonts.poppins(
+                        fontSize: 13,
+                        fontWeight: FontWeight.bold,
+                        color: AppTheme.primaryBlue,
+                      ),
+                    ),
+                  ),
+                ],
               ),
               const SizedBox(height: 24),
               // Subjects breakdown list

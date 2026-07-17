@@ -3,8 +3,10 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import '../models/student_model.dart';
 import '../services/database_service.dart';
+import '../services/print_service.dart';
 import '../theme/app_theme.dart';
 import 'edit_student_screen.dart';
+import '../utils/whatsapp_helper.dart';
 
 class StudentDetailScreen extends StatefulWidget {
   final StudentModel student;
@@ -114,6 +116,13 @@ class _StudentDetailScreenState extends State<StudentDetailScreen> {
       expandedHeight: 250,
       pinned: true,
       backgroundColor: AppTheme.primaryBlue,
+      actions: [
+        IconButton(
+          icon: const Icon(Icons.print_rounded, color: Colors.white),
+          tooltip: 'Print Record',
+          onPressed: () => PrintService.printStudentReport(student),
+        ),
+      ],
       flexibleSpace: FlexibleSpaceBar(
         background: Stack(
           fit: StackFit.expand,
@@ -310,6 +319,7 @@ class _StudentDetailScreenState extends State<StudentDetailScreen> {
     );
   }
 
+
   Widget _buildPersonalInfoCard(bool isDark) {
     return Card(
       child: Padding(
@@ -318,7 +328,19 @@ class _StudentDetailScreenState extends State<StudentDetailScreen> {
           children: [
             _buildInfoRow(Icons.person_outline_rounded, 'Father Name', student.fatherName),
             const Divider(),
-            _buildInfoRow(Icons.phone_android_rounded, 'Phone', student.phone),
+            InkWell(
+              onTap: () => WhatsAppHelper.openWhatsApp(context, student.phone),
+              borderRadius: BorderRadius.circular(8),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: _buildInfoRow(Icons.phone_android_rounded, 'Phone (Tap to Chat)', student.phone),
+                  ),
+                  const Icon(Icons.send_rounded, color: Color(0xFF25D366), size: 22),
+                  const SizedBox(width: 8),
+                ],
+              ),
+            ),
             const Divider(),
             _buildInfoRow(Icons.email_outlined, 'Email', student.email.isEmpty ? 'N/A' : student.email),
           ],
