@@ -22,6 +22,7 @@ class StudentDetailScreen extends StatefulWidget {
 
 class _StudentDetailScreenState extends State<StudentDetailScreen> {
   late StudentModel student;
+  bool _isPrinting = false;
 
   @override
   void initState() {
@@ -268,11 +269,40 @@ class _StudentDetailScreenState extends State<StudentDetailScreen> {
       pinned: true,
       backgroundColor: AppTheme.primaryBlue,
       actions: [
-        IconButton(
-          icon: const Icon(Icons.print_rounded, color: Colors.white),
-          tooltip: 'Print Record',
-          onPressed: () => PrintService.printStudentReport(student),
-        ),
+        _isPrinting
+            ? const Center(
+                child: Padding(
+                  padding: EdgeInsets.symmetric(horizontal: 16.0),
+                  child: SizedBox(
+                    width: 20,
+                    height: 20,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2.5,
+                      valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                    ),
+                  ),
+                ),
+              )
+            : IconButton(
+                icon: const Icon(Icons.print_rounded, color: Colors.white),
+                tooltip: 'Print Record',
+                onPressed: () async {
+                  setState(() => _isPrinting = true);
+                  try {
+                    await PrintService.printStudentReport(student);
+                  } catch (e) {
+                    if (context.mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(content: Text('Print failed: $e'), backgroundColor: Colors.red),
+                      );
+                    }
+                  } finally {
+                    if (mounted) {
+                      setState(() => _isPrinting = false);
+                    }
+                  }
+                },
+              ),
       ],
       flexibleSpace: FlexibleSpaceBar(
         background: Stack(

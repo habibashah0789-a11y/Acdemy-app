@@ -228,7 +228,7 @@ class PrintService {
                     ];
                   }()),
                   
-                  pw.Spacer(),
+                  pw.SizedBox(height: 20),
                   
                   // Footer
                   pw.Divider(),
