@@ -2,6 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:cached_network_image/cached_network_image.dart';
+import 'dart:convert';
+import 'dart:io' as io;
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'student_detail_screen.dart';
 import 'add_student_screen.dart';
 import '../models/student_model.dart';
@@ -204,6 +207,82 @@ class _StudentListScreenState extends State<StudentListScreen> {
     );
   }
 
+  Widget _buildAvatarImage(String url, String initials) {
+    if (url.isEmpty) {
+      return Center(
+        child: Text(
+          initials.isNotEmpty ? initials : 'S',
+          style: const TextStyle(
+            fontWeight: FontWeight.bold,
+            fontSize: 24,
+            color: AppTheme.primaryBlue,
+          ),
+        ),
+      );
+    }
+    if (url.startsWith('http://') || url.startsWith('https://')) {
+      return CachedNetworkImage(
+        imageUrl: url,
+        fit: BoxFit.cover,
+        placeholder: (_, __) => const Center(
+          child: SizedBox(
+            width: 24,
+            height: 24,
+            child: CircularProgressIndicator(strokeWidth: 2),
+          ),
+        ),
+        errorWidget: (_, __, ___) => const Center(
+          child: Icon(
+            Icons.person_rounded,
+            color: AppTheme.primaryBlue,
+            size: 30,
+          ),
+        ),
+      );
+    }
+    if (url.startsWith('data:image') || (!url.contains('/') && !url.contains('\\') && url.length > 100)) {
+      try {
+        final base64Str = url.contains(',') ? url.split(',').last : url;
+        final bytes = base64Decode(base64Str.trim());
+        return Image.memory(
+          bytes,
+          fit: BoxFit.cover,
+        );
+      } catch (e) {
+        // fallback
+      }
+    }
+    if (url.startsWith('blob:')) {
+      return Image.network(url, fit: BoxFit.cover);
+    }
+    if (!kIsWeb) {
+      try {
+        return Image.file(
+          io.File(url),
+          fit: BoxFit.cover,
+          errorBuilder: (context, error, stackTrace) {
+            return const Center(
+              child: Icon(
+                Icons.person_rounded,
+                color: AppTheme.primaryBlue,
+                size: 30,
+              ),
+            );
+          },
+        );
+      } catch (e) {
+        // fallback
+      }
+    }
+    return const Center(
+      child: Icon(
+        Icons.person_rounded,
+        color: AppTheme.primaryBlue,
+        size: 30,
+      ),
+    );
+  }
+
   Widget _buildStudentCard(StudentModel student, int index, bool isDark) {
     return Card(
       margin: const EdgeInsets.only(bottom: 12),
@@ -232,35 +311,7 @@ class _StudentListScreenState extends State<StudentListScreen> {
             ),
             child: ClipRRect(
               borderRadius: BorderRadius.circular(16),
-              child: student.profilePicUrl.isNotEmpty
-                ? CachedNetworkImage(
-                    imageUrl: student.profilePicUrl,
-                    fit: BoxFit.cover,
-                    placeholder: (_, __) => const Center(
-                      child: SizedBox(
-                        width: 24,
-                        height: 24,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      ),
-                    ),
-                    errorWidget: (_, __, ___) => Center(
-                      child: Icon(
-                        Icons.person_rounded,
-                        color: AppTheme.primaryBlue,
-                        size: 30,
-                      ),
-                    ),
-                  )
-                : Center(
-                    child: Text(
-                      student.initials.isNotEmpty ? student.initials : 'S',
-                      style: const TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 24,
-                        color: AppTheme.primaryBlue,
-                      ),
-                    ),
-                  ),
+              child: _buildAvatarImage(student.profilePicUrl, student.initials),
             ),
           ),
         ),

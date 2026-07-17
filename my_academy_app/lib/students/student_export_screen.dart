@@ -2,6 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_speed_dial/flutter_speed_dial.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:cached_network_image/cached_network_image.dart';
+import 'dart:convert';
+import 'dart:io' as io;
+import 'package:flutter/foundation.dart' show kIsWeb;
 import '../models/student_model.dart';
 import '../services/database_service.dart';
 import '../theme/app_theme.dart';
@@ -68,6 +71,63 @@ class _StudentExportScreenState extends State<StudentExportScreen> {
       _recipients = students;
       _sentIds.clear();
     });
+  }
+
+  Widget _buildAvatarImage(String url, String initials) {
+    if (url.isEmpty) {
+      return Center(
+        child: Text(
+          initials.isNotEmpty ? initials : 'S',
+          style: const TextStyle(
+            fontWeight: FontWeight.bold,
+            color: AppTheme.primaryBlue,
+          ),
+        ),
+      );
+    }
+    if (url.startsWith('http://') || url.startsWith('https://')) {
+      return CachedNetworkImage(
+        imageUrl: url,
+        fit: BoxFit.cover,
+        placeholder: (_, __) => const Center(
+          child: SizedBox(
+            width: 20,
+            height: 20,
+            child: CircularProgressIndicator(strokeWidth: 2),
+          ),
+        ),
+        errorWidget: (_, __, ___) => const Icon(Icons.person, color: AppTheme.primaryBlue),
+      );
+    }
+    if (url.startsWith('data:image') || (!url.contains('/') && !url.contains('\\') && url.length > 100)) {
+      try {
+        final base64Str = url.contains(',') ? url.split(',').last : url;
+        final bytes = base64Decode(base64Str.trim());
+        return Image.memory(
+          bytes,
+          fit: BoxFit.cover,
+        );
+      } catch (e) {
+        // fallback
+      }
+    }
+    if (url.startsWith('blob:')) {
+      return Image.network(url, fit: BoxFit.cover);
+    }
+    if (!kIsWeb) {
+      try {
+        return Image.file(
+          io.File(url),
+          fit: BoxFit.cover,
+          errorBuilder: (context, error, stackTrace) {
+            return const Icon(Icons.person, color: AppTheme.primaryBlue);
+          },
+        );
+      } catch (e) {
+        // fallback
+      }
+    }
+    return const Icon(Icons.person, color: AppTheme.primaryBlue);
   }
 
   @override
@@ -189,21 +249,7 @@ class _StudentExportScreenState extends State<StudentExportScreen> {
                               ),
                               child: ClipRRect(
                                 borderRadius: BorderRadius.circular(20),
-                                child: student.profilePicUrl.isNotEmpty
-                                    ? CachedNetworkImage(
-                                        imageUrl: student.profilePicUrl,
-                                        fit: BoxFit.cover,
-                                        errorWidget: (_, __, ___) => const Icon(Icons.person, color: AppTheme.primaryBlue),
-                                      )
-                                    : Center(
-                                        child: Text(
-                                          student.initials,
-                                          style: const TextStyle(
-                                            fontWeight: FontWeight.bold,
-                                            color: AppTheme.primaryBlue,
-                                          ),
-                                        ),
-                                      ),
+                                child: _buildAvatarImage(student.profilePicUrl, student.initials),
                               ),
                             ),
                             title: Text(student.name, style: const TextStyle(fontWeight: FontWeight.bold)),

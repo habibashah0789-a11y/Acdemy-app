@@ -4,6 +4,9 @@ import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:printing/printing.dart';
 import 'package:flutter/services.dart' show rootBundle;
+import 'package:flutter/foundation.dart' show kIsWeb;
+import 'dart:convert';
+import 'dart:io' as io;
 import '../models/student_model.dart';
 import 'database_service.dart';
 
@@ -18,11 +21,26 @@ class PrintService {
     final academyAddress = profile['address']?.toString() ?? '';
     final academyPhone = profile['phone']?.toString() ?? '';
 
-    // Load image if available
+    // Load image if available (supports Network, Base64, and Local Files)
     pw.ImageProvider? profileImage;
     if (student.profilePicUrl.isNotEmpty) {
       try {
-        profileImage = await networkImage(student.profilePicUrl);
+        final url = student.profilePicUrl;
+        if (url.startsWith('http://') || url.startsWith('https://')) {
+          profileImage = await networkImage(url);
+        } else if (url.startsWith('data:image') || (!url.contains('/') && !url.contains('\\') && url.length > 100)) {
+          final base64Str = url.contains(',') ? url.split(',').last : url;
+          final bytes = base64Decode(base64Str.trim());
+          profileImage = pw.MemoryImage(bytes);
+        } else if (url.startsWith('blob:')) {
+          // Web blob URL (usually falls back if not cached, but can try loading if network allows)
+        } else if (!kIsWeb) {
+          final file = io.File(url);
+          if (await file.exists()) {
+            final bytes = await file.readAsBytes();
+            profileImage = pw.MemoryImage(bytes);
+          }
+        }
       } catch (e) { 
         debugPrint('Error loading profile image for PDF: $e');
       }
