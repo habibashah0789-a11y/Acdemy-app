@@ -218,11 +218,15 @@ class _DeleteStudentsDialogState extends State<DeleteStudentsDialog> {
                   const Text('Select which class/grade to delete:'),
                   const SizedBox(height: 8),
                   DropdownButtonFormField<String>(
+                    isExpanded: true,
                     initialValue: _selectedOption,
                     items: _options.map((opt) {
                       return DropdownMenuItem<String>(
                         value: opt['value'],
-                        child: Text(opt['label']!),
+                        child: Text(
+                          opt['label']!,
+                          overflow: TextOverflow.ellipsis,
+                        ),
                       );
                     }).toList(),
                     onChanged: (val) {

@@ -2,8 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:provider/provider.dart';
 import '../models/student_model.dart';
 import '../services/database_service.dart';
+import '../services/sync_service.dart';
 import '../students/add_student_screen.dart';
 import '../students/student_detail_screen.dart';
 import '../theme/app_theme.dart';
@@ -151,6 +153,8 @@ class _FscClassRoomScreenState extends State<FscClassRoomScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // Listen to SyncService so that this screen rebuilds on real-time sync updates
+    Provider.of<SyncService>(context);
     final students = _students;
     final color = kSubjectColors[widget.subject] ?? AppTheme.primaryBlue;
 

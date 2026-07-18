@@ -12,6 +12,7 @@ import 'models/student_model.dart';
 // Services
 import 'services/database_service.dart';
 import 'services/notification_service.dart';
+import 'services/sync_service.dart';
 
 // Providers
 import 'provider/theme_provider.dart';
@@ -42,10 +43,14 @@ Future<void> main() async {
   final themeProvider = ThemeProvider();
   await themeProvider.init();
 
+  final syncService = SyncService();
+  await syncService.init();
+
   runApp(
     MultiProvider(
       providers: [
         ChangeNotifierProvider.value(value: themeProvider),
+        ChangeNotifierProvider.value(value: syncService),
       ],
       child: const MyApp(),
     ),

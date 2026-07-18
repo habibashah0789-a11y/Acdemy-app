@@ -48,12 +48,21 @@ class SyncService extends ChangeNotifier {
             break;
         }
       }
-      if (changed) {
+
+      // Prune local students not present in the current Firestore collection (e.g. deleted while offline)
+      final firestoreIds = snapshot.docs.map((doc) => doc.id).toSet();
+      for (var key in studentBox.keys) {
+        if (!firestoreIds.contains(key)) {
+          await studentBox.delete(key);
+          changed = true;
+        }
+      }
+
+      if (changed || _students.length != studentBox.length) {
         _students = studentBox.values.toList();
         notifyListeners();
       }
     }, onError: (error) {
-      // Propagate error via a simple SnackBar; UI can listen to this service for errors if needed.
       debugPrint('Firestore sync error: $error');
     });
   }

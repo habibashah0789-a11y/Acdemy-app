@@ -80,17 +80,14 @@ static Future<StudentModel?> getStudentById(String studentId) async {
   return _studentBox.get(studentId);
 }
 
-  // ── Image Upload (works on Web + Mobile) ──
+  // ── Image Upload (works on Web + Mobile + Windows) ──
   static Future<String?> uploadImage(Uint8List imageBytes, String folder) async {
     try {
-      if (!kIsWeb && io.Platform.isWindows) {
-        return null;
-      }
       String fileName = '${DateTime.now().millisecondsSinceEpoch}.jpg';
       Reference ref = _storage.ref().child('$folder/$fileName');
       await ref.putData(imageBytes, SettableMetadata(contentType: 'image/jpeg'))
-          .timeout(const Duration(seconds: 3));
-      return await ref.getDownloadURL().timeout(const Duration(seconds: 3));
+          .timeout(const Duration(seconds: 5));
+      return await ref.getDownloadURL().timeout(const Duration(seconds: 5));
     } catch (e) { return null; }
   }
 
