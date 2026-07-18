@@ -57,7 +57,6 @@ dependencies:
   shimmer: ^3.0.0
   fl_chart: ^1.2.0
   flutter_launcher_icons: ^0.14.4
-  local_auth: ^3.0.1
   file_picker: ^10.1.9
   share_plus: ^10.1.4
   firebase_messaging: ^16.4.3
