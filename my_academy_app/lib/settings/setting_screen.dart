@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:my_academy_app/settings/logout_screen.dart';
 import '../models/student_model.dart';
 import '../services/database_service.dart';
-import 'backup_restore_screen.dart';
 import 'appearance_screen.dart';
 import 'recycle_bin_screen.dart';
 
@@ -27,33 +26,38 @@ class SettingsScreen extends StatelessWidget {
         children: [
           _tile(
             context,
+            Icons.palette,
+            "Appearance",
+            const AppearanceScreen(),
+          ),
+          _tile(
+            context,
             Icons.delete_outline_rounded,
             "Recycle Bin",
             const RecycleBinScreen(),
+          ),
+
+          /* _tile(
+            context,
+            Icons.backup,
+            "Backup & Restore",
+            const BackupRestoreScreen(),
+          ),*/
+         
+          ListTile(
+            leading:
+                const Icon(Icons.delete_forever_rounded, color: Colors.red),
+            title: const Text("Delete Students Data",
+                style:
+                    TextStyle(color: Colors.red, fontWeight: FontWeight.bold)),
+            trailing: const Icon(Icons.arrow_forward_ios, color: Colors.red),
+            onTap: () => _showDeleteDialog(context),
           ),
           _tile(
             context,
             Icons.logout,
             "Logout",
             const LogoutScreen(),
-          ),
-          _tile(
-            context,
-            Icons.backup,
-            "Backup & Restore",
-            const BackupRestoreScreen(),
-          ),
-          _tile(
-            context,
-            Icons.palette,
-            "Appearance",
-            const AppearanceScreen(),
-          ),
-          ListTile(
-            leading: const Icon(Icons.delete_forever_rounded, color: Colors.red),
-            title: const Text("Delete Students Data", style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold)),
-            trailing: const Icon(Icons.arrow_forward_ios, color: Colors.red),
-            onTap: () => _showDeleteDialog(context),
           ),
         ],
       ),
@@ -113,10 +117,6 @@ class _DeleteStudentsDialogState extends State<DeleteStudentsDialog> {
         const SnackBar(
           content: Text('Please type DELETE to confirm.'),
           backgroundColor: Colors.red,
-
-
-
-          
         ),
       );
       return;
@@ -137,7 +137,8 @@ class _DeleteStudentsDialogState extends State<DeleteStudentsDialog> {
         targets = allStudents;
       } else {
         targets = allStudents
-            .where((s) => s.grade.toLowerCase() == _selectedOption.toLowerCase())
+            .where(
+                (s) => s.grade.toLowerCase() == _selectedOption.toLowerCase())
             .toList();
       }
 
@@ -201,7 +202,8 @@ class _DeleteStudentsDialogState extends State<DeleteStudentsDialog> {
                 children: [
                   const Text(
                     'Warning: This action is permanent and will delete students from both local cache and online database.',
-                    style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold),
+                    style: TextStyle(
+                        color: Colors.red, fontWeight: FontWeight.bold),
                   ),
                   const SizedBox(height: 16),
                   const Text('Select which class/grade to delete:'),
@@ -225,7 +227,8 @@ class _DeleteStudentsDialogState extends State<DeleteStudentsDialog> {
                     },
                     decoration: const InputDecoration(
                       border: OutlineInputBorder(),
-                      contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                      contentPadding:
+                          EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                     ),
                   ),
                   const SizedBox(height: 16),
@@ -234,9 +237,9 @@ class _DeleteStudentsDialogState extends State<DeleteStudentsDialog> {
                   TextField(
                     controller: _confirmController,
                     decoration: const InputDecoration(
-                      
                       border: OutlineInputBorder(),
-                      contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                      contentPadding:
+                          EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                     ),
                   ),
                 ],
