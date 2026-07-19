@@ -1,9 +1,12 @@
 import 'dart:convert';
 import 'dart:typed_data';
+import 'dart:io' as io;
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:image_picker/image_picker.dart';
 import 'package:flutter_spinkit/flutter_spinkit.dart';
 import 'package:firebase_storage/firebase_storage.dart';
+import 'package:path_provider/path_provider.dart';
 import '../models/student_model.dart';
 import '../services/database_service.dart';
 import '../services/notification_service.dart';
@@ -206,9 +209,24 @@ class _AddStudentScreenState extends State<AddStudentScreen> {
       final studentId = DateTime.now().millisecondsSinceEpoch.toString();
       String picUrl = '';
       
-      // Upload image to Firebase Storage if provided
+      // Upload image to Firebase Storage and save locally if provided
       if (_imageBytes != null) {
         try {
+          // 1. Save image locally on device (for faster local access)
+          if (!kIsWeb) {
+            try {
+              final appDocDir = await getApplicationDocumentsDirectory();
+              final String localPath = '${appDocDir.path}/student_${studentId}_${DateTime.now().millisecondsSinceEpoch}.jpg';
+              final localFile = io.File(localPath);
+              await localFile.writeAsBytes(_imageBytes!);
+              debugPrint('Image saved locally at: $localPath');
+            } catch (localError) {
+              debugPrint('Failed to save image locally: $localError');
+              // Continue with cloud storage even if local save fails
+            }
+          }
+          
+          // 2. Upload to Firebase Storage (for cross-device access)
           final fileName = 'students/profile_${studentId}_${DateTime.now().millisecondsSinceEpoch}.jpg';
           final storageRef = FirebaseStorage.instance.ref().child(fileName);
           
@@ -219,6 +237,7 @@ class _AddStudentScreenState extends State<AddStudentScreen> {
           
           // Get download URL
           picUrl = await storageRef.getDownloadURL().timeout(const Duration(seconds: 10));
+          debugPrint('Image uploaded to Firebase Storage: $picUrl');
         } catch (uploadError) {
           if (mounted) {
             ScaffoldMessenger.of(context).showSnackBar(
