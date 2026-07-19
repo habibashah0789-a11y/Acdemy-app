@@ -91,6 +91,7 @@ class _AuthWrapperState extends State<AuthWrapper> {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       // Safely request notification permission after the splash screen finishes rendering
+      NotificationService.init();
       NotificationService.initializePushNotifications();
     });
   }

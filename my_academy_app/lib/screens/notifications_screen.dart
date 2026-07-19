@@ -56,16 +56,35 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
             separatorBuilder: (_, __) => const Divider(height: 1),
             itemBuilder: (context, index) {
               final item = items[index];
+              // Colors & Icons based on type
+              IconData leadingIcon = Icons.notifications_active_outlined;
+              Color activeColor = Colors.blue;
+              Color bgActiveColor = Colors.blue.shade50;
+
+              if (item.notificationType == 'student_registered') {
+                leadingIcon = Icons.person_add_alt_1;
+                activeColor = Colors.blue;
+                bgActiveColor = Colors.blue.shade50;
+              } else if (item.notificationType == 'fee_payment') {
+                leadingIcon = Icons.payments_rounded;
+                activeColor = Colors.green;
+                bgActiveColor = Colors.green.shade50;
+              } else if (item.notificationType == 'second_installment') {
+                leadingIcon = Icons.account_balance_wallet_rounded;
+                activeColor = Colors.purple;
+                bgActiveColor = Colors.purple.shade50;
+              }
+
               return Dismissible(
                 key: ValueKey(item.id),
                 background: Container(color: Colors.red.withValues(alpha: 0.2)),
                 onDismissed: (_) async => NotificationService.deleteNotification(item.id),
                 child: ListTile(
                   leading: CircleAvatar(
-                    backgroundColor: item.isRead ? Colors.grey.shade200 : Colors.blue.shade50,
+                    backgroundColor: item.isRead ? Colors.grey.shade200 : bgActiveColor,
                     child: Icon(
-                      item.notificationType == 'student_registered' ? Icons.person_add_alt_1 : Icons.notifications_active_outlined,
-                      color: item.isRead ? Colors.grey : Colors.blue,
+                      leadingIcon,
+                      color: item.isRead ? Colors.grey : activeColor,
                     ),
                   ),
                   title: Row(

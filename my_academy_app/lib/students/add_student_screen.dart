@@ -3,11 +3,10 @@ import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:flutter_spinkit/flutter_spinkit.dart';
+import 'package:firebase_storage/firebase_storage.dart';
 import '../models/student_model.dart';
 import '../services/database_service.dart';
-import 'dart:io' as io;
-import 'package:flutter/foundation.dart' show kIsWeb;
-import 'package:path_provider/path_provider.dart';
+import '../services/notification_service.dart';
 import '../widgets/crop_image_dialog.dart';
 import '../theme/app_theme.dart';
 
@@ -40,6 +39,8 @@ class _AddStudentScreenState extends State<AddStudentScreen> {
   final _bioC = TextEditingController();
   final _phyC = TextEditingController();
   final _chemC = TextEditingController();
+
+
   final _engC = TextEditingController();
   final _mathC = TextEditingController();
   final _scheduleC = TextEditingController();
@@ -204,21 +205,33 @@ class _AddStudentScreenState extends State<AddStudentScreen> {
     try {
       final studentId = DateTime.now().millisecondsSinceEpoch.toString();
       String picUrl = '';
+      
+      // Upload image to Firebase Storage if provided
       if (_imageBytes != null) {
-        String? u = await DatabaseService.uploadImage(_imageBytes!, 'students');
-        if (u != null) {
-          picUrl = u;
-        } else {
-          if (kIsWeb) {
-            final base64String = base64Encode(_imageBytes!);
-            picUrl = 'data:image/jpeg;base64,$base64String';
-          } else {
-            final appDocDir = await getApplicationDocumentsDirectory();
-            final String localPath = '${appDocDir.path}/profile_${studentId}_${DateTime.now().millisecondsSinceEpoch}.jpg';
-            final localFile = io.File(localPath);
-            await localFile.writeAsBytes(_imageBytes!);
-            picUrl = localPath;
+        try {
+          final fileName = 'students/profile_${studentId}_${DateTime.now().millisecondsSinceEpoch}.jpg';
+          final storageRef = FirebaseStorage.instance.ref().child(fileName);
+          
+          // Upload with timeout to prevent hanging
+          await storageRef
+              .putData(_imageBytes!, SettableMetadata(contentType: 'image/jpeg'))
+              .timeout(const Duration(seconds: 30));
+          
+          // Get download URL
+          picUrl = await storageRef.getDownloadURL().timeout(const Duration(seconds: 10));
+        } catch (uploadError) {
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: const Text('Image upload failed. Please check your internet connection and try again.'),
+                backgroundColor: Colors.orange,
+                duration: const Duration(seconds: 4),
+              ),
+            );
           }
+          // Don't proceed with student creation if image upload fails
+          setState(() => _isSaving = false);
+          return;
         }
       }
       final initialFee = double.tryParse(_feeSubC.text.trim()) ?? 0;
@@ -250,11 +263,15 @@ class _AddStudentScreenState extends State<AddStudentScreen> {
             : null,
       );
       await DatabaseService.addStudent(student);
+      
+      // Trigger Notification
+      await NotificationService.createStudentRegistrationNotification(student: student);
+
       if (mounted) Navigator.pop(context, true);
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-            content: Text('Failed: $e'), backgroundColor: Colors.red));
+            content: Text('Failed to create student: $e'), backgroundColor: Colors.red));
       }
     } finally {
       if (mounted) setState(() => _isSaving = false);
@@ -483,7 +500,7 @@ class _AddStudentScreenState extends State<AddStudentScreen> {
                 const SizedBox(height: 12),
                 _feeField('Math Fee', _mathC, const Color(0xFF00897B)),
                 const SizedBox(height: 12),
-                _feeField('Total Fee Submitted', _feeSubC, AppTheme.primaryBlue),
+              _feeField('Total Fee Submitted', _feeSubC, AppTheme.primaryBlue),
                 const SizedBox(height: 12),
                 _feeField('Total Fee Remaining', _feeRemC, Colors.red),
 

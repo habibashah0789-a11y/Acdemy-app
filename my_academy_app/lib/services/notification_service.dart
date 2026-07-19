@@ -3,9 +3,17 @@ import 'package:flutter/foundation.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
+import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:hive/hive.dart';
 import '../models/notification_model.dart';
 import '../models/student_model.dart';
+
+@pragma('vm:entry-point')
+Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
+  // If you're going to use other Firebase services in the background, such as Firestore,
+  // make sure you call `Firebase.initializeApp()` before using them.
+  debugPrint("Handling a background message: ${message.messageId}");
+}
 
 class NotificationService {
   static final FirebaseFirestore _firestore = FirebaseFirestore.instance;
@@ -17,9 +25,24 @@ class NotificationService {
       StreamController<List<NotificationModel>>.broadcast();
   static bool _initialized = false;
 
+  static final FlutterLocalNotificationsPlugin _localNotificationsPlugin =
+      FlutterLocalNotificationsPlugin();
+
   static Future<void> init() async {
     if (_initialized) return;
     _notificationBox = await Hive.openBox<Map>(_hiveBoxName);
+    
+    // Initialize Local Notifications
+    const AndroidInitializationSettings initializationSettingsAndroid =
+        AndroidInitializationSettings('@mipmap/ic_launcher');
+    const DarwinInitializationSettings initializationSettingsDarwin =
+        DarwinInitializationSettings();
+    const InitializationSettings initializationSettings = InitializationSettings(
+      android: initializationSettingsAndroid,
+      iOS: initializationSettingsDarwin,
+    );
+    await _localNotificationsPlugin.initialize(initializationSettings);
+
     _initialized = true;
     _syncFromFirestoreToHive();
     _listenToFirestore();
@@ -28,9 +51,53 @@ class NotificationService {
   static Future<void> initializePushNotifications() async {
     try {
       final messaging = FirebaseMessaging.instance;
-      await messaging.requestPermission();
+      await messaging.requestPermission(
+        alert: true,
+        badge: true,
+        sound: true,
+      );
+      
+      // Subscribe to topic
       await messaging.subscribeToTopic('academy_users');
+
+      // Set background handler
+      FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
+
+      // Listen for foreground messages
+      FirebaseMessaging.onMessage.listen((RemoteMessage message) {
+        debugPrint('Got a message whilst in the foreground!');
+        debugPrint('Message data: ${message.data}');
+
+        if (message.notification != null) {
+          debugPrint('Message also contained a notification: ${message.notification}');
+          _showLocalNotification(
+            title: message.notification?.title ?? 'Notification',
+            body: message.notification?.body ?? '',
+          );
+        }
+      });
     } catch (_) {}
+  }
+
+  static Future<void> _showLocalNotification({
+    required String title,
+    required String body,
+  }) async {
+    const AndroidNotificationDetails androidPlatformChannelSpecifics =
+        AndroidNotificationDetails(
+      'academy_channel',
+      'Academy Notifications',
+      importance: Importance.max,
+      priority: Priority.high,
+    );
+    const NotificationDetails platformChannelSpecifics =
+        NotificationDetails(android: androidPlatformChannelSpecifics);
+    await _localNotificationsPlugin.show(
+      DateTime.now().millisecond,
+      title,
+      body,
+      platformChannelSpecifics,
+    );
   }
 
   static Stream<List<NotificationModel>> notificationsStream()  {
@@ -132,6 +199,7 @@ class NotificationService {
     }
 
     await _saveNotification(notification, emitLocal: true);
+    _showLocalNotification(title: notification.title, body: notification.message);
   }
 
   static NotificationModel buildStudentRegistrationNotification({
@@ -140,7 +208,7 @@ class NotificationService {
   }) {
     final fullName = '${student.firstName} ${student.lastName}'.trim();
     return NotificationModel(
-      id: 'student_${student.id}_${DateTime.now().millisecondsSinceEpoch}',
+      id: 'reg_${student.id}_${DateTime.now().millisecondsSinceEpoch}',
       title: 'New Student Registered',
       message: '$fullName has been registered in ${student.classType} ${student.grade} (${student.subject}).',
       studentName: fullName,
@@ -152,6 +220,38 @@ class NotificationService {
       isRead: false,
       studentId: student.id,
     );
+  }
+
+  static Future<void> createFeePaymentNotification({
+    required StudentModel student,
+    required double amount,
+    bool isSecondInstallment = false,
+  }) async {
+    final currentUser = FirebaseAuth.instance.currentUser;
+    final userName = currentUser?.email ?? 'Administrator';
+    final fullName = student.name;
+
+    final title = isSecondInstallment ? 'Second Installment Received' : 'Fee Payment Received';
+    final message = isSecondInstallment 
+        ? '$fullName has paid Rs ${amount.toStringAsFixed(0)} as their second installment.'
+        : '$fullName has paid a fee of Rs ${amount.toStringAsFixed(0)}.';
+
+    final notification = NotificationModel(
+      id: 'pay_${student.id}_${DateTime.now().millisecondsSinceEpoch}',
+      title: title,
+      message: message,
+      studentName: fullName,
+      className: student.classType,
+      subject: student.subject,
+      registeredBy: userName,
+      timestamp: DateTime.now(),
+      notificationType: isSecondInstallment ? 'second_installment' : 'fee_payment',
+      isRead: false,
+      studentId: student.id,
+    );
+
+    await _saveNotification(notification, emitLocal: true);
+    _showLocalNotification(title: notification.title, body: notification.message);
   }
 
   static Future<void> _saveNotification(NotificationModel notification, {required bool emitLocal}) async {
@@ -234,3 +334,4 @@ class NotificationService {
     _initialized = false;
   }
 }
+

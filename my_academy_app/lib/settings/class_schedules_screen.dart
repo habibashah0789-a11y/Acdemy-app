@@ -51,12 +51,10 @@ class _ClassSchedulesScreenState extends State<ClassSchedulesScreen> {
   ];
 
   List<Map<String, dynamic>> get _availableSubjects {
-    final isFsc = _selectedGrade == 'First Year' || _selectedGrade == 'Second Year';
-    if (isFsc) {
-      return _subjectOptions.where((opt) => opt['name'] != 'Biology').toList();
-    } else {
-      return _subjectOptions.where((opt) => opt['name'] != 'Botany' && opt['name'] != 'Zoology').toList();
-    }
+    // All classes have the same 5 core subjects: Biology, Physics, Chemistry, English, Maths
+    return _subjectOptions.where((opt) => 
+      opt['name'] != 'Botany' && opt['name'] != 'Zoology'
+    ).toList();
   }
 
   @override

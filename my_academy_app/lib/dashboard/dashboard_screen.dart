@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:fl_chart/fl_chart.dart';
@@ -10,6 +11,7 @@ import '../models/notification_model.dart';
 import '../services/notification_service.dart';
 import '../screens/notifications_screen.dart';
 import '../screens/daily_records/daily_records_screen.dart';
+import '../settings/class_schedules_screen.dart';
 
 class _ActivityItem {
   final String title;
@@ -126,7 +128,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
     return GridView.builder(
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
-      itemCount: 3,
+      itemCount: 4,
       gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
         crossAxisCount: screenWidth < 600 ? 1 : 2,
         crossAxisSpacing: 12,
@@ -155,12 +157,25 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 );
               },
             );
-          default:
+          case 2:
             return _buildStatCard(
               'Pending',
               _fmt.format(pending),
               Icons.warning_amber_rounded,
               Colors.red,
+            );
+          default:
+            return _buildStatCard(
+              'Class Schedules',
+              'View',
+              Icons.schedule_rounded,
+              const Color(0xFF1565C0),
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const ClassSchedulesScreen()),
+                );
+              },
             );
         }
       },
@@ -643,6 +658,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
     final items = <_ActivityItem>[];
 
     for (final s in students) {
+      // 1. Check Registration
       if (s.createdAt.isAfter(since)) {
         items.add(_ActivityItem(
           title: 'Student Admission',
@@ -651,6 +667,32 @@ class _DashboardScreenState extends State<DashboardScreen> {
           icon: Icons.person_add_rounded,
           color: Colors.blue,
         ));
+      }
+
+      // 2. Check Payment History
+      if (s.paymentHistoryJson != null && s.paymentHistoryJson!.isNotEmpty) {
+        try {
+          final List<dynamic> history = jsonDecode(s.paymentHistoryJson!);
+          for (var i = 0; i < history.length; i++) {
+            final entry = history[i] as Map<String, dynamic>;
+            final date = DateTime.tryParse(entry['date'] ?? '') ?? DateTime.now();
+            
+            if (date.isAfter(since)) {
+              final amount = (entry['amount'] as num).toDouble();
+              final isSecond = i == 1; // Assuming second entry is second installment
+              
+              items.add(_ActivityItem(
+                title: isSecond ? 'Second Installment' : 'Fee Payment',
+                subtitle: '${s.name} paid Rs ${amount.toStringAsFixed(0)}',
+                time: date,
+                icon: Icons.payments_rounded,
+                color: isSecond ? Colors.purple : Colors.green,
+              ));
+            }
+          }
+        } catch (e) {
+          debugPrint('Error parsing history for ${s.name}: $e');
+        }
       }
     }
 

@@ -3,6 +3,7 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'fsc_teacher_screen.dart';
 import 'matric_teacher_screen.dart';
+import '../screens/fee_reminders_screen.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Constants
@@ -46,6 +47,18 @@ class TeacherFolderScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: const Text('Teachers')),
+      floatingActionButton: FloatingActionButton(
+        onPressed: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (_) => const FeeRemindersScreen()),
+          );
+        },
+        backgroundColor: const Color(0xFF25D366),
+        foregroundColor: Colors.white,
+        tooltip: 'Fee Reminders',
+        child: const Icon(Icons.message_rounded),
+      ),
       body: Padding(
         padding: const EdgeInsets.all(20),
         child: Column(

@@ -4,11 +4,10 @@ import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter_spinkit/flutter_spinkit.dart';
+import 'package:firebase_storage/firebase_storage.dart';
 import '../models/student_model.dart';
 import '../services/database_service.dart';
-import 'dart:io' as io;
-import 'package:flutter/foundation.dart' show kIsWeb;
-import 'package:path_provider/path_provider.dart';
+import '../services/notification_service.dart';
 import '../widgets/crop_image_dialog.dart';
 import '../theme/app_theme.dart';
 
@@ -128,22 +127,36 @@ class _EditStudentScreenState extends State<EditStudentScreen> {
     setState(() => _isSaving = true);
     try {
       String picUrl = _existingUrl;
+      
+      // Upload new image to Firebase Storage if provided
       if (_imageBytes != null) {
-        if (_existingUrl.isNotEmpty) await DatabaseService.deleteImage(_existingUrl);
-        String? u = await DatabaseService.uploadImage(_imageBytes!, 'students');
-        if (u != null) {
-          picUrl = u;
-        } else {
-          if (kIsWeb) {
-            final base64String = base64Encode(_imageBytes!);
-            picUrl = 'data:image/jpeg;base64,$base64String';
-          } else {
-            final appDocDir = await getApplicationDocumentsDirectory();
-            final String localPath = '${appDocDir.path}/profile_${widget.student.id}_${DateTime.now().millisecondsSinceEpoch}.jpg';
-            final localFile = io.File(localPath);
-            await localFile.writeAsBytes(_imageBytes!);
-            picUrl = localPath;
+        try {
+          // Delete old image if exists
+          if (_existingUrl.isNotEmpty) await DatabaseService.deleteImage(_existingUrl);
+          
+          final fileName = 'students/profile_${widget.student.id}_${DateTime.now().millisecondsSinceEpoch}.jpg';
+          final storageRef = FirebaseStorage.instance.ref().child(fileName);
+          
+          // Upload with timeout to prevent hanging
+          await storageRef
+              .putData(_imageBytes!, SettableMetadata(contentType: 'image/jpeg'))
+              .timeout(const Duration(seconds: 30));
+          
+          // Get download URL
+          picUrl = await storageRef.getDownloadURL().timeout(const Duration(seconds: 10));
+        } catch (uploadError) {
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: const Text('Image upload failed. Please check your internet connection and try again.'),
+                backgroundColor: Colors.orange,
+                duration: const Duration(seconds: 4),
+              ),
+            );
           }
+          // Don't proceed with update if image upload fails
+          setState(() => _isSaving = false);
+          return;
         }
       }
       double oldPaid = widget.student.feeSubmitted;
@@ -198,6 +211,17 @@ class _EditStudentScreenState extends State<EditStudentScreen> {
         paymentHistoryJson: history.isNotEmpty ? jsonEncode(history) : null,
       );
       await DatabaseService.updateStudent(updated);
+      
+      // Trigger Notification if payment was made
+      if (newPaid > oldPaid) {
+        final isSecond = history.length == 2;
+        await NotificationService.createFeePaymentNotification(
+          student: updated,
+          amount: newPaid - oldPaid,
+          isSecondInstallment: isSecond,
+        );
+      }
+
       if (mounted) Navigator.pop(context, true);
     } catch (e) {
       if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Failed: $e'), backgroundColor: Colors.red));
