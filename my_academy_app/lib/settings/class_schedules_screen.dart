@@ -47,7 +47,17 @@ class _ClassSchedulesScreenState extends State<ClassSchedulesScreen> {
     {'name': 'Maths', 'icon': Icons.calculate_rounded, 'color': Color(0xFF00897B)},
     {'name': 'Physics', 'icon': Icons.science_rounded, 'color': Color(0xFF2196F3)},
     {'name': 'Chemistry', 'icon': Icons.colorize_rounded, 'color': Color(0xFFFF9800)},
+    {'name': 'English', 'icon': Icons.menu_book_rounded, 'color': Color(0xFF9C27B0)},
   ];
+
+  List<Map<String, dynamic>> get _availableSubjects {
+    final isFsc = _selectedGrade == 'First Year' || _selectedGrade == 'Second Year';
+    if (isFsc) {
+      return _subjectOptions.where((opt) => opt['name'] != 'Biology').toList();
+    } else {
+      return _subjectOptions.where((opt) => opt['name'] != 'Botany' && opt['name'] != 'Zoology').toList();
+    }
+  }
 
   @override
   void initState() {
@@ -361,6 +371,11 @@ class _ClassSchedulesScreenState extends State<ClassSchedulesScreen> {
                       onTap: () {
                         setState(() {
                           _selectedGrade = option['value']!;
+                          final validSubjects = _availableSubjects;
+                          final isCurrentSubjectValid = validSubjects.any((s) => s['name'] == _selectedSubject);
+                          if (!isCurrentSubjectValid && validSubjects.isNotEmpty) {
+                            _selectedSubject = validSubjects.first['name']!;
+                          }
                         });
                       },
                       borderRadius: BorderRadius.circular(16),
@@ -431,9 +446,9 @@ class _ClassSchedulesScreenState extends State<ClassSchedulesScreen> {
             child: ListView.builder(
               scrollDirection: Axis.horizontal,
               padding: const EdgeInsets.symmetric(horizontal: 12),
-              itemCount: _subjectOptions.length,
+              itemCount: _availableSubjects.length,
               itemBuilder: (context, index) {
-                final option = _subjectOptions[index];
+                final option = _availableSubjects[index];
                 final String name = option['name']!;
                 final IconData icon = option['icon']!;
                 final Color themeColor = option['color']!;
