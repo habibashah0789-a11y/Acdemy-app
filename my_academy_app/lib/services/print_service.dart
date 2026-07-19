@@ -7,6 +7,8 @@ import 'package:flutter/services.dart' show rootBundle;
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'dart:convert';
 import 'dart:io' as io;
+import 'package:path_provider/path_provider.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../models/student_model.dart';
 import 'database_service.dart';
 
@@ -247,10 +249,33 @@ class PrintService {
       ),
     );
 
-    await Printing.layoutPdf(
-      onLayout: (PdfPageFormat format) async => doc.save(),
-      name: '${student.name.replaceAll(' ', '_')}_record.pdf',
-    );
+    if (!kIsWeb && io.Platform.isWindows) {
+      try {
+        final bytes = await doc.save();
+        final tempDir = await getTemporaryDirectory();
+        final fileName = '${student.name.replaceAll(' ', '_')}_record.pdf';
+        final file = io.File('${tempDir.path}\\$fileName');
+        await file.writeAsBytes(bytes);
+        
+        try {
+          final uri = Uri.file(file.path);
+          await launchUrl(uri);
+        } catch (e) {
+          await io.Process.start('cmd', ['/c', 'start', '', file.path]);
+        }
+      } catch (e) {
+        debugPrint('Windows print fallback error: $e');
+        await Printing.layoutPdf(
+          onLayout: (PdfPageFormat format) async => doc.save(),
+          name: '${student.name.replaceAll(' ', '_')}_record.pdf',
+        );
+      }
+    } else {
+      await Printing.layoutPdf(
+        onLayout: (PdfPageFormat format) async => doc.save(),
+        name: '${student.name.replaceAll(' ', '_')}_record.pdf',
+      );
+    }
   }
 
   static pw.Widget _buildInfoRow(String label, String value) {

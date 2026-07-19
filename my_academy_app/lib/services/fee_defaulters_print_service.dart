@@ -4,6 +4,10 @@ import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:printing/printing.dart';
 import 'package:flutter/services.dart' show rootBundle;
+import 'package:flutter/foundation.dart' show kIsWeb;
+import 'dart:io' as io;
+import 'package:path_provider/path_provider.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../models/student_model.dart';
 import 'database_service.dart';
 
@@ -210,9 +214,32 @@ class FeeDefaultersPrintService {
       );
     }
 
-    await Printing.layoutPdf(
-      onLayout: (PdfPageFormat format) async => doc.save(),
-      name: 'fee_defaulters_${DateFormat('yyyyMMdd').format(DateTime.now())}.pdf',
-    );
+    if (!kIsWeb && io.Platform.isWindows) {
+      try {
+        final bytes = await doc.save();
+        final tempDir = await getTemporaryDirectory();
+        final fileName = 'fee_defaulters_${DateFormat('yyyyMMdd').format(DateTime.now())}.pdf';
+        final file = io.File('${tempDir.path}\\$fileName');
+        await file.writeAsBytes(bytes);
+        
+        try {
+          final uri = Uri.file(file.path);
+          await launchUrl(uri);
+        } catch (e) {
+          await io.Process.start('cmd', ['/c', 'start', '', file.path]);
+        }
+      } catch (e) {
+        debugPrint('Windows print fallback error: $e');
+        await Printing.layoutPdf(
+          onLayout: (PdfPageFormat format) async => doc.save(),
+          name: 'fee_defaulters_${DateFormat('yyyyMMdd').format(DateTime.now())}.pdf',
+        );
+      }
+    } else {
+      await Printing.layoutPdf(
+        onLayout: (PdfPageFormat format) async => doc.save(),
+        name: 'fee_defaulters_${DateFormat('yyyyMMdd').format(DateTime.now())}.pdf',
+      );
+    }
   }
 }
