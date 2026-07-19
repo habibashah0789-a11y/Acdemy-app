@@ -5,6 +5,7 @@ import '../services/database_service.dart';
 import 'backup_restore_screen.dart';
 import 'appearance_screen.dart';
 import 'recycle_bin_screen.dart';
+import 'class_schedules_screen.dart';
 import '../screens/fee_reminders_screen.dart';
 
 class SettingsScreen extends StatelessWidget {
@@ -49,6 +50,12 @@ class SettingsScreen extends StatelessWidget {
             Icons.palette,
             "Appearance",
             const AppearanceScreen(),
+          ),
+          _tile(
+            context,
+            Icons.schedule_rounded,
+            "Class Schedules",
+            const ClassSchedulesScreen(),
           ),
           ListTile(
             leading: const Icon(Icons.message_rounded, color: Color(0xFF25D366)),
