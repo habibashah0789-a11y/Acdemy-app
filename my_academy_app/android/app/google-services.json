@@ -1,79 +1,26 @@
 {
   "project_info": {
-    "project_number": "335773136778",
-    "project_id": "habiba-12",
-    "storage_bucket": "habiba-12.firebasestorage.app"
+    "project_number": "922952422234",
+    "project_id": "quaid-academy",
+    "storage_bucket": "quaid-academy.firebasestorage.app"
   },
   "client": [
     {
       "client_info": {
-        "mobilesdk_app_id": "1:335773136778:android:1b701799315d778ef3fa73",
+        "mobilesdk_app_id": "1:922952422234:android:24ebf3c3934ae98223d963",
         "android_client_info": {
           "package_name": "com.example.my_academy_app"
         }
       },
-      "oauth_client": [
-        {
-          "client_id": "335773136778-9u53fddbl874si54gc3c4hrh2b051j1h.apps.googleusercontent.com",
-          "client_type": 3
-        }
-      ],
+      "oauth_client": [],
       "api_key": [
         {
-          "current_key": "AIzaSyA1g0qEtnkN-QCVDJmKw7qMneB_e4koW3I"
+          "current_key": "AIzaSyAqj9jfDa2Q2rT9ccAuDkjTzugpksfgGvo"
         }
       ],
       "services": {
         "appinvite_service": {
-          "other_platform_oauth_client": [
-            {
-              "client_id": "335773136778-1nqqmk5gg8hkghi2vdq3miigrniooq7s.apps.googleusercontent.com",
-              "client_type": 3
-            },
-            {
-              "client_id": "335773136778-vfq2lk75atmqrofksu3aile5v1ansgv3.apps.googleusercontent.com",
-              "client_type": 2,
-              "ios_info": {
-                "bundle_id": "com.example.myAcademyApp"
-              }
-            }
-          ]
-        }
-      }
-    },
-    {
-      "client_info": {
-        "mobilesdk_app_id": "1:335773136778:android:befeee305b0d3aa9f3fa73",
-        "android_client_info": {
-          "package_name": "com.example.myapp"
-        }
-      },
-      "oauth_client": [
-        {
-          "client_id": "335773136778-9u53fddbl874si54gc3c4hrh2b051j1h.apps.googleusercontent.com",
-          "client_type": 3
-        }
-      ],
-      "api_key": [
-        {
-          "current_key": "AIzaSyA1g0qEtnkN-QCVDJmKw7qMneB_e4koW3I"
-        }
-      ],
-      "services": {
-        "appinvite_service": {
-          "other_platform_oauth_client": [
-            {
-              "client_id": "335773136778-1nqqmk5gg8hkghi2vdq3miigrniooq7s.apps.googleusercontent.com",
-              "client_type": 3
-            },
-            {
-              "client_id": "335773136778-vfq2lk75atmqrofksu3aile5v1ansgv3.apps.googleusercontent.com",
-              "client_type": 2,
-              "ios_info": {
-                "bundle_id": "com.example.myAcademyApp"
-              }
-            }
-          ]
+          "other_platform_oauth_client": []
         }
       }
     }

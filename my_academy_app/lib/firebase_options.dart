@@ -31,33 +31,30 @@ class DefaultFirebaseOptions {
   }
 
   static const FirebaseOptions web = FirebaseOptions(
-    apiKey: 'AIzaSyC55pOlML-1-4FNVAi8MtYrHdexm0FggCc',
-    appId: '1:335773136778:web:4bd2a76ca3736a0cf3fa73',
-    messagingSenderId: '335773136778',
-    projectId: 'habiba-12',
-    authDomain: 'habiba-12.firebaseapp.com',
-    storageBucket: 'habiba-12.firebasestorage.app',
+    apiKey: 'AIzaSyCfAxjVCz0wux86t_DiepAiWxA6vZYtSkY',
+    appId: '1:922952422234:web:b0d9aa20617fb18e23d963',
+    messagingSenderId: '922952422234',
+    projectId: 'quaid-academy',
+    authDomain: 'quaid-academy.firebaseapp.com',
+    storageBucket: 'quaid-academy.firebasestorage.app',
+    measurementId: 'G-WB8KH503NS',
   );
 
   static const FirebaseOptions android = FirebaseOptions(
-    apiKey: 'AIzaSyA1g0qEtnkN-QCVDJmKw7qMneB_e4koW3I',
-    appId: '1:335773136778:android:1b701799315d778ef3fa73',
-    messagingSenderId: '335773136778',
-    projectId: 'habiba-12',
-    storageBucket: 'habiba-12.firebasestorage.app',
+    apiKey: 'AIzaSyAqj9jfDa2Q2rT9ccAuDkjTzugpksfgGvo',
+    appId: '1:922952422234:android:24ebf3c3934ae98223d963',
+    messagingSenderId: '922952422234',
+    projectId: 'quaid-academy',
+    storageBucket: 'quaid-academy.firebasestorage.app',
   );
-
   static const FirebaseOptions ios = FirebaseOptions(
-    apiKey: 'AIzaSyADgD5A5zEphILfWvHcjIJE7YMJxDhbtlo',
-    appId: '1:335773136778:ios:82845e6b6a339d2ff3fa73',
-    messagingSenderId: '335773136778',
-    projectId: 'habiba-12',
-    storageBucket: 'habiba-12.firebasestorage.app',
-    iosClientId:
-        '335773136778-vfq2lk75atmqrofksu3aile5v1ansgv3.apps.googleusercontent.com',
+    apiKey: 'AIzaSyCqxGNfazP-ib7UY1CksFKGq9qxf53ZWZM',
+    appId: '1:922952422234:ios:00a32a5b8c9b5bb323d963',
+    messagingSenderId: '922952422234',
+    projectId: 'quaid-academy',
+    storageBucket: 'quaid-academy.firebasestorage.app',
     iosBundleId: 'com.example.myAcademyApp',
   );
-
   static const FirebaseOptions macos = FirebaseOptions(
     apiKey: 'AIzaSyADgD5A5zEphILfWvHcjIJE7YMJxDhbtlo',
     appId: '1:335773136778:ios:82845e6b6a339d2ff3fa73',
