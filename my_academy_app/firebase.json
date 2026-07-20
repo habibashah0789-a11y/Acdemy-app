@@ -1,1 +1,27 @@
-{"flutter":{"platforms":{"android":{"default":{"projectId":"quaid-academy","appId":"1:922952422234:android:24ebf3c3934ae98223d963","fileOutput":"android/app/google-services.json"}},"dart":{"lib/firebase_options.dart":{"projectId":"quaid-academy","configurations":{"android":"1:922952422234:android:24ebf3c3934ae98223d963","ios":"1:922952422234:ios:00a32a5b8c9b5bb323d963","web":"1:922952422234:web:b0d9aa20617fb18e23d963"}}}}}}
+{
+  "firestore": {
+    "rules": "firestore.rules",
+    "indexes": "firestore.indexes.json"
+  },
+  "flutter": {
+    "platforms": {
+      "android": {
+        "default": {
+          "projectId": "quaid-academy",
+          "appId": "1:922952422234:android:24ebf3c3934ae98223d963",
+          "fileOutput": "android/app/google-services.json"
+        }
+      }
+    },
+    "dart": {
+      "lib/firebase_options.dart": {
+        "projectId": "quaid-academy",
+        "configurations": {
+          "android": "1:922952422234:android:24ebf3c3934ae98223d963",
+          "ios": "1:922952422234:ios:00a32a5b8c9b5bb323d963",
+          "web": "1:922952422234:web:b0d9aa20617fb18e23d963"
+        }
+      }
+    }
+  }
+}
