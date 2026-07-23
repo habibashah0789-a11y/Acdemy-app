@@ -10,8 +10,6 @@ import '../models/student_model.dart';
 
 @pragma('vm:entry-point')
 Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
-  // If you're going to use other Firebase services in the background, such as Firestore,
-  // make sure you call `Firebase.initializeApp()` before using them.
   debugPrint("Handling a background message: ${message.messageId}");
 }
 
@@ -21,6 +19,7 @@ class NotificationService {
   static const String _hiveBoxName = 'notifications';
   static late Box<Map> _notificationBox;
   static StreamSubscription<QuerySnapshot>? _firestoreSubscription;
+  static StreamSubscription<User?>? _authSubscription;
   static final StreamController<List<NotificationModel>> _controller =
       StreamController<List<NotificationModel>>.broadcast();
   static bool _initialized = false;
@@ -44,8 +43,30 @@ class NotificationService {
     await _localNotificationsPlugin.initialize(initializationSettings);
 
     _initialized = true;
-    _syncFromFirestoreToHive();
-    _listenToFirestore();
+
+    // Immediately push cached Hive notifications to controller
+    _controller.add(_sortedNotifications(_fromHive()));
+
+    // Listen for Auth state changes so Firestore operations run only when authenticated
+    _authSubscription?.cancel();
+    _authSubscription = FirebaseAuth.instance.authStateChanges().listen((user) {
+      if (user != null) {
+        _syncFromFirestoreToHive();
+        _listenToFirestore();
+      } else {
+        _cancelFirestoreSubscription();
+      }
+    });
+
+    if (FirebaseAuth.instance.currentUser != null) {
+      _syncFromFirestoreToHive();
+      _listenToFirestore();
+    }
+  }
+
+  static void _cancelFirestoreSubscription() {
+    _firestoreSubscription?.cancel();
+    _firestoreSubscription = null;
   }
 
   static Future<void> initializePushNotifications() async {
@@ -57,19 +78,11 @@ class NotificationService {
         sound: true,
       );
       
-      // Subscribe to topic
       await messaging.subscribeToTopic('academy_users');
-
-      // Set background handler
       FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
 
-      // Listen for foreground messages
       FirebaseMessaging.onMessage.listen((RemoteMessage message) {
-        debugPrint('Got a message whilst in the foreground!');
-        debugPrint('Message data: ${message.data}');
-
         if (message.notification != null) {
-          debugPrint('Message also contained a notification: ${message.notification}');
           _showLocalNotification(
             title: message.notification?.title ?? 'Notification',
             body: message.notification?.body ?? '',
@@ -100,16 +113,20 @@ class NotificationService {
     );
   }
 
-  static Stream<List<NotificationModel>> notificationsStream()  {
+  static Stream<List<NotificationModel>> notificationsStream() {
     if (!_initialized) {
-         init();
+      init();
     }
     return _controller.stream;
   }
 
   static Future<void> _syncFromFirestoreToHive() async {
+    if (FirebaseAuth.instance.currentUser == null) return;
     try {
-      final snapshot = await _firestore.collection(_collection).orderBy('timestamp', descending: true).get();
+      final snapshot = await _firestore
+          .collection(_collection)
+          .orderBy('timestamp', descending: true)
+          .get();
       final notifications = snapshot.docs
           .map((doc) {
             final rawData = doc.data() as Map<String, dynamic>? ?? {};
@@ -122,10 +139,14 @@ class NotificationService {
         await _notificationBox.put(notification.id, notification.toHiveMap());
       }
       _controller.add(_sortedNotifications(_fromHive()));
-    } catch (_) {}
+    } catch (e) {
+      debugPrint("Notification sync error: $e");
+    }
   }
 
   static void _listenToFirestore() {
+    if (FirebaseAuth.instance.currentUser == null) return;
+
     _firestoreSubscription?.cancel();
 
     _firestoreSubscription = _firestore
@@ -193,9 +214,17 @@ class NotificationService {
       registeredBy: registeredBy ?? currentUser?.email ?? 'Administrator',
     );
 
-    final exists = await _firestore.collection(_collection).where('studentId', isEqualTo: student.id).where('notificationType', isEqualTo: 'student_registered').get();
-    if (exists.docs.isNotEmpty) {
-      return;
+    if (currentUser != null) {
+      try {
+        final exists = await _firestore
+            .collection(_collection)
+            .where('studentId', isEqualTo: student.id)
+            .where('notificationType', isEqualTo: 'student_registered')
+            .get();
+        if (exists.docs.isNotEmpty) {
+          return;
+        }
+      } catch (_) {}
     }
 
     await _saveNotification(notification, emitLocal: true);
@@ -260,9 +289,11 @@ class NotificationService {
     }
     final exists = _notificationBox.values.any((value) => value['id'] == notification.id);
     if (!exists) {
-      try {
-        await _firestore.collection(_collection).doc(notification.id).set(notification.toMap());
-      } catch (_) {}
+      if (FirebaseAuth.instance.currentUser != null) {
+        try {
+          await _firestore.collection(_collection).doc(notification.id).set(notification.toMap());
+        } catch (_) {}
+      }
       await _notificationBox.put(notification.id, notification.toHiveMap());
       if (emitLocal) {
         _controller.add(_sortedNotifications([..._fromHive()]));
@@ -274,8 +305,12 @@ class NotificationService {
     if (!_initialized) {
       await init();
     }
-    final docRef = _firestore.collection(_collection).doc(notificationId);
-    await docRef.update({'isRead': true});
+    if (FirebaseAuth.instance.currentUser != null) {
+      try {
+        final docRef = _firestore.collection(_collection).doc(notificationId);
+        await docRef.update({'isRead': true});
+      } catch (_) {}
+    }
     final existing = _notificationBox.get(notificationId);
     if (existing != null) {
       final updated = Map<String, dynamic>.from(existing)
@@ -289,12 +324,16 @@ class NotificationService {
     if (!_initialized) {
       await init();
     }
-    final batch = _firestore.batch();
     final notifications = _fromHive();
-    for (final notification in notifications.where((n) => !n.isRead)) {
-      batch.update(_firestore.collection(_collection).doc(notification.id), {'isRead': true});
+    if (FirebaseAuth.instance.currentUser != null) {
+      try {
+        final batch = _firestore.batch();
+        for (final notification in notifications.where((n) => !n.isRead)) {
+          batch.update(_firestore.collection(_collection).doc(notification.id), {'isRead': true});
+        }
+        await batch.commit();
+      } catch (_) {}
     }
-    await batch.commit();
     for (final notification in notifications.where((n) => !n.isRead)) {
       final existing = _notificationBox.get(notification.id);
       if (existing != null) {
@@ -309,7 +348,11 @@ class NotificationService {
     if (!_initialized) {
       await init();
     }
-    await _firestore.collection(_collection).doc(notificationId).delete();
+    if (FirebaseAuth.instance.currentUser != null) {
+      try {
+        await _firestore.collection(_collection).doc(notificationId).delete();
+      } catch (_) {}
+    }
     await _notificationBox.delete(notificationId);
     _controller.add(_sortedNotifications([..._fromHive()]));
   }
@@ -318,20 +361,24 @@ class NotificationService {
     if (!_initialized) {
       await init();
     }
-    final snapshot = await _firestore.collection(_collection).get();
-    final batch = _firestore.batch();
-    for (final doc in snapshot.docs) {
-      batch.delete(doc.reference);
+    if (FirebaseAuth.instance.currentUser != null) {
+      try {
+        final snapshot = await _firestore.collection(_collection).get();
+        final batch = _firestore.batch();
+        for (final doc in snapshot.docs) {
+          batch.delete(doc.reference);
+        }
+        await batch.commit();
+      } catch (_) {}
     }
-    await batch.commit();
     await _notificationBox.clear();
     _controller.add([]);
   }
 
   static Future<void> dispose() async {
+    await _authSubscription?.cancel();
     await _firestoreSubscription?.cancel();
     await _controller.close();
     _initialized = false;
   }
 }
-

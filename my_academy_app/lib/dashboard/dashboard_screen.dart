@@ -143,6 +143,23 @@ class _DashboardScreenState extends State<DashboardScreen> {
               '${students.length}',
               Icons.school_rounded,
               Colors.blue,
+              onTap: () {
+                showDialog(
+                  context: context,
+                  builder: (context) => Dialog(
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(24),
+                    ),
+                    child: Container(
+                      constraints: const BoxConstraints(maxWidth: 500),
+                      padding: const EdgeInsets.all(4),
+                      child: SingleChildScrollView(
+                        child: _buildStudentStrengthChart(students, isDialog: true),
+                      ),
+                    ),
+                  ),
+                );
+              },
             );
           case 1:
             return _buildStatCard(
@@ -255,7 +272,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
   );
 }
 
-  Widget _buildStudentStrengthChart(List<StudentModel> students) {
+  Widget _buildStudentStrengthChart(List<StudentModel> students,
+      {bool isDialog = false}) {
     final fsc1st = students
         .where((s) =>
             _isFsc(s.classType) && s.grade.toLowerCase().contains('first'))
@@ -291,13 +309,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-               // mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Column(
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Expanded(
+                  child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
@@ -308,29 +324,43 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       const SizedBox(height: 2),
                       Text(
                         'Active enrollments by class level',
-                        style:
-                            TextStyle(fontSize: 11, color: Colors.grey.shade500),
+                        style: TextStyle(
+                            fontSize: 11, color: Colors.grey.shade500),
                       ),
                     ],
                   ),
-                  Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                    decoration: BoxDecoration(
-                      color: AppTheme.primaryBlue.withValues(alpha: 0.1),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Text(
-                      '${students.length} Total',
-                      style: GoogleFonts.poppins(
-                        fontSize: 13,
-                        fontWeight: FontWeight.bold,
-                        color: AppTheme.primaryBlue,
+                ),
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 10, vertical: 6),
+                      decoration: BoxDecoration(
+                        color: AppTheme.primaryBlue.withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Text(
+                        '${students.length} Total',
+                        style: GoogleFonts.poppins(
+                          fontSize: 13,
+                          fontWeight: FontWeight.bold,
+                          color: AppTheme.primaryBlue,
+                        ),
                       ),
                     ),
-                  ),
-                ],
-              ),
+                    if (isDialog) ...[
+                      const SizedBox(width: 4),
+                      IconButton(
+                        onPressed: () => Navigator.pop(context),
+                        icon: const Icon(Icons.close_rounded),
+                        padding: EdgeInsets.zero,
+                        constraints: const BoxConstraints(),
+                      ),
+                    ],
+                  ],
+                ),
+              ],
             ),
             const SizedBox(height: 24),
             SizedBox(
@@ -848,11 +878,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 _buildGreeting(),
                 const SizedBox(height: 24),
                 _buildStatsGrid(students),
-                const SizedBox(height: 32),
-                _buildSectionTitle('Students Strength'),
-                const SizedBox(height: 16),
-                _buildStudentStrengthChart(students),
-                const SizedBox(height: 32),
+
+                 const SizedBox(height: 32),
                 _buildSectionTitle('Revenue Overview'),
                 const SizedBox(height: 16),
                 _buildRevenueChartDirect(students),

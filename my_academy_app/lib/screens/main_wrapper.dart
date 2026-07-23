@@ -5,7 +5,6 @@ import '../teachers/teacher_folder_screen.dart';
 import '../theme/app_theme.dart';
 import '../settings/setting_screen.dart';
 import '../services/notification_service.dart';
-import 'daily_records/daily_records_screen.dart';
 
 class MainWrapper extends StatefulWidget {
   const MainWrapper({super.key});
@@ -22,7 +21,6 @@ class _MainWrapperState extends State<MainWrapper> {
     const DashboardScreen(),
     const StudentListScreen(),
     const TeacherFolderScreen(),
-    const DailyRecordsScreen(),
     const SettingsScreen(),
   ];
 
@@ -82,11 +80,6 @@ class _MainWrapperState extends State<MainWrapper> {
             icon: Icon(Icons.supervisor_account_outlined),
             activeIcon: Icon(Icons.supervisor_account_rounded),
             label: 'Teachers',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.receipt_long_outlined),
-            activeIcon: Icon(Icons.receipt_long_rounded),
-            label: 'Records',
           ),
           BottomNavigationBarItem(
             icon: Icon(Icons.settings_outlined),

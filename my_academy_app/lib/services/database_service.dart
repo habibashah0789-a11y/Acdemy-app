@@ -27,30 +27,57 @@ class DatabaseService {
 
   static Future<bool> addStudent(StudentModel student) async {
     await _studentBox.put(student.id, student);
-    try {
-      await _firestore.collection('students').doc(student.id).set(student.toMap()).timeout(const Duration(seconds: 4));
-      return true;
-    } catch (e) { return false; }
+    if (FirebaseAuth.instance.currentUser != null) {
+      try {
+        await _firestore
+            .collection('students')
+            .doc(student.id)
+            .set(student.toMap())
+            .timeout(const Duration(seconds: 4));
+      } catch (e) {
+        debugPrint('Firestore add student failed: $e');
+      }
+    }
+    return true;
   }
 
   static Future<bool> updateStudent(StudentModel student) async {
     await _studentBox.put(student.id, student);
-    try {
-      await _firestore.collection('students').doc(student.id).update(student.toMap()).timeout(const Duration(seconds: 4));
-      return true;
-    } catch (e) { return false; }
+    if (FirebaseAuth.instance.currentUser != null) {
+      try {
+        await _firestore
+            .collection('students')
+            .doc(student.id)
+            .update(student.toMap())
+            .timeout(const Duration(seconds: 4));
+      } catch (e) {
+        debugPrint('Firestore update student failed: $e');
+      }
+    }
+    return true;
   }
 
   static Future<bool> deleteStudent(String id) async {
     await _studentBox.delete(id);
-    try {
-      await _firestore.collection('students').doc(id).delete().timeout(const Duration(seconds: 4));
-      return true;
-    } catch (e) { return false; }
+    if (FirebaseAuth.instance.currentUser != null) {
+      try {
+        await _firestore
+            .collection('students')
+            .doc(id)
+            .delete()
+            .timeout(const Duration(seconds: 4));
+      } catch (e) {
+        debugPrint('Firestore delete student failed: $e');
+      }
+    }
+    return true;
   }
 
-  // ── REAL-TIME STREAM for StudentListScreen (FIRSTORE ONLY) ──
+  // ── REAL-TIME STREAM for StudentListScreen (FIRESTORE ONLY WHEN AUTHENTICATED) ──
   static Stream<QuerySnapshot> getStudentsStream() {
+    if (FirebaseAuth.instance.currentUser == null) {
+      return const Stream.empty();
+    }
     return _firestore
         .collection('students')
         .orderBy('createdAt', descending: true)
@@ -59,28 +86,37 @@ class DatabaseService {
 
   // ── Get all students from Firestore (one-time fetch) ──
   static Future<List<StudentModel>> getAllStudentsFromFirestore() async {
-    final snapshot = await _firestore.collection('students').get();
-    return snapshot.docs
-        .map((doc) => StudentModel.fromFirestore(doc))
-        .toList();
-  }
-  // Add this method to DatabaseService class
-static Future<StudentModel?> getStudentById(String studentId) async {
-  try {
-    final doc = await _firestore.collection('students').doc(studentId).get();
-    if (doc.exists) {
-      return StudentModel.fromFirestore(doc);
+    if (FirebaseAuth.instance.currentUser == null) {
+      return getAllStudentsLocal();
     }
-  } catch (e) {
-    // Log error: Error getting student
+    try {
+      final snapshot = await _firestore.collection('students').get();
+      return snapshot.docs
+          .map((doc) => StudentModel.fromFirestore(doc))
+          .toList();
+    } catch (e) {
+      return getAllStudentsLocal();
+    }
   }
-  
-  // Fallback to local Hive
-  return _studentBox.get(studentId);
-}
+
+  static Future<StudentModel?> getStudentById(String studentId) async {
+    if (FirebaseAuth.instance.currentUser != null) {
+      try {
+        final doc = await _firestore.collection('students').doc(studentId).get();
+        if (doc.exists) {
+          return StudentModel.fromFirestore(doc);
+        }
+      } catch (e) {
+        debugPrint('Error getting student from Firestore: $e');
+      }
+    }
+    // Fallback to local Hive
+    return _studentBox.get(studentId);
+  }
 
   // ── Image Upload (works on Web + Mobile + Windows) ──
   static Future<String?> uploadImage(Uint8List imageBytes, String folder) async {
+    if (FirebaseAuth.instance.currentUser == null) return null;
     try {
       String fileName = '${DateTime.now().millisecondsSinceEpoch}.jpg';
       Reference ref = _storage.ref().child('$folder/$fileName');
@@ -92,6 +128,7 @@ static Future<StudentModel?> getStudentById(String studentId) async {
 
   // ── Image Delete ──
   static Future<void> deleteImage(String imageUrl) async {
+    if (FirebaseAuth.instance.currentUser == null) return;
     try { await _storage.refFromURL(imageUrl).delete(); } catch (e) {
       // Ignore if image does not exist or deletion fails.
     }
@@ -99,6 +136,7 @@ static Future<StudentModel?> getStudentById(String studentId) async {
 
   // ── Sync ──
   static Future<void> syncFromFirestore() async {
+    if (FirebaseAuth.instance.currentUser == null) return;
     try {
       var s = await _firestore.collection('students').get();
       await _studentBox.clear();
@@ -106,17 +144,18 @@ static Future<StudentModel?> getStudentById(String studentId) async {
         await _studentBox.put(doc.id, StudentModel.fromFirestore(doc));
       }
     } catch (e) {
-      // Ignore offline or other sync failures.
+      debugPrint('Sync from Firestore failed: $e');
     }
   }
 
   static Future<void> syncToFirestore() async {
+    if (FirebaseAuth.instance.currentUser == null) return;
     try {
       for (var s in _studentBox.values) {
         await _firestore.collection('students').doc(s.id).set(s.toMap());
       }
     } catch (e) {
-      // Ignore offline or other sync failures.
+      debugPrint('Sync to Firestore failed: $e');
     }
   }
 
@@ -205,7 +244,9 @@ static Future<StudentModel?> getStudentById(String studentId) async {
       }
 
       // Async sync to Firestore
-      syncToFirestore();
+      if (FirebaseAuth.instance.currentUser != null) {
+        syncToFirestore();
+      }
       return true;
     } catch (e) {
       return false;
@@ -214,33 +255,38 @@ static Future<StudentModel?> getStudentById(String studentId) async {
 
   // ── Recycle Bin ──
   static Future<bool> restoreStudent(RecycledStudent recycled) async {
-    try {
-      // Add back to students collection
-      await _firestore.collection('students').doc(recycled.id).set(recycled.toMap());
-      // Remove from recycled_students collection
-      await _firestore.collection('recycled_students').doc(recycled.id).delete();
-      // Update local boxes
-      await _studentBox.put(recycled.id, recycled);
-      await _recycledStudentBox.delete(recycled.id);
-      return true;
-    } catch (e) {
-      return false;
+    await _studentBox.put(recycled.id, recycled);
+    await _recycledStudentBox.delete(recycled.id);
+
+    if (FirebaseAuth.instance.currentUser != null) {
+      try {
+        await _firestore.collection('students').doc(recycled.id).set(recycled.toMap());
+        await _firestore.collection('recycled_students').doc(recycled.id).delete();
+      } catch (e) {
+        debugPrint('Restore student cloud sync failed: $e');
+      }
     }
+    return true;
   }
 
   static Future<void> emptyRecycleBin() async {
-    try {
-      final querySnapshot = await _firestore.collection('recycled_students').get();
-      for (var doc in querySnapshot.docs) {
-        await doc.reference.delete();
+    await _recycledStudentBox.clear();
+    if (FirebaseAuth.instance.currentUser != null) {
+      try {
+        final querySnapshot = await _firestore.collection('recycled_students').get();
+        for (var doc in querySnapshot.docs) {
+          await doc.reference.delete();
+        }
+      } catch (e) {
+        debugPrint('Error emptying recycle bin in cloud: $e');
       }
-      await _recycledStudentBox.clear();
-    } catch (e) {
-      debugPrint('Error emptying recycle bin: $e');
     }
   }
 
   static Stream<QuerySnapshot> getRecycledStudentsStream() {
+    if (FirebaseAuth.instance.currentUser == null) {
+      return const Stream.empty();
+    }
     return _firestore.collection('recycled_students').snapshots();
   }
 
@@ -278,22 +324,26 @@ static Future<StudentModel?> getStudentById(String studentId) async {
     await _recycledStudentBox.put(recycled.id, recycled);
     await _studentBox.delete(student.id);
 
-    try {
-      await _firestore.collection('recycled_students').doc(recycled.id).set(recycled.toRecycleMap());
-      await _firestore.collection('students').doc(student.id).delete();
-      return true;
-    } catch (e) {
-      return false;
+    if (FirebaseAuth.instance.currentUser != null) {
+      try {
+        await _firestore.collection('recycled_students').doc(recycled.id).set(recycled.toRecycleMap());
+        await _firestore.collection('students').doc(student.id).delete();
+      } catch (e) {
+        debugPrint('Recycle student cloud sync failed: $e');
+      }
     }
+    return true;
   }
 
   static Future<bool> deleteRecycledStudent(String id) async {
     await _recycledStudentBox.delete(id);
-    try {
-      await _firestore.collection('recycled_students').doc(id).delete().timeout(const Duration(seconds: 4));
-      return true;
-    } catch (e) {
-      return false;
+    if (FirebaseAuth.instance.currentUser != null) {
+      try {
+        await _firestore.collection('recycled_students').doc(id).delete().timeout(const Duration(seconds: 4));
+      } catch (e) {
+        debugPrint('Delete recycled student cloud sync failed: $e');
+      }
     }
+    return true;
   }
 }

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'dart:async';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:hive/hive.dart';
 import '../models/student_model.dart';
 
@@ -8,25 +9,42 @@ class SyncService extends ChangeNotifier {
   bool _initialized = false;
   // Stream subscription for Firestore updates.
   StreamSubscription<QuerySnapshot<Map<String, dynamic>>>? _subscription;
+  // Stream subscription for Firebase Auth state updates.
+  StreamSubscription<User?>? _authSubscription;
   // Local cache of students (mirrors Hive content).
   List<StudentModel> _students = [];
 
   List<StudentModel> get students => List.unmodifiable(_students);
 
-  // Initialize Hive box reference. Should be called after DatabaseService.init().
+  // Initialize Hive box reference and setup auth-aware synchronization.
   Future<void> init() async {
     if (_initialized) return;
     _initialized = true;
+
     // Ensure Hive box is opened.
     final Box<StudentModel> studentBox = await Hive.openBox<StudentModel>('students');
-    // Load existing cached students.
+    // Load existing cached students from Hive immediately.
     _students = studentBox.values.toList();
     notifyListeners();
-    // Start listening to Firestore changes.
-    _subscribeToFirestore(studentBox);
+
+    // Listen for authentication state changes so synchronization only runs when logged in
+    _authSubscription = FirebaseAuth.instance.authStateChanges().listen((user) {
+      if (user != null) {
+        _subscribeToFirestore(studentBox);
+      } else {
+        _cancelFirestoreSubscription();
+      }
+    });
+
+    // Check current auth status on initial setup
+    if (FirebaseAuth.instance.currentUser != null) {
+      _subscribeToFirestore(studentBox);
+    }
   }
 
   void _subscribeToFirestore(Box<StudentModel> studentBox) {
+    if (FirebaseAuth.instance.currentUser == null) return;
+
     _subscription?.cancel();
     _subscription = FirebaseFirestore.instance
         .collection('students')
@@ -49,7 +67,7 @@ class SyncService extends ChangeNotifier {
         }
       }
 
-      // Prune local students not present in the current Firestore collection (e.g. deleted while offline)
+      // Prune local students not present in current Firestore collection
       final firestoreIds = snapshot.docs.map((doc) => doc.id).toSet();
       for (var key in studentBox.keys) {
         if (!firestoreIds.contains(key)) {
@@ -67,9 +85,20 @@ class SyncService extends ChangeNotifier {
     });
   }
 
+  void _cancelFirestoreSubscription() {
+    _subscription?.cancel();
+    _subscription = null;
+  }
+
   // Graceful shutdown.
   Future<void> disposeService() async {
-    await _subscription?.cancel();
-    _subscription = null;
+    await _authSubscription?.cancel();
+    _cancelFirestoreSubscription();
+  }
+
+  @override
+  void dispose() {
+    disposeService();
+    super.dispose();
   }
 }

@@ -2,22 +2,37 @@ rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Allow authenticated users to access their data
+    // Users collection: authenticated user accesses own document
     match /users/{userId} {
-      allow read, write: if request.auth.uid == userId;
+      allow read, write: if request.auth != null && request.auth.uid == userId;
     }
     
-    // Allow students to access student records
+    // Students collection: authenticated users only
     match /students/{studentId} {
       allow read, write: if request.auth != null;
     }
     
-    // Allow teachers to access teacher records
+    // Recycled students collection: authenticated users only
+    match /recycled_students/{recycledId} {
+      allow read, write: if request.auth != null;
+    }
+    
+    // Notifications collection: authenticated users only
+    match /notifications/{notificationId} {
+      allow read, write: if request.auth != null;
+    }
+    
+    // Academy profile collection: authenticated users only
+    match /academy_profile/{profileId} {
+      allow read, write: if request.auth != null;
+    }
+    
+    // Teachers collection: authenticated users only
     match /teachers/{teacherId} {
       allow read, write: if request.auth != null;
     }
     
-    // Allow access to other collections for authenticated users
+    // Catch-all rule for all other documents: authenticated users only
     match /{document=**} {
       allow read, write: if request.auth != null;
     }
