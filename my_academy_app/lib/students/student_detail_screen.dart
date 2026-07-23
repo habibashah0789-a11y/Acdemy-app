@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'dart:convert';
@@ -10,6 +11,7 @@ import '../services/print_service.dart';
 import '../theme/app_theme.dart';
 import 'edit_student_screen.dart';
 import '../utils/whatsapp_helper.dart';
+import '../widgets/student_qr_widget.dart';
 
 class StudentDetailScreen extends StatefulWidget {
   final StudentModel student;
@@ -239,7 +241,11 @@ class _StudentDetailScreenState extends State<StudentDetailScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   _buildStatsRow(totalFee),
-                  const SizedBox(height: 32),
+                  const SizedBox(height: 24),
+                  _buildSectionTitle(context, 'Student QR Pass'),
+                  const SizedBox(height: 12),
+                  _buildQrCodeCard(context, isDark),
+                  const SizedBox(height: 24),
                   _buildSectionTitle(context, 'Class Information'),
                   const SizedBox(height: 16),
                   _buildClassInfoCard(isDark),
@@ -357,6 +363,25 @@ class _StudentDetailScreenState extends State<StudentDetailScreen> {
                     fontWeight: FontWeight.bold,
                   ),
                 ),
+                const SizedBox(height: 2),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withValues(alpha: 0.2),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: Colors.white.withValues(alpha: 0.4)),
+                  ),
+                  child: Text(
+                    'ID: ${student.studentCode}',
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 12,
+                      fontWeight: FontWeight.bold,
+                      letterSpacing: 1,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 4),
                 Text(
                   '${student.classType} · ${student.grade} · ${student.subject}',
                   style: TextStyle(
@@ -391,6 +416,62 @@ class _StudentDetailScreenState extends State<StudentDetailScreen> {
         Expanded(child: _buildStatCard('Due', 'Rs ${student.feeRemaining.toStringAsFixed(0)}', Colors.red)),
       ],
     ).animate().fadeIn(delay: 200.ms);
+  }
+
+  Widget _buildQrCodeCard(BuildContext context, bool isDark) {
+    return Card(
+      elevation: 2,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+      child: InkWell(
+        onTap: () => showStudentQrDialog(context, student),
+        borderRadius: BorderRadius.circular(20),
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Row(
+            children: [
+              StudentQrWidget(
+                student: student,
+                size: 65,
+                showLabel: false,
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Unique Student Pass',
+                      style: GoogleFonts.poppins(
+                        fontSize: 15,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      'Student ID: ${student.studentCode}',
+                      style: const TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.bold,
+                        color: AppTheme.primaryBlue,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      'Tap to view enlarged QR code for scanning',
+                      style: TextStyle(
+                        fontSize: 11,
+                        color: Colors.grey.shade500,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const Icon(Icons.qr_code_scanner_rounded, color: AppTheme.primaryBlue),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 
   Widget _buildStatCard(String label, String value, Color color) {

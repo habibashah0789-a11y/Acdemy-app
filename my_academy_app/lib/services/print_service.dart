@@ -142,6 +142,7 @@ class PrintService {
                         child: pw.Column(
                           crossAxisAlignment: pw.CrossAxisAlignment.start,
                           children: [
+                            _buildInfoRow('Student ID', student.studentCode),
                             _buildInfoRow('Student Name', student.name),
                             _buildInfoRow('Father Name', student.fatherName),
                             _buildInfoRow('Phone', student.phone),
@@ -150,6 +151,31 @@ class PrintService {
                             _buildInfoRow('Subject', student.subject),
                           ],
                         ),
+                      ),
+                      pw.SizedBox(width: 15),
+
+                      // Unique QR Code Container
+                      pw.Column(
+                        children: [
+                          pw.Container(
+                            padding: const pw.EdgeInsets.all(6),
+                            decoration: pw.BoxDecoration(
+                              border: pw.Border.all(color: PdfColors.grey400, width: 1),
+                              borderRadius: const pw.BorderRadius.all(pw.Radius.circular(6)),
+                            ),
+                            child: pw.BarcodeWidget(
+                              barcode: pw.Barcode.qrCode(),
+                              data: student.qrData,
+                              width: 75,
+                              height: 75,
+                            ),
+                          ),
+                          pw.SizedBox(height: 4),
+                          pw.Text(
+                            student.studentCode,
+                            style: pw.TextStyle(fontSize: 8, fontWeight: pw.FontWeight.bold, color: PdfColors.blue800),
+                          ),
+                        ],
                       ),
                     ],
                   ),

@@ -102,6 +102,18 @@ class StudentModel extends HiveObject {
   }) : createdAt = createdAt ?? DateTime.now();
 
   // Computed properties
+  String get studentCode {
+    if (id.isEmpty) return 'QA-000000';
+    if (id.startsWith('QA-')) return id;
+    final cleanId = id.replaceAll(RegExp(r'[^a-zA-Z0-9]'), '');
+    final suffix = cleanId.length >= 6 
+        ? cleanId.substring(cleanId.length - 6).toUpperCase() 
+        : cleanId.padLeft(6, '0').toUpperCase();
+    return 'QA-$suffix';
+  }
+
+  String get qrData => 'QA-STUDENT:$studentCode:ID=$id:NAME=$name:CLASS=$classType-$grade';
+
   String get name => '$firstName $lastName'.trim();
   String get fullName => name;
   String get initials => 
