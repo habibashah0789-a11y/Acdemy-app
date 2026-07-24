@@ -4,7 +4,11 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'dart:convert';
 import 'dart:io' as io;
+import 'dart:typed_data';
 import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:image_picker/image_picker.dart';
+import 'package:firebase_storage/firebase_storage.dart';
+import 'package:path_provider/path_provider.dart';
 import '../models/student_model.dart';
 import '../services/database_service.dart';
 import '../services/print_service.dart';
@@ -12,6 +16,7 @@ import '../theme/app_theme.dart';
 import 'edit_student_screen.dart';
 import '../utils/whatsapp_helper.dart';
 import '../widgets/student_qr_widget.dart';
+import '../widgets/crop_image_dialog.dart';
 
 class StudentDetailScreen extends StatefulWidget {
   final StudentModel student;
@@ -25,6 +30,8 @@ class StudentDetailScreen extends StatefulWidget {
 class _StudentDetailScreenState extends State<StudentDetailScreen> {
   late StudentModel student;
   bool _isPrinting = false;
+  bool _isUploadingPhoto = false;
+  Uint8List? _pendingImageBytes;
 
   @override
   void initState() {
@@ -151,7 +158,7 @@ class _StudentDetailScreenState extends State<StudentDetailScreen> {
   }
 
   void _showLargeProfilePicture(BuildContext context) {
-    if (student.profilePicUrl.isEmpty) return;
+    if (student.profilePicUrl.isEmpty && _pendingImageBytes == null) return;
     
     showDialog(
       context: context,
@@ -170,7 +177,9 @@ class _StudentDetailScreenState extends State<StudentDetailScreen> {
                     maxHeight: 350,
                   ),
                   color: Colors.black,
-                  child: _buildLargeAvatarImage(student.profilePicUrl),
+                  child: _pendingImageBytes != null
+                      ? Image.memory(_pendingImageBytes!, fit: BoxFit.contain)
+                      : _buildLargeAvatarImage(student.profilePicUrl),
                 ),
               ),
             ),
@@ -178,6 +187,143 @@ class _StudentDetailScreenState extends State<StudentDetailScreen> {
         );
       },
     );
+  }
+
+  // ─── Photo upload ────────────────────────────────────────────────────────
+
+  void _showImageSheet() {
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (ctx) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                'Change Profile Picture',
+                style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                  color: AppTheme.primaryBlue,
+                ),
+              ),
+              const SizedBox(height: 16),
+              ListTile(
+                leading: CircleAvatar(
+                  backgroundColor: Colors.blue.shade50,
+                  child: const Icon(Icons.camera_alt, color: AppTheme.primaryBlue),
+                ),
+                title: const Text('Camera'),
+                onTap: () {
+                  Navigator.pop(ctx);
+                  _pick(ImageSource.camera);
+                },
+              ),
+              ListTile(
+                leading: CircleAvatar(
+                  backgroundColor: Colors.green.shade50,
+                  child: const Icon(Icons.photo_library, color: Colors.green),
+                ),
+                title: const Text('Gallery'),
+                onTap: () {
+                  Navigator.pop(ctx);
+                  _pick(ImageSource.gallery);
+                },
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _pick(ImageSource src) async {
+    try {
+      final f = await ImagePicker().pickImage(source: src, imageQuality: 70);
+      if (f != null) {
+        final bytes = await f.readAsBytes();
+        if (mounted) {
+          final cropped = await showDialog<Uint8List>(
+            context: context,
+            barrierDismissible: false,
+            builder: (_) => CropImageDialog(imageBytes: bytes),
+          );
+          if (cropped != null) {
+            setState(() => _pendingImageBytes = cropped);
+            await _uploadPhoto(cropped);
+          }
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to pick image: $e'), backgroundColor: Colors.red),
+        );
+      }
+    }
+  }
+
+  Future<void> _uploadPhoto(Uint8List bytes) async {
+    setState(() => _isUploadingPhoto = true);
+    try {
+      // Delete old image if it was on Firebase Storage
+      if (student.profilePicUrl.isNotEmpty) {
+        await DatabaseService.deleteImage(student.profilePicUrl);
+      }
+
+      // Save locally on device
+      if (!kIsWeb) {
+        try {
+          final appDocDir = await getApplicationDocumentsDirectory();
+          final localPath =
+              '${appDocDir.path}/student_${student.id}_${DateTime.now().millisecondsSinceEpoch}.jpg';
+          await io.File(localPath).writeAsBytes(bytes);
+        } catch (localErr) {
+          debugPrint('Local save failed: $localErr');
+        }
+      }
+
+      // Upload to Firebase Storage
+      final fileName =
+          'students/profile_${student.id}_${DateTime.now().millisecondsSinceEpoch}.jpg';
+      final storageRef = FirebaseStorage.instance.ref().child(fileName);
+      await storageRef
+          .putData(bytes, SettableMetadata(contentType: 'image/jpeg'))
+          .timeout(const Duration(seconds: 30));
+      final newUrl =
+          await storageRef.getDownloadURL().timeout(const Duration(seconds: 10));
+
+      // Update the student record with new photo URL
+      final updatedStudent = student.copyWith(profilePicUrl: newUrl);
+      await DatabaseService.updateStudent(updatedStudent);
+
+      if (mounted) {
+        setState(() {
+          student = updatedStudent;
+          _pendingImageBytes = null; // clear preview – real URL is set
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Profile photo updated!'),
+            backgroundColor: Colors.green,
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _pendingImageBytes = null);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Upload failed: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isUploadingPhoto = false);
+    }
   }
 
   void _editStudent() async {
@@ -334,23 +480,68 @@ class _StudentDetailScreenState extends State<StudentDetailScreen> {
                   onTap: () => _showLargeProfilePicture(context),
                   child: Hero(
                     tag: 'student_${student.id}',
-                    child: Container(
-                      width: 100,
-                      height: 100,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        border: Border.all(color: Colors.white, width: 3),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withValues(alpha: 0.2),
-                            blurRadius: 10,
+                    child: Stack(
+                      alignment: Alignment.bottomRight,
+                      children: [
+                        Container(
+                          width: 100,
+                          height: 100,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            border: Border.all(color: Colors.white, width: 3),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withValues(alpha: 0.2),
+                                blurRadius: 10,
+                              ),
+                            ],
                           ),
-                        ],
-                      ),
-                      child: ClipRRect(
-                        borderRadius: BorderRadius.circular(50),
-                        child: _buildAvatarImage(student.profilePicUrl),
-                      ),
+                          child: ClipRRect(
+                            borderRadius: BorderRadius.circular(50),
+                            child: _isUploadingPhoto
+                                ? Container(
+                                    color: Colors.black54,
+                                    child: const Center(
+                                      child: SizedBox(
+                                        width: 32,
+                                        height: 32,
+                                        child: CircularProgressIndicator(
+                                          strokeWidth: 2.5,
+                                          valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                                        ),
+                                      ),
+                                    ),
+                                  )
+                                : _pendingImageBytes != null
+                                    ? Image.memory(_pendingImageBytes!, fit: BoxFit.cover)
+                                    : _buildAvatarImage(student.profilePicUrl),
+                          ),
+                        ),
+                        // Camera overlay button
+                        GestureDetector(
+                          onTap: _isUploadingPhoto ? null : _showImageSheet,
+                          child: Container(
+                            width: 30,
+                            height: 30,
+                            decoration: BoxDecoration(
+                              color: _isUploadingPhoto ? Colors.grey : AppTheme.primaryBlue,
+                              shape: BoxShape.circle,
+                              border: Border.all(color: Colors.white, width: 2),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withValues(alpha: 0.25),
+                                  blurRadius: 6,
+                                ),
+                              ],
+                            ),
+                            child: const Icon(
+                              Icons.camera_alt_rounded,
+                              color: Colors.white,
+                              size: 15,
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                 ),
