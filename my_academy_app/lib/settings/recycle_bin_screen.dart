@@ -3,6 +3,7 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:intl/intl.dart';
+import 'package:hive_flutter/hive_flutter.dart';
 import '../models/recycled_student.dart';
 import '../services/database_service.dart';
 import '../theme/app_theme.dart';
@@ -124,37 +125,57 @@ class _RecycleBinScreenState extends State<RecycleBinScreen> {
             ),
         ],
       ),
-      body: StreamBuilder<QuerySnapshot>(
-        stream: DatabaseService.getRecycledStudentsStream(),
-        builder: (context, snapshot) {
-          final local = DatabaseService.getRecycledStudents();
-          
-          if (snapshot.connectionState == ConnectionState.waiting && local.isEmpty) {
-            return const Center(child: CircularProgressIndicator());
-          }
-          
-          final docs = snapshot.data?.docs ?? [];
-          final cloud = docs.map((doc) {
-            return RecycledStudent.fromMap(
-              doc.data() as Map<String, dynamic>,
-              doc.id,
-            );
-          }).toList();
+      body: _buildBody(isDark),
+    );
+  }
 
-          final Map<String, RecycledStudent> combinedMap = {};
-          for (var item in local) {
-            combinedMap[item.id] = item;
-          }
-          for (var item in cloud) {
-            combinedMap[item.id] = item;
-          }
-          final combinedList = combinedMap.values.toList();
-          combinedList.sort((a, b) => b.deletedAt.compareTo(a.deletedAt));
+  Widget _buildBody(bool isDark) {
+    final stream = DatabaseService.getRecycledStudentsStream();
 
-          if (combinedList.isEmpty) return _buildEmptyState();
-          return _buildList(combinedList, isDark);
+    // Offline / not signed-in: listen to local Hive box only
+    if (stream == null) {
+      return ValueListenableBuilder(
+        valueListenable: DatabaseService.recycledStudentBox.listenable(),
+        builder: (context, box, _) {
+          final localList = DatabaseService.getRecycledStudents()
+            ..sort((a, b) => b.deletedAt.compareTo(a.deletedAt));
+          if (localList.isEmpty) return _buildEmptyState();
+          return _buildList(localList, isDark);
         },
-      ),
+      );
+    }
+
+    // Online: merge cloud + local
+    return StreamBuilder<QuerySnapshot>(
+      stream: stream,
+      builder: (context, snapshot) {
+        final local = DatabaseService.getRecycledStudents();
+
+        if (snapshot.connectionState == ConnectionState.waiting && local.isEmpty) {
+          return const Center(child: CircularProgressIndicator());
+        }
+
+        final docs = snapshot.data?.docs ?? [];
+        final cloud = docs.map((doc) {
+          return RecycledStudent.fromMap(
+            doc.data() as Map<String, dynamic>,
+            doc.id,
+          );
+        }).toList();
+
+        final Map<String, RecycledStudent> combinedMap = {};
+        for (var item in local) {
+          combinedMap[item.id] = item;
+        }
+        for (var item in cloud) {
+          combinedMap[item.id] = item;
+        }
+        final combinedList = combinedMap.values.toList();
+        combinedList.sort((a, b) => b.deletedAt.compareTo(a.deletedAt));
+
+        if (combinedList.isEmpty) return _buildEmptyState();
+        return _buildList(combinedList, isDark);
+      },
     );
   }
 

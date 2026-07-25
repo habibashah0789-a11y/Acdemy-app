@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:my_academy_app/models/student_model.dart';
+import 'package:my_academy_app/models/recycled_student.dart';
 
 void main() {
   test('Student serialization roundtrip with legacy fields', () {
@@ -89,5 +90,34 @@ void main() {
       profilePicUrl: '',
     );
     expect(s.fullName, 'Jane Smith');
+  });
+
+  test('RecycledStudent serialization roundtrip', () {
+    final deletedTime = DateTime.now();
+    final r = RecycledStudent(
+      id: 'studentRecycled',
+      firstName: 'Recycled',
+      lastName: 'User',
+      email: 'recycled@example.com',
+      phone: '123',
+      fatherName: 'Father',
+      schedule: 'Afternoon',
+      feeSubmitted: 500,
+      feeRemaining: 100,
+      biologyFee: 0,
+      physicsFee: 0,
+      chemistryFee: 0,
+      englishFee: 0,
+      profilePicUrl: '',
+      deletedAt: deletedTime,
+      paymentHistoryJson: '[]',
+    );
+    final map = r.toRecycleMap();
+    final r2 = RecycledStudent.fromMap(map, 'studentRecycled');
+    expect(r2.id, 'studentRecycled');
+    expect(r2.firstName, 'Recycled');
+    expect(r2.lastName, 'User');
+    expect(r2.deletedAt.millisecondsSinceEpoch, deletedTime.millisecondsSinceEpoch);
+    expect(r2.paymentHistoryJson, '[]');
   });
 }

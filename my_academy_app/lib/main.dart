@@ -8,6 +8,7 @@ import 'theme/app_theme.dart';
 
 // Models
 import 'models/student_model.dart';
+import 'models/recycled_student.dart';
 
 // Services
 import 'services/database_service.dart';
@@ -36,6 +37,9 @@ Future<void> main() async {
 
   if (!Hive.isAdapterRegistered(0)) {
     Hive.registerAdapter(StudentModelAdapter());
+  }
+  if (!Hive.isAdapterRegistered(1)) {
+    Hive.registerAdapter(RecycledStudentAdapter());
   }
 
   await DatabaseService.init();

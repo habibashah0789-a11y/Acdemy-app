@@ -255,17 +255,59 @@ class DatabaseService {
 
   // ── Recycle Bin ──
   static Future<bool> restoreStudent(RecycledStudent recycled) async {
-    await _studentBox.put(recycled.id, recycled);
-    await _recycledStudentBox.delete(recycled.id);
+    // Convert RecycledStudent → StudentModel to avoid Hive type mismatch (typeId 1 vs 0)
+    final student = StudentModel(
+      id: recycled.id,
+      firstName: recycled.firstName,
+      lastName: recycled.lastName,
+      fatherName: recycled.fatherName,
+      phone: recycled.phone,
+      email: recycled.email,
+      schedule: recycled.schedule,
+      feeSubmitted: recycled.feeSubmitted,
+      feeRemaining: recycled.feeRemaining,
+      biologyFee: recycled.biologyFee,
+      physicsFee: recycled.physicsFee,
+      chemistryFee: recycled.chemistryFee,
+      englishFee: recycled.englishFee,
+      profilePicUrl: recycled.profilePicUrl,
+      enrollmentStatus: recycled.enrollmentStatus,
+      classType: recycled.classType,
+      grade: recycled.grade,
+      subject: recycled.subject,
+      mathFee: recycled.mathFee,
+      createdAt: recycled.createdAt,
+      updatedAt: recycled.updatedAt,
+      isActive: recycled.isActive,
+      paymentHistoryJson: recycled.paymentHistoryJson,
+      subjectSchedulesJson: recycled.subjectSchedulesJson,
+    );
 
+    // 1. Firestore FIRST — use WriteBatch for atomic restore
     if (FirebaseAuth.instance.currentUser != null) {
       try {
-        await _firestore.collection('students').doc(recycled.id).set(recycled.toMap());
-        await _firestore.collection('recycled_students').doc(recycled.id).delete();
+        final batch = _firestore.batch();
+        batch.set(
+          _firestore.collection('students').doc(recycled.id),
+          student.toMap(),
+        );
+        batch.delete(
+          _firestore.collection('recycled_students').doc(recycled.id),
+        );
+        await batch.commit();
       } catch (e) {
         debugPrint('Restore student cloud sync failed: $e');
       }
     }
+
+    // 2. Local Hive — wrapped in try/catch so it never blocks the flow
+    try {
+      await _studentBox.put(student.id, student);
+      await _recycledStudentBox.delete(recycled.id);
+    } catch (e) {
+      debugPrint('Restore student local sync failed: $e');
+    }
+
     return true;
   }
 
@@ -283,9 +325,9 @@ class DatabaseService {
     }
   }
 
-  static Stream<QuerySnapshot> getRecycledStudentsStream() {
+  static Stream<QuerySnapshot>? getRecycledStudentsStream() {
     if (FirebaseAuth.instance.currentUser == null) {
-      return const Stream.empty();
+      return null;
     }
     return _firestore.collection('recycled_students').snapshots();
   }
@@ -319,20 +361,35 @@ class DatabaseService {
       updatedAt: student.updatedAt,
       isActive: student.isActive,
       deletedAt: DateTime.now(),
+      paymentHistoryJson: student.paymentHistoryJson,
       subjectSchedulesJson: student.subjectSchedulesJson,
     );
 
-    await _recycledStudentBox.put(recycled.id, recycled);
-    await _studentBox.delete(student.id);
-
+    // 1. Firestore FIRST — use WriteBatch for atomic add+delete
     if (FirebaseAuth.instance.currentUser != null) {
       try {
-        await _firestore.collection('recycled_students').doc(recycled.id).set(recycled.toRecycleMap());
-        await _firestore.collection('students').doc(student.id).delete();
+        final batch = _firestore.batch();
+        batch.set(
+          _firestore.collection('recycled_students').doc(recycled.id),
+          recycled.toRecycleMap(),
+        );
+        batch.delete(
+          _firestore.collection('students').doc(student.id),
+        );
+        await batch.commit();
       } catch (e) {
         debugPrint('Recycle student cloud sync failed: $e');
       }
     }
+
+    // 2. Local Hive — wrapped in try/catch so it never blocks the flow
+    try {
+      await _recycledStudentBox.put(recycled.id, recycled);
+      await _studentBox.delete(student.id);
+    } catch (e) {
+      debugPrint('Recycle student local sync failed: $e');
+    }
+
     return true;
   }
 

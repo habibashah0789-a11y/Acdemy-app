@@ -52,16 +52,17 @@ class SyncService extends ChangeNotifier {
         .listen((snapshot) async {
       bool changed = false;
       for (var change in snapshot.docChanges) {
-        if (change.doc.data() == null) continue;
-        final student = StudentModel.fromFirestore(change.doc);
         switch (change.type) {
           case DocumentChangeType.added:
           case DocumentChangeType.modified:
+            if (change.doc.data() == null) continue;
+            final student = StudentModel.fromFirestore(change.doc);
             await studentBox.put(student.id, student);
             changed = true;
             break;
           case DocumentChangeType.removed:
-            await studentBox.delete(student.id);
+            // Always process removals — data may be null for deleted docs
+            await studentBox.delete(change.doc.id);
             changed = true;
             break;
         }

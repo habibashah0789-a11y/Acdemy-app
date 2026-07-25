@@ -357,8 +357,29 @@ class _StudentDetailScreenState extends State<StudentDetailScreen> {
       ),
     );
     if (confirmed == true) {
-      await DatabaseService.recycleStudent(student);
-      if (mounted) Navigator.pop(context, true);
+      try {
+        await DatabaseService.recycleStudent(student);
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('${student.name} moved to Recycle Bin'),
+              backgroundColor: Colors.green,
+              behavior: SnackBarBehavior.floating,
+            ),
+          );
+          Navigator.pop(context, true);
+        }
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Failed to delete: $e'),
+              backgroundColor: Colors.red,
+              behavior: SnackBarBehavior.floating,
+            ),
+          );
+        }
+      }
     }
   }
 

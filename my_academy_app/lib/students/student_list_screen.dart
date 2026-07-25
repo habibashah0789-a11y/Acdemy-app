@@ -284,22 +284,20 @@ class _StudentListScreenState extends State<StudentListScreen> {
   }
 
   Widget _buildStudentCard(StudentModel student, int index, bool isDark) {
-    return Card(
+    return InkWell(
+    onTap: () async {
+      final result = await Navigator.push(
+        context,
+        MaterialPageRoute(builder: (_) => StudentDetailScreen(student: student)),
+      );
+      if (result == true && mounted) {
+        setState(() {});
+      }
+    },
+    child: Card(
       margin: const EdgeInsets.only(bottom: 12),
       elevation: 2,
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
-      ),
-      child: ListTile(
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-        onTap: () async {
-          await Navigator.push(
-            context, 
-            MaterialPageRoute(
-              builder: (_) => StudentDetailScreen(student: student)
-            )
-          );
-        },
         leading: Hero(
           tag: 'student_${student.id}',
           child: Container(

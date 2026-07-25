@@ -2,6 +2,8 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:hive/hive.dart';
 import 'package:my_academy_app/models/student_model.dart';
 
+part 'recycled_student.g.dart';
+
 @HiveType(typeId: 1)
 class RecycledStudent extends StudentModel {
   @HiveField(22)
@@ -30,6 +32,7 @@ class RecycledStudent extends StudentModel {
     DateTime? createdAt,
     super.updatedAt,
     super.isActive = true,
+    super.paymentHistoryJson,
     super.subjectSchedulesJson,
     required this.deletedAt,
   }) : super(
@@ -79,6 +82,7 @@ class RecycledStudent extends StudentModel {
       createdAt: student.createdAt,
       updatedAt: student.updatedAt,
       isActive: student.isActive,
+      paymentHistoryJson: student.paymentHistoryJson,
       subjectSchedulesJson: student.subjectSchedulesJson,
       deletedAt: deletedAt,
     );
