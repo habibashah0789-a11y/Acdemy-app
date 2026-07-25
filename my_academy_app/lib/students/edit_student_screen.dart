@@ -13,6 +13,7 @@ import '../services/database_service.dart';
 import '../services/notification_service.dart';
 import '../widgets/crop_image_dialog.dart';
 import '../theme/app_theme.dart';
+import '../utils/image_utils.dart';
 
 class EditStudentScreen extends StatefulWidget {
   final StudentModel student;
@@ -139,16 +140,7 @@ class _EditStudentScreenState extends State<EditStudentScreen> {
           
           // 1. Save image locally on device (for faster local access)
           if (!kIsWeb) {
-            try {
-              final appDocDir = await getApplicationDocumentsDirectory();
-              final String localPath = '${appDocDir.path}/student_${widget.student.id}_${DateTime.now().millisecondsSinceEpoch}.jpg';
-              final localFile = io.File(localPath);
-              await localFile.writeAsBytes(_imageBytes!);
-              debugPrint('Image saved locally at: $localPath');
-            } catch (localError) {
-              debugPrint('Failed to save image locally: $localError');
-              // Continue with cloud storage even if local save fails
-            }
+            await ImageUtils.saveImageLocally(widget.student.id, _imageBytes!);
           }
           
           // 2. Upload to Firebase Storage (for cross-device access)

@@ -17,6 +17,8 @@ import 'edit_student_screen.dart';
 import '../utils/whatsapp_helper.dart';
 import '../widgets/student_qr_widget.dart';
 import '../widgets/crop_image_dialog.dart';
+import '../widgets/student_avatar.dart';
+import '../utils/image_utils.dart';
 
 class StudentDetailScreen extends StatefulWidget {
   final StudentModel student;
@@ -275,14 +277,7 @@ class _StudentDetailScreenState extends State<StudentDetailScreen> {
 
       // Save locally on device
       if (!kIsWeb) {
-        try {
-          final appDocDir = await getApplicationDocumentsDirectory();
-          final localPath =
-              '${appDocDir.path}/student_${student.id}_${DateTime.now().millisecondsSinceEpoch}.jpg';
-          await io.File(localPath).writeAsBytes(bytes);
-        } catch (localErr) {
-          debugPrint('Local save failed: $localErr');
-        }
+        await ImageUtils.saveImageLocally(student.id, bytes);
       }
 
       // Upload to Firebase Storage
@@ -514,7 +509,10 @@ class _StudentDetailScreenState extends State<StudentDetailScreen> {
                                   )
                                 : _pendingImageBytes != null
                                     ? Image.memory(_pendingImageBytes!, fit: BoxFit.cover)
-                                    : _buildAvatarImage(student.profilePicUrl),
+                                    : StudentAvatar(
+                                    student: student,
+                                    size: 100,
+                                  ),
                           ),
                         ),
                         // Camera overlay button
