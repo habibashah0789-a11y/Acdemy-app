@@ -694,6 +694,7 @@ class _StudentDetailScreenState extends State<StudentDetailScreen> {
   }
 
   Widget _buildClassInfoCard(bool isDark) {
+    final schedules = student.subjectSchedules;
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(16),
@@ -703,9 +704,55 @@ class _StudentDetailScreenState extends State<StudentDetailScreen> {
             const Divider(),
             _buildInfoRow(Icons.school_rounded, 'Grade / Year', student.grade),
             const Divider(),
-            _buildInfoRow(Icons.book_rounded, 'Subject', student.subject),
-            const Divider(),
-            _buildInfoRow(Icons.access_time_rounded, 'Schedule', student.schedule),
+            if (schedules.isNotEmpty) ...[
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 8),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Icon(Icons.book_rounded, size: 20, color: AppTheme.primaryBlue),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text('Registered Subjects & Schedules', style: TextStyle(fontSize: 10, color: Colors.grey)),
+                          const SizedBox(height: 8),
+                          ...schedules.entries.map((e) => Padding(
+                            padding: const EdgeInsets.only(bottom: 8.0),
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Text(e.key, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                                  decoration: BoxDecoration(
+                                    color: AppTheme.primaryBlue.withValues(alpha: 0.1),
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                  child: Text(
+                                    e.value,
+                                    style: const TextStyle(
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.bold,
+                                      color: AppTheme.primaryBlue,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          )),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ] else ...[
+              _buildInfoRow(Icons.book_rounded, 'Subject', student.subject),
+              const Divider(),
+              _buildInfoRow(Icons.access_time_rounded, 'Schedule', student.schedule),
+            ],
           ],
         ),
       ),

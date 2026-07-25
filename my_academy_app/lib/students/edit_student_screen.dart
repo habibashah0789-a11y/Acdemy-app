@@ -1,13 +1,11 @@
 import 'dart:convert';
 import 'dart:typed_data';
-import 'dart:io' as io;
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:image_picker/image_picker.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter_spinkit/flutter_spinkit.dart';
 import 'package:firebase_storage/firebase_storage.dart';
-import 'package:path_provider/path_provider.dart';
 import '../models/student_model.dart';
 import '../services/database_service.dart';
 import '../services/notification_service.dart';
@@ -33,8 +31,9 @@ class _EditStudentScreenState extends State<EditStudentScreen> {
   // Dropdown values
   late String _selectedClassType;
   late String _selectedGrade;
-  late String _selectedSubject;
-  late String _selectedSchedule;
+  
+  // Track selected subjects and their schedules
+  Map<String, String> _selectedSubjectSchedules = {};
 
   static const List<String> _classTypes = ['FSc', 'Matric'];
   static const Map<String, List<String>> _gradeOptions = {
@@ -69,8 +68,163 @@ class _EditStudentScreenState extends State<EditStudentScreen> {
     _selectedGrade = (_gradeOptions[_selectedClassType] ?? []).contains(s.grade)
         ? s.grade
         : (_gradeOptions[_selectedClassType]!.first);
-    _selectedSubject = _subjects.contains(s.subject) ? s.subject : 'Biology';
-    _selectedSchedule = _scheduleSlots.contains(s.schedule) ? s.schedule : '7:00 AM';
+    
+    // Load student's subject schedules
+    _selectedSubjectSchedules = Map<String, String>.from(s.subjectSchedules);
+
+    // Add listeners to auto-calculate remaining fee
+    _bioC.addListener(_updateCalculatedFees);
+    _phyC.addListener(_updateCalculatedFees);
+    _chemC.addListener(_updateCalculatedFees);
+    _engC.addListener(_updateCalculatedFees);
+    _mathC.addListener(_updateCalculatedFees);
+    _feeSubC.addListener(_updateCalculatedFees);
+  }
+
+  TextEditingController _getFeeControllerForSubject(String sub) {
+    switch (sub) {
+      case 'Biology': return _bioC;
+      case 'Physics': return _phyC;
+      case 'Chemistry': return _chemC;
+      case 'English': return _engC;
+      case 'Math': return _mathC;
+      default: return TextEditingController();
+    }
+  }
+
+  void _updateCalculatedFees() {
+    double total = 0;
+    for (final sub in _subjects) {
+      if (_selectedSubjectSchedules.containsKey(sub)) {
+        total += double.tryParse(_getFeeControllerForSubject(sub).text.trim()) ?? 0;
+      }
+    }
+    double submitted = double.tryParse(_feeSubC.text.trim()) ?? 0;
+    double remaining = total - submitted;
+    if (remaining < 0) remaining = 0;
+    _feeRemC.text = remaining.toStringAsFixed(0);
+  }
+
+  Color _getSubjectColor(String sub) {
+    switch (sub) {
+      case 'Biology': return Colors.green;
+      case 'Physics': return Colors.blue;
+      case 'Chemistry': return Colors.orange;
+      case 'English': return Colors.purple;
+      case 'Math': return const Color(0xFF00897B);
+      default: return AppTheme.primaryBlue;
+    }
+  }
+
+  Widget _buildSubjectSelection() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          'Select Subjects and Schedules *',
+          style: TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.bold,
+            color: AppTheme.primaryBlue,
+          ),
+        ),
+        const SizedBox(height: 12),
+        ..._subjects.map((sub) {
+          final isChecked = _selectedSubjectSchedules.containsKey(sub);
+          final currentSchedule = _selectedSubjectSchedules[sub] ?? '7:00 AM';
+          return Card(
+            margin: const EdgeInsets.only(bottom: 8),
+            elevation: 0,
+            color: isChecked ? AppTheme.primaryBlue.withValues(alpha: 0.05) : Colors.transparent,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+              side: BorderSide(
+                color: isChecked ? AppTheme.primaryBlue.withValues(alpha: 0.3) : Colors.grey.shade300,
+              ),
+            ),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              child: Row(
+                children: [
+                  Checkbox(
+                    value: isChecked,
+                    activeColor: AppTheme.primaryBlue,
+                    onChanged: (val) {
+                      setState(() {
+                        if (val == true) {
+                          _selectedSubjectSchedules[sub] = '7:00 AM';
+                        } else {
+                          _selectedSubjectSchedules.remove(sub);
+                          _getFeeControllerForSubject(sub).text = '0';
+                        }
+                        _updateCalculatedFees();
+                      });
+                    },
+                  ),
+                  Expanded(
+                    child: Text(
+                      sub,
+                      style: TextStyle(
+                        fontWeight: isChecked ? FontWeight.bold : FontWeight.normal,
+                        color: isChecked ? AppTheme.primaryBlue : null,
+                      ),
+                    ),
+                  ),
+                  if (isChecked) ...[
+                    const SizedBox(width: 8),
+                    DropdownButton<String>(
+                      value: currentSchedule,
+                      underline: const SizedBox(),
+                      items: _scheduleSlots.map((s) => DropdownMenuItem(value: s, child: Text(s))).toList(),
+                      onChanged: (sVal) {
+                        if (sVal != null) {
+                          setState(() {
+                            _selectedSubjectSchedules[sub] = sVal;
+                          });
+                        }
+                      },
+                    ),
+                  ],
+                ],
+              ),
+            ),
+          );
+        }).toList(),
+      ],
+    );
+  }
+
+  List<Widget> _buildDynamicFeeFields() {
+    final List<Widget> fields = [];
+    final activeSubs = _subjects.where((s) => _selectedSubjectSchedules.containsKey(s)).toList();
+    
+    for (int i = 0; i < activeSubs.length; i += 2) {
+      if (i + 1 < activeSubs.length) {
+        final sub1 = activeSubs[i];
+        final sub2 = activeSubs[i + 1];
+        fields.add(
+          Padding(
+            padding: const EdgeInsets.only(bottom: 12.0),
+            child: Row(
+              children: [
+                Expanded(child: _feeField('$sub1 Fee', _getFeeControllerForSubject(sub1), _getSubjectColor(sub1))),
+                const SizedBox(width: 12),
+                Expanded(child: _feeField('$sub2 Fee', _getFeeControllerForSubject(sub2), _getSubjectColor(sub2))),
+              ],
+            ),
+          ),
+        );
+      } else {
+        final sub = activeSubs[i];
+        fields.add(
+          Padding(
+            padding: const EdgeInsets.only(bottom: 12.0),
+            child: _feeField('$sub Fee', _getFeeControllerForSubject(sub), _getSubjectColor(sub)),
+          ),
+        );
+      }
+    }
+    return fields;
   }
 
   @override
@@ -199,6 +353,10 @@ class _EditStudentScreenState extends State<EditStudentScreen> {
         });
       }
 
+      if (_selectedSubjectSchedules.isEmpty) {
+        throw 'Please select at least one subject and schedule.';
+      }
+
       final updated = StudentModel(
         id: widget.student.id,
         firstName: _nameC.text.trim(),
@@ -206,19 +364,20 @@ class _EditStudentScreenState extends State<EditStudentScreen> {
         lastName: widget.student.lastName,
         phone: _phoneC.text.trim(),
         email: _emailC.text.trim(),
-        schedule: _selectedSchedule,
+        schedule: _selectedSubjectSchedules.entries.map((e) => '${e.key}: ${e.value}').join(', '),
         classType: _selectedClassType,
         grade: _selectedGrade,
-        subject: _selectedSubject,
+        subject: _selectedSubjectSchedules.keys.join(', '),
         feeSubmitted: newPaid,
         feeRemaining: double.tryParse(_feeRemC.text.trim()) ?? 0,
-        biologyFee: double.tryParse(_bioC.text.trim()) ?? 0,
-        physicsFee: double.tryParse(_phyC.text.trim()) ?? 0,
-        chemistryFee: double.tryParse(_chemC.text.trim()) ?? 0,
-        englishFee: double.tryParse(_engC.text.trim()) ?? 0,
-        mathFee: double.tryParse(_mathC.text.trim()) ?? 0,
+        biologyFee: _selectedSubjectSchedules.containsKey('Biology') ? (double.tryParse(_bioC.text.trim()) ?? 0) : 0,
+        physicsFee: _selectedSubjectSchedules.containsKey('Physics') ? (double.tryParse(_phyC.text.trim()) ?? 0) : 0,
+        chemistryFee: _selectedSubjectSchedules.containsKey('Chemistry') ? (double.tryParse(_chemC.text.trim()) ?? 0) : 0,
+        englishFee: _selectedSubjectSchedules.containsKey('English') ? (double.tryParse(_engC.text.trim()) ?? 0) : 0,
+        mathFee: _selectedSubjectSchedules.containsKey('Math') ? (double.tryParse(_mathC.text.trim()) ?? 0) : 0,
         profilePicUrl: picUrl,
         createdAt: widget.student.createdAt,
+        subjectSchedulesJson: jsonEncode(_selectedSubjectSchedules),
         paymentHistoryJson: history.isNotEmpty ? jsonEncode(history) : null,
       );
       await DatabaseService.updateStudent(updated);
@@ -355,53 +514,14 @@ class _EditStudentScreenState extends State<EditStudentScreen> {
                     if (v != null) setState(() => _selectedGrade = v);
                   },
                 ),
-                const SizedBox(height: 16),
+                const SizedBox(height: 24),
 
-                // Subject dropdown
-                DropdownButtonFormField<String>(
-                  initialValue: _selectedSubject,
-                  decoration: const InputDecoration(
-                    labelText: 'Subject *',
-                    prefixIcon: Icon(Icons.book_rounded),
-                  ),
-                  items: _subjects.map((s) => DropdownMenuItem(value: s, child: Text(s))).toList(),
-                  onChanged: (v) {
-                    if (v != null) setState(() => _selectedSubject = v);
-                  },
-                ),
+                // Multi-subject selection
+                _buildSubjectSelection(),
                 const SizedBox(height: 16),
-
-                // Schedule dropdown
-                DropdownButtonFormField<String>(
-                  initialValue: _selectedSchedule,
-                  decoration: const InputDecoration(
-                    labelText: 'Class Schedule *',
-                    prefixIcon: Icon(Icons.access_time_rounded),
-                  ),
-                  items: _scheduleSlots.map((s) => DropdownMenuItem(value: s, child: Text(s))).toList(),
-                  onChanged: (v) {
-                    if (v != null) setState(() => _selectedSchedule = v);
-                  },
-                ),
 
                 _sectionTitle('Fee Structure (Rs)'),
-                Row(
-                  children: [
-                    Expanded(child: _feeField('Biology Fee', _bioC, Colors.green)),
-                    const SizedBox(width: 12),
-                    Expanded(child: _feeField('Physics Fee', _phyC, Colors.blue)),
-                  ],
-                ),
-                const SizedBox(height: 12),
-                Row(
-                  children: [
-                    Expanded(child: _feeField('Chemistry Fee', _chemC, Colors.orange)),
-                    const SizedBox(width: 12),
-                    Expanded(child: _feeField('English Fee', _engC, Colors.purple)),
-                  ],
-                ),
-                const SizedBox(height: 12),
-                _feeField('Math Fee', _mathC, const Color(0xFF00897B)),
+                ..._buildDynamicFeeFields(),
                 const SizedBox(height: 12),
                 _feeField('Total Fee Submitted', _feeSubC, AppTheme.primaryBlue),
                 const SizedBox(height: 12),

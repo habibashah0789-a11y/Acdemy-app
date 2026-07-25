@@ -167,7 +167,7 @@ class DatabaseService {
   }) {
     return _studentBox.values.where((s) =>
       s.classType == classType &&
-      s.subject == subject &&
+      s.subject.split(',').map((e) => e.trim().toLowerCase()).contains(subject.trim().toLowerCase()) &&
       s.grade == grade
     ).toList();
   }
@@ -319,6 +319,7 @@ class DatabaseService {
       updatedAt: student.updatedAt,
       isActive: student.isActive,
       deletedAt: DateTime.now(),
+      subjectSchedulesJson: student.subjectSchedulesJson,
     );
 
     await _recycledStudentBox.put(recycled.id, recycled);

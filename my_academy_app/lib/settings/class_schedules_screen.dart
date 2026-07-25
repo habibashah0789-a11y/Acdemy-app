@@ -84,14 +84,14 @@ class _ClassSchedulesScreenState extends State<ClassSchedulesScreen> {
     return _allStudents.where((s) {
       final matchesGrade = s.grade.toLowerCase() == _selectedGrade.toLowerCase();
       
-      final sSub = s.subject.trim().toLowerCase();
+      final subjectsList = s.subject.trim().toLowerCase().split(',').map((x) => x.trim()).toList();
       final tSub = _selectedSubject.trim().toLowerCase();
       
       bool matchesSubject = false;
       if (tSub == 'maths' || tSub == 'math') {
-        matchesSubject = (sSub == 'math' || sSub == 'maths');
+        matchesSubject = subjectsList.any((x) => x == 'math' || x == 'maths');
       } else {
-        matchesSubject = (sSub == tSub);
+        matchesSubject = subjectsList.contains(tSub);
       }
       
       return matchesGrade && matchesSubject;
@@ -102,7 +102,8 @@ class _ClassSchedulesScreenState extends State<ClassSchedulesScreen> {
   Map<String, List<StudentModel>> get _groupedByTime {
     final Map<String, List<StudentModel>> grouped = {};
     for (final student in _filteredStudents) {
-      final time = student.schedule.trim().isNotEmpty ? student.schedule.trim() : 'Unscheduled';
+      final subjectSchedule = student.getScheduleForSubject(_selectedSubject);
+      final time = subjectSchedule.trim().isNotEmpty ? subjectSchedule.trim() : 'Unscheduled';
       grouped.putIfAbsent(time, () => []).add(student);
     }
     return grouped;

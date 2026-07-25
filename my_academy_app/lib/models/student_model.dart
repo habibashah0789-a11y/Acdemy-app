@@ -1,7 +1,9 @@
+import 'dart:convert';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:hive/hive.dart';
 part 'student_model.g.dart';
+
 
 
 @HiveType(typeId: 0)
@@ -75,6 +77,9 @@ class StudentModel extends HiveObject {
   @HiveField(23)
   String? paymentHistoryJson;
 
+  @HiveField(24)
+  String? subjectSchedulesJson;
+
   StudentModel({
     required this.id,
     required this.firstName,
@@ -99,9 +104,53 @@ class StudentModel extends HiveObject {
     this.updatedAt,
     this.isActive = true,
     this.paymentHistoryJson,
+    this.subjectSchedulesJson,
   }) : createdAt = createdAt ?? DateTime.now();
 
   // Computed properties
+  Map<String, String> get subjectSchedules {
+    if (subjectSchedulesJson == null || subjectSchedulesJson!.isEmpty) {
+      if (subject.isNotEmpty && schedule.isNotEmpty) {
+        final Map<String, String> parsed = {};
+        if (schedule.contains(':')) {
+          final scheduleParts = schedule.split(',');
+          for (final part in scheduleParts) {
+            final kv = part.split(':');
+            if (kv.length == 2) {
+              parsed[kv[0].trim()] = kv[1].trim();
+            }
+          }
+        }
+        if (parsed.isNotEmpty) return parsed;
+        return {subject: schedule};
+      }
+      return {};
+    }
+    try {
+      final Map<String, dynamic> decoded = jsonDecode(subjectSchedulesJson!);
+      return decoded.map((key, value) => MapEntry(key, value.toString()));
+    } catch (e) {
+      return {};
+    }
+  }
+
+  String getScheduleForSubject(String subj) {
+    final map = subjectSchedules;
+    if (map.containsKey(subj)) {
+      return map[subj]!;
+    }
+    final cleanSubj = subj.trim().toLowerCase();
+    for (final entry in map.entries) {
+      if (entry.key.trim().toLowerCase() == cleanSubj) {
+        return entry.value;
+      }
+    }
+    // Fallback to legacy single fields
+    if (subject.trim().toLowerCase() == cleanSubj) {
+      return schedule;
+    }
+    return '';
+  }
   String get studentCode {
     if (id.isEmpty) return 'QA-000000';
     if (id.startsWith('QA-')) return id;
@@ -195,6 +244,7 @@ class StudentModel extends HiveObject {
       'updatedAt': updatedAt != null ? Timestamp.fromDate(updatedAt!) : null,
       'isActive': isActive,
       'paymentHistoryJson': paymentHistoryJson,
+      'subjectSchedulesJson': subjectSchedulesJson,
     };
   }
 
@@ -260,6 +310,7 @@ class StudentModel extends HiveObject {
       updatedAt: parsedUpdatedAt,
       isActive: map['isActive'] ?? true,
       paymentHistoryJson: map['paymentHistoryJson'],
+      subjectSchedulesJson: map['subjectSchedulesJson'],
     );
   }
     // 🔥 INSERT THIS ENTIRE BLOCK between fromMap and empty() 🔥
@@ -317,6 +368,7 @@ class StudentModel extends HiveObject {
     DateTime? updatedAt,
     bool? isActive,
     String? paymentHistoryJson,
+    String? subjectSchedulesJson,
   }) {
     return StudentModel(
       id: id ?? this.id,
@@ -342,6 +394,7 @@ class StudentModel extends HiveObject {
       updatedAt: updatedAt ?? this.updatedAt,
       isActive: isActive ?? this.isActive,
       paymentHistoryJson: paymentHistoryJson ?? this.paymentHistoryJson,
+      subjectSchedulesJson: subjectSchedulesJson ?? this.subjectSchedulesJson,
     );
   }
   

@@ -30,6 +30,7 @@ class RecycledStudent extends StudentModel {
     DateTime? createdAt,
     super.updatedAt,
     super.isActive = true,
+    super.subjectSchedulesJson,
     required this.deletedAt,
   }) : super(
           createdAt: createdAt ?? DateTime.now(),
@@ -78,6 +79,7 @@ class RecycledStudent extends StudentModel {
       createdAt: student.createdAt,
       updatedAt: student.updatedAt,
       isActive: student.isActive,
+      subjectSchedulesJson: student.subjectSchedulesJson,
       deletedAt: deletedAt,
     );
   }

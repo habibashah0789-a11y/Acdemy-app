@@ -40,13 +40,14 @@ class StudentModelAdapter extends TypeAdapter<StudentModel> {
       updatedAt: fields[20] as DateTime?,
       isActive: fields[21] as bool,
       paymentHistoryJson: fields[23] as String?,
+      subjectSchedulesJson: fields[24] as String?,
     );
   }
 
   @override
   void write(BinaryWriter writer, StudentModel obj) {
     writer
-      ..writeByte(23)
+      ..writeByte(24)
       ..writeByte(0)
       ..write(obj.id)
       ..writeByte(1)
@@ -92,7 +93,9 @@ class StudentModelAdapter extends TypeAdapter<StudentModel> {
       ..writeByte(21)
       ..write(obj.isActive)
       ..writeByte(23)
-      ..write(obj.paymentHistoryJson);
+      ..write(obj.paymentHistoryJson)
+      ..writeByte(24)
+      ..write(obj.subjectSchedulesJson);
   }
 
   @override
