@@ -74,6 +74,9 @@ class StudentModel extends HiveObject {
   @HiveField(21)
   bool isActive;
 
+  @HiveField(22)
+  String? subjectPaymentsJson;
+
   @HiveField(23)
   String? paymentHistoryJson;
 
@@ -103,11 +106,54 @@ class StudentModel extends HiveObject {
     DateTime? createdAt,
     this.updatedAt,
     this.isActive = true,
+    this.subjectPaymentsJson,
     this.paymentHistoryJson,
     this.subjectSchedulesJson,
   }) : createdAt = createdAt ?? DateTime.now();
 
   // Computed properties
+  Map<String, double> get subjectPayments {
+    if (subjectPaymentsJson == null || subjectPaymentsJson!.isEmpty) return {};
+    try {
+      final Map<String, dynamic> decoded = jsonDecode(subjectPaymentsJson!);
+      return decoded.map((key, value) => MapEntry(key, (value as num).toDouble()));
+    } catch (e) {
+      return {};
+    }
+  }
+
+  double getSubjectPaid(String sub) {
+    final payments = subjectPayments;
+    if (payments.containsKey(sub)) return payments[sub]!;
+    
+    // Fallback logic for old data if needed
+    // If the student only has one subject and subjectPayments is empty, 
+    // we could assume feeSubmitted belongs to that subject.
+    final subjects = subject.split(',').map((e) => e.trim()).toList();
+    if (subjects.length == 1 && subjects.first == sub && payments.isEmpty) {
+      return feeSubmitted;
+    }
+    
+    return 0.0;
+  }
+
+  double getSubjectTotalFee(String sub) {
+    switch (sub) {
+      case 'Biology': return biologyFee;
+      case 'Physics': return physicsFee;
+      case 'Chemistry': return chemistryFee;
+      case 'English': return englishFee;
+      case 'Math': return mathFee;
+      default: return 0.0;
+    }
+  }
+
+  double getSubjectRemaining(String sub) {
+    return getSubjectTotalFee(sub) - getSubjectPaid(sub);
+  }
+
+  bool isSubjectPaid(String sub) => getSubjectRemaining(sub) <= 0;
+
   Map<String, String> get subjectSchedules {
     if (subjectSchedulesJson == null || subjectSchedulesJson!.isEmpty) {
       if (subject.isNotEmpty && schedule.isNotEmpty) {
@@ -243,6 +289,7 @@ class StudentModel extends HiveObject {
       'createdAt': Timestamp.fromDate(createdAt),
       'updatedAt': updatedAt != null ? Timestamp.fromDate(updatedAt!) : null,
       'isActive': isActive,
+      'subjectPaymentsJson': subjectPaymentsJson,
       'paymentHistoryJson': paymentHistoryJson,
       'subjectSchedulesJson': subjectSchedulesJson,
     };
@@ -309,6 +356,7 @@ class StudentModel extends HiveObject {
       createdAt: parsedCreatedAt,
       updatedAt: parsedUpdatedAt,
       isActive: map['isActive'] ?? true,
+      subjectPaymentsJson: map['subjectPaymentsJson'],
       paymentHistoryJson: map['paymentHistoryJson'],
       subjectSchedulesJson: map['subjectSchedulesJson'],
     );
@@ -367,6 +415,7 @@ class StudentModel extends HiveObject {
     DateTime? createdAt,
     DateTime? updatedAt,
     bool? isActive,
+    String? subjectPaymentsJson,
     String? paymentHistoryJson,
     String? subjectSchedulesJson,
   }) {
@@ -393,6 +442,7 @@ class StudentModel extends HiveObject {
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
       isActive: isActive ?? this.isActive,
+      subjectPaymentsJson: subjectPaymentsJson ?? this.subjectPaymentsJson,
       paymentHistoryJson: paymentHistoryJson ?? this.paymentHistoryJson,
       subjectSchedulesJson: subjectSchedulesJson ?? this.subjectSchedulesJson,
     );

@@ -336,7 +336,9 @@ class _FscClassRoomScreenState extends State<FscClassRoomScreen> {
   }
 
   Widget _buildStudentTile(StudentModel s, int index) {
-    final bool isPaid = s.feeRemaining <= 0;
+    final bool isSubjectPaid = s.isSubjectPaid(widget.subject);
+    final double subjectRemaining = s.getSubjectRemaining(widget.subject);
+    
     return Card(
       margin: const EdgeInsets.only(bottom: 10),
       child: ListTile(
@@ -365,21 +367,21 @@ class _FscClassRoomScreenState extends State<FscClassRoomScreen> {
         ),
         title: Text(s.name, style: const TextStyle(fontWeight: FontWeight.bold)),
         subtitle: Text(
-          '${s.phone}  •  Schedule: ${s.schedule}',
+          '${s.phone}  •  Schedule: ${s.getScheduleForSubject(widget.subject)}',
           style: const TextStyle(fontSize: 12),
         ),
         trailing: Container(
           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
           decoration: BoxDecoration(
-            color: isPaid ? Colors.green.withValues(alpha: 0.1) : Colors.red.withValues(alpha: 0.1),
+            color: isSubjectPaid ? Colors.green.withValues(alpha: 0.1) : Colors.red.withValues(alpha: 0.1),
             borderRadius: BorderRadius.circular(8),
           ),
           child: Text(
-            isPaid ? 'PAID' : 'Rs ${s.feeRemaining.toStringAsFixed(0)}',
+            isSubjectPaid ? 'PAID' : 'Rs ${subjectRemaining.toStringAsFixed(0)}',
             style: TextStyle(
               fontSize: 10,
               fontWeight: FontWeight.bold,
-              color: isPaid ? Colors.green : Colors.red,
+              color: isSubjectPaid ? Colors.green : Colors.red,
             ),
           ),
         ),

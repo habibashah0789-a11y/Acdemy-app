@@ -4,10 +4,11 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:hive_flutter/hive_flutter.dart';
 import '../theme/app_theme.dart';
 import '../models/student_model.dart';
 import '../models/notification_model.dart';
+import '../services/database_service.dart';
 import '../services/notification_service.dart';
 import '../screens/notifications_screen.dart';
 import '../screens/daily_records/daily_records_screen.dart';
@@ -63,17 +64,9 @@ class DashboardScreen extends StatefulWidget {
 class _DashboardScreenState extends State<DashboardScreen> {
   final _fmt = NumberFormat.currency(symbol: 'Rs', decimalDigits: 0);
 
-  late final Stream<List<StudentModel>> _studentSnapshotStream;
-
   @override
   void initState() {
     super.initState();
-    _studentSnapshotStream =
-        FirebaseFirestore.instance.collection('students').snapshots().map(
-              (snap) => snap.docs
-                  .map((doc) => StudentModel.fromFirestore(doc))
-                  .toList(),
-            );
   }
 
   bool _isFsc(String classType) => classType.toLowerCase().contains('fsc');
@@ -82,7 +75,17 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
   double _sumAmount(List<StudentModel> students, bool collected) {
     return students.fold(0, (total, student) {
-      return total + (collected ? student.feeSubmitted : student.feeRemaining);
+      if (collected) {
+        // Sum up all subject payments for this student
+        return total + student.subjectPayments.values.fold(0.0, (a, b) => a + b);
+      } else {
+        // Calculate remaining fee by summing up (total - paid) for each subject
+        double remaining = 0;
+        for (final sub in student.subjectSchedules.keys) {
+          remaining += student.getSubjectRemaining(sub);
+        }
+        return total + remaining;
+      }
     });
   }
 
@@ -853,22 +856,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
           const SizedBox(width: 8),
         ],
       ),
-      body: StreamBuilder<List<StudentModel>>(
-        stream: _studentSnapshotStream,
-        builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(child: CircularProgressIndicator());
-          }
-          if (snapshot.hasError) {
-            return Center(
-              child: Text(
-                'Error loading dashboard: ${snapshot.error}',
-                style: const TextStyle(color: Colors.red),
-              ),
-            );
-          }
-
-          final students = snapshot.data ?? [];
+      body: ValueListenableBuilder<Box<StudentModel>>(
+        valueListenable: DatabaseService.studentBox.listenable(),
+        builder: (context, box, _) {
+          final students = box.values.toList();
 
           return SingleChildScrollView(
             padding: const EdgeInsets.all(20),
@@ -1015,7 +1006,17 @@ class _RevenueDrillDownDialogState extends State<RevenueDrillDownDialog> {
 
   double _sumAmount(List<StudentModel> students, bool collected) {
     return students.fold(0, (total, student) {
-      return total + (collected ? student.feeSubmitted : student.feeRemaining);
+      if (collected) {
+        // Sum up all subject payments for this student
+        return total + student.subjectPayments.values.fold(0.0, (a, b) => a + b);
+      } else {
+        // Calculate remaining fee by summing up (total - paid) for each subject
+        double remaining = 0;
+        for (final sub in student.subjectSchedules.keys) {
+          remaining += student.getSubjectRemaining(sub);
+        }
+        return total + remaining;
+      }
     });
   }
 

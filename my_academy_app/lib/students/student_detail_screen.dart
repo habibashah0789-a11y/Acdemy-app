@@ -8,7 +8,6 @@ import 'dart:typed_data';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:image_picker/image_picker.dart';
 import 'package:firebase_storage/firebase_storage.dart';
-import 'package:path_provider/path_provider.dart';
 import '../models/student_model.dart';
 import '../services/database_service.dart';
 import '../services/print_service.dart';
@@ -787,7 +786,7 @@ class _StudentDetailScreenState extends State<StudentDetailScreen> {
       crossAxisCount: 2,
       crossAxisSpacing: 16,
       mainAxisSpacing: 16,
-      childAspectRatio: 2,
+      childAspectRatio: 1.5,
       children: [
         _buildSubjectItem('Biology', student.biologyFee, Icons.biotech_rounded, Colors.green),
         _buildSubjectItem('Physics', student.physicsFee, Icons.science_rounded, Colors.blue),
@@ -798,23 +797,60 @@ class _StudentDetailScreenState extends State<StudentDetailScreen> {
     );
   }
 
-  Widget _buildSubjectItem(String subject, double fee, IconData icon, Color color) {
+  Widget _buildSubjectItem(String subject, double totalFee, IconData icon, Color color) {
+    if (totalFee <= 0 && !student.subject.contains(subject)) return const SizedBox.shrink();
+    
+    final paid = student.getSubjectPaid(subject);
+    final remaining = student.getSubjectRemaining(subject);
+    final isPaid = remaining <= 0;
+
     return Card(
+      elevation: 0,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+        side: BorderSide(color: color.withValues(alpha: 0.2)),
+      ),
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 12),
-        child: Row(
+        padding: const EdgeInsets.all(12),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(icon, color: color, size: 20),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Text(subject, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
-                  Text('Rs ${fee.toStringAsFixed(0)}', style: const TextStyle(fontSize: 10, color: Colors.grey)),
-                ],
-              ),
+            Row(
+              children: [
+                Icon(icon, color: color, size: 20),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    subject,
+                    style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Total: Rs ${totalFee.toStringAsFixed(0)}',
+              style: const TextStyle(fontSize: 10, color: Colors.grey),
+            ),
+            const SizedBox(height: 2),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  'Paid: Rs ${paid.toStringAsFixed(0)}',
+                  style: const TextStyle(fontSize: 10, color: Colors.green, fontWeight: FontWeight.w600),
+                ),
+                Text(
+                  isPaid ? 'PAID' : 'Rem: ${remaining.toStringAsFixed(0)}',
+                  style: TextStyle(
+                    fontSize: 10,
+                    color: isPaid ? Colors.green : Colors.red,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ],
             ),
           ],
         ),

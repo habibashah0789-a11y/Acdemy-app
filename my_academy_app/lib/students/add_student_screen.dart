@@ -45,6 +45,13 @@ class _AddStudentScreenState extends State<AddStudentScreen> {
 
   final _engC = TextEditingController();
   final _mathC = TextEditingController();
+
+  final _bioPaidC = TextEditingController();
+  final _phyPaidC = TextEditingController();
+  final _chemPaidC = TextEditingController();
+  final _engPaidC = TextEditingController();
+  final _mathPaidC = TextEditingController();
+
   Uint8List? _imageBytes;
   bool _isSaving = false;
 
@@ -83,6 +90,13 @@ class _AddStudentScreenState extends State<AddStudentScreen> {
     _chemC.text = '0';
     _engC.text = '0';
     _mathC.text = '0';
+
+    _bioPaidC.text = '0';
+    _phyPaidC.text = '0';
+    _chemPaidC.text = '0';
+    _engPaidC.text = '0';
+    _mathPaidC.text = '0';
+
     _feeSubC.text = '0';
     _feeRemC.text = '0';
 
@@ -92,6 +106,13 @@ class _AddStudentScreenState extends State<AddStudentScreen> {
     _chemC.addListener(_updateCalculatedFees);
     _engC.addListener(_updateCalculatedFees);
     _mathC.addListener(_updateCalculatedFees);
+
+    _bioPaidC.addListener(_updateCalculatedFees);
+    _phyPaidC.addListener(_updateCalculatedFees);
+    _chemPaidC.addListener(_updateCalculatedFees);
+    _engPaidC.addListener(_updateCalculatedFees);
+    _mathPaidC.addListener(_updateCalculatedFees);
+    
     _feeSubC.addListener(_updateCalculatedFees);
   }
 
@@ -106,14 +127,32 @@ class _AddStudentScreenState extends State<AddStudentScreen> {
     }
   }
 
+  TextEditingController _getPaidControllerForSubject(String sub) {
+    switch (sub) {
+      case 'Biology': return _bioPaidC;
+      case 'Physics': return _phyPaidC;
+      case 'Chemistry': return _chemPaidC;
+      case 'English': return _engPaidC;
+      case 'Math': return _mathPaidC;
+      default: return TextEditingController();
+    }
+  }
+
   void _updateCalculatedFees() {
     double total = 0;
+    double submitted = 0;
     for (final sub in _subjects) {
       if (_selectedSubjectSchedules.containsKey(sub)) {
         total += double.tryParse(_getFeeControllerForSubject(sub).text.trim()) ?? 0;
+        submitted += double.tryParse(_getPaidControllerForSubject(sub).text.trim()) ?? 0;
       }
     }
-    double submitted = double.tryParse(_feeSubC.text.trim()) ?? 0;
+    
+    // We update _feeSubC ONLY if the focus is NOT on it, 
+    // or if we want it to be auto-summed.
+    // To match user request of "manual distribution", we sum the individual paid fields.
+    _feeSubC.text = submitted.toStringAsFixed(0);
+    
     double remaining = total - submitted;
     if (remaining < 0) remaining = 0;
     _feeRemC.text = remaining.toStringAsFixed(0);
@@ -170,6 +209,7 @@ class _AddStudentScreenState extends State<AddStudentScreen> {
                         } else {
                           _selectedSubjectSchedules.remove(sub);
                           _getFeeControllerForSubject(sub).text = '0';
+                          _getPaidControllerForSubject(sub).text = '0';
                         }
                         _updateCalculatedFees();
                       });
@@ -212,31 +252,29 @@ class _AddStudentScreenState extends State<AddStudentScreen> {
     final List<Widget> fields = [];
     final activeSubs = _subjects.where((s) => _selectedSubjectSchedules.containsKey(s)).toList();
     
-    for (int i = 0; i < activeSubs.length; i += 2) {
-      if (i + 1 < activeSubs.length) {
-        final sub1 = activeSubs[i];
-        final sub2 = activeSubs[i + 1];
-        fields.add(
-          Padding(
-            padding: const EdgeInsets.only(bottom: 12.0),
-            child: Row(
-              children: [
-                Expanded(child: _feeField('$sub1 Fee', _getFeeControllerForSubject(sub1), _getSubjectColor(sub1))),
-                const SizedBox(width: 12),
-                Expanded(child: _feeField('$sub2 Fee', _getFeeControllerForSubject(sub2), _getSubjectColor(sub2))),
-              ],
-            ),
+    for (final sub in activeSubs) {
+      fields.add(
+        Padding(
+          padding: const EdgeInsets.only(bottom: 16.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                '$sub Fee Distribution',
+                style: TextStyle(fontWeight: FontWeight.bold, color: _getSubjectColor(sub), fontSize: 13),
+              ),
+              const SizedBox(height: 8),
+              Row(
+                children: [
+                  Expanded(child: _feeField('Total Fee', _getFeeControllerForSubject(sub), _getSubjectColor(sub))),
+                  const SizedBox(width: 12),
+                  Expanded(child: _feeField('Paid amount', _getPaidControllerForSubject(sub), Colors.green)),
+                ],
+              ),
+            ],
           ),
-        );
-      } else {
-        final sub = activeSubs[i];
-        fields.add(
-          Padding(
-            padding: const EdgeInsets.only(bottom: 12.0),
-            child: _feeField('$sub Fee', _getFeeControllerForSubject(sub), _getSubjectColor(sub)),
-          ),
-        );
-      }
+        ),
+      );
     }
     return fields;
   }
@@ -254,6 +292,11 @@ class _AddStudentScreenState extends State<AddStudentScreen> {
     _chemC.dispose();
     _engC.dispose();
     _mathC.dispose();
+    _bioPaidC.dispose();
+    _phyPaidC.dispose();
+    _chemPaidC.dispose();
+    _engPaidC.dispose();
+    _mathPaidC.dispose();
     super.dispose();
   }
 
@@ -371,6 +414,12 @@ class _AddStudentScreenState extends State<AddStudentScreen> {
         }
       }
       final initialFee = double.tryParse(_feeSubC.text.trim()) ?? 0;
+      
+      Map<String, double> subjectPayments = {};
+      for (final sub in _selectedSubjectSchedules.keys) {
+        subjectPayments[sub] = double.tryParse(_getPaidControllerForSubject(sub).text.trim()) ?? 0;
+      }
+
       final student = StudentModel(
         id: studentId,
         firstName: _nameC.text.trim(),
@@ -390,12 +439,13 @@ class _AddStudentScreenState extends State<AddStudentScreen> {
         englishFee: _selectedSubjectSchedules.containsKey('English') ? (double.tryParse(_engC.text.trim()) ?? 0) : 0,
         mathFee: _selectedSubjectSchedules.containsKey('Math') ? (double.tryParse(_mathC.text.trim()) ?? 0) : 0,
         profilePicUrl: picUrl,
+        subjectPaymentsJson: jsonEncode(subjectPayments),
         subjectSchedulesJson: jsonEncode(_selectedSubjectSchedules),
         paymentHistoryJson: initialFee > 0
             ? jsonEncode([{
                 'date': DateTime.now().toIso8601String(),
                 'amount': initialFee,
-                'note': 'Registration Payment',
+                'note': 'Registration Payment (Distributed)',
               }])
             : null,
       );

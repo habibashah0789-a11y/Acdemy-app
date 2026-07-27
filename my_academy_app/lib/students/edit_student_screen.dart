@@ -24,6 +24,7 @@ class EditStudentScreen extends StatefulWidget {
 class _EditStudentScreenState extends State<EditStudentScreen> {
   final _formKey = GlobalKey<FormState>();
   late final TextEditingController _nameC, _fatherC, _phoneC, _emailC, _feeSubC, _feeRemC, _bioC, _phyC, _chemC, _engC, _mathC;
+  late final TextEditingController _bioPaidC, _phyPaidC, _chemPaidC, _engPaidC, _mathPaidC;
   Uint8List? _imageBytes;
   late String _existingUrl;
   bool _isSaving = false;
@@ -62,6 +63,14 @@ class _EditStudentScreenState extends State<EditStudentScreen> {
     _chemC = TextEditingController(text: s.chemistryFee.toStringAsFixed(0));
     _engC = TextEditingController(text: s.englishFee.toStringAsFixed(0));
     _mathC = TextEditingController(text: s.mathFee.toStringAsFixed(0));
+
+    final payments = s.subjectPayments;
+    _bioPaidC = TextEditingController(text: (payments['Biology'] ?? 0).toStringAsFixed(0));
+    _phyPaidC = TextEditingController(text: (payments['Physics'] ?? 0).toStringAsFixed(0));
+    _chemPaidC = TextEditingController(text: (payments['Chemistry'] ?? 0).toStringAsFixed(0));
+    _engPaidC = TextEditingController(text: (payments['English'] ?? 0).toStringAsFixed(0));
+    _mathPaidC = TextEditingController(text: (payments['Math'] ?? 0).toStringAsFixed(0));
+
     _existingUrl = s.profilePicUrl;
 
     _selectedClassType = _classTypes.contains(s.classType) ? s.classType : 'FSc';
@@ -78,6 +87,13 @@ class _EditStudentScreenState extends State<EditStudentScreen> {
     _chemC.addListener(_updateCalculatedFees);
     _engC.addListener(_updateCalculatedFees);
     _mathC.addListener(_updateCalculatedFees);
+
+    _bioPaidC.addListener(_updateCalculatedFees);
+    _phyPaidC.addListener(_updateCalculatedFees);
+    _chemPaidC.addListener(_updateCalculatedFees);
+    _engPaidC.addListener(_updateCalculatedFees);
+    _mathPaidC.addListener(_updateCalculatedFees);
+
     _feeSubC.addListener(_updateCalculatedFees);
   }
 
@@ -92,14 +108,29 @@ class _EditStudentScreenState extends State<EditStudentScreen> {
     }
   }
 
+  TextEditingController _getPaidControllerForSubject(String sub) {
+    switch (sub) {
+      case 'Biology': return _bioPaidC;
+      case 'Physics': return _phyPaidC;
+      case 'Chemistry': return _chemPaidC;
+      case 'English': return _engPaidC;
+      case 'Math': return _mathPaidC;
+      default: return TextEditingController();
+    }
+  }
+
   void _updateCalculatedFees() {
     double total = 0;
+    double submitted = 0;
     for (final sub in _subjects) {
       if (_selectedSubjectSchedules.containsKey(sub)) {
         total += double.tryParse(_getFeeControllerForSubject(sub).text.trim()) ?? 0;
+        submitted += double.tryParse(_getPaidControllerForSubject(sub).text.trim()) ?? 0;
       }
     }
-    double submitted = double.tryParse(_feeSubC.text.trim()) ?? 0;
+    
+    _feeSubC.text = submitted.toStringAsFixed(0);
+    
     double remaining = total - submitted;
     if (remaining < 0) remaining = 0;
     _feeRemC.text = remaining.toStringAsFixed(0);
@@ -156,6 +187,7 @@ class _EditStudentScreenState extends State<EditStudentScreen> {
                         } else {
                           _selectedSubjectSchedules.remove(sub);
                           _getFeeControllerForSubject(sub).text = '0';
+                          _getPaidControllerForSubject(sub).text = '0';
                         }
                         _updateCalculatedFees();
                       });
@@ -198,31 +230,29 @@ class _EditStudentScreenState extends State<EditStudentScreen> {
     final List<Widget> fields = [];
     final activeSubs = _subjects.where((s) => _selectedSubjectSchedules.containsKey(s)).toList();
     
-    for (int i = 0; i < activeSubs.length; i += 2) {
-      if (i + 1 < activeSubs.length) {
-        final sub1 = activeSubs[i];
-        final sub2 = activeSubs[i + 1];
-        fields.add(
-          Padding(
-            padding: const EdgeInsets.only(bottom: 12.0),
-            child: Row(
-              children: [
-                Expanded(child: _feeField('$sub1 Fee', _getFeeControllerForSubject(sub1), _getSubjectColor(sub1))),
-                const SizedBox(width: 12),
-                Expanded(child: _feeField('$sub2 Fee', _getFeeControllerForSubject(sub2), _getSubjectColor(sub2))),
-              ],
-            ),
+    for (final sub in activeSubs) {
+      fields.add(
+        Padding(
+          padding: const EdgeInsets.only(bottom: 16.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                '$sub Fee Distribution',
+                style: TextStyle(fontWeight: FontWeight.bold, color: _getSubjectColor(sub), fontSize: 13),
+              ),
+              const SizedBox(height: 8),
+              Row(
+                children: [
+                  Expanded(child: _feeField('Total Fee', _getFeeControllerForSubject(sub), _getSubjectColor(sub))),
+                  const SizedBox(width: 12),
+                  Expanded(child: _feeField('Paid amount', _getPaidControllerForSubject(sub), Colors.green)),
+                ],
+              ),
+            ],
           ),
-        );
-      } else {
-        final sub = activeSubs[i];
-        fields.add(
-          Padding(
-            padding: const EdgeInsets.only(bottom: 12.0),
-            child: _feeField('$sub Fee', _getFeeControllerForSubject(sub), _getSubjectColor(sub)),
-          ),
-        );
-      }
+        ),
+      );
     }
     return fields;
   }
@@ -232,6 +262,7 @@ class _EditStudentScreenState extends State<EditStudentScreen> {
     _nameC.dispose(); _fatherC.dispose(); _phoneC.dispose(); _emailC.dispose();
     _feeSubC.dispose(); _feeRemC.dispose();
     _bioC.dispose(); _phyC.dispose(); _chemC.dispose(); _engC.dispose(); _mathC.dispose();
+    _bioPaidC.dispose(); _phyPaidC.dispose(); _chemPaidC.dispose(); _engPaidC.dispose(); _mathPaidC.dispose();
     super.dispose();
   }
 
@@ -357,6 +388,11 @@ class _EditStudentScreenState extends State<EditStudentScreen> {
         throw 'Please select at least one subject and schedule.';
       }
 
+      Map<String, double> subjectPayments = {};
+      for (final sub in _selectedSubjectSchedules.keys) {
+        subjectPayments[sub] = double.tryParse(_getPaidControllerForSubject(sub).text.trim()) ?? 0;
+      }
+
       final updated = StudentModel(
         id: widget.student.id,
         firstName: _nameC.text.trim(),
@@ -377,6 +413,7 @@ class _EditStudentScreenState extends State<EditStudentScreen> {
         mathFee: _selectedSubjectSchedules.containsKey('Math') ? (double.tryParse(_mathC.text.trim()) ?? 0) : 0,
         profilePicUrl: picUrl,
         createdAt: widget.student.createdAt,
+        subjectPaymentsJson: jsonEncode(subjectPayments),
         subjectSchedulesJson: jsonEncode(_selectedSubjectSchedules),
         paymentHistoryJson: history.isNotEmpty ? jsonEncode(history) : null,
       );

@@ -39,6 +39,7 @@ class StudentModelAdapter extends TypeAdapter<StudentModel> {
       createdAt: fields[19] as DateTime?,
       updatedAt: fields[20] as DateTime?,
       isActive: fields[21] as bool,
+      subjectPaymentsJson: fields[22] as String?,
       paymentHistoryJson: fields[23] as String?,
       subjectSchedulesJson: fields[24] as String?,
     );
@@ -47,7 +48,7 @@ class StudentModelAdapter extends TypeAdapter<StudentModel> {
   @override
   void write(BinaryWriter writer, StudentModel obj) {
     writer
-      ..writeByte(24)
+      ..writeByte(25)
       ..writeByte(0)
       ..write(obj.id)
       ..writeByte(1)
@@ -92,6 +93,8 @@ class StudentModelAdapter extends TypeAdapter<StudentModel> {
       ..write(obj.updatedAt)
       ..writeByte(21)
       ..write(obj.isActive)
+      ..writeByte(22)
+      ..write(obj.subjectPaymentsJson)
       ..writeByte(23)
       ..write(obj.paymentHistoryJson)
       ..writeByte(24)
