@@ -38,6 +38,14 @@ const Map<String, List<String>> _subjectFilters = {
   'English': ['english'],
 };
 
+const Map<String, String> _subjectDashboardToModel = {
+  'Bio': 'Biology',
+  'Physics': 'Physics',
+  'Chemistry': 'Chemistry',
+  'Maths': 'Math',
+  'English': 'English',
+};
+
 const Map<String, Color> _subjectColors = {
   'Bio': Color(0xFF4CAF50),
   'Physics': Color(0xFF2196F3),
@@ -73,18 +81,22 @@ class _DashboardScreenState extends State<DashboardScreen> {
   bool _isMatric(String classType) =>
       classType.toLowerCase().contains('matric');
 
-  double _sumAmount(List<StudentModel> students, bool collected) {
+  double _sumAmount(List<StudentModel> students, bool collected, {String? subjectFilter}) {
+    final modelSubject = subjectFilter != null ? (_subjectDashboardToModel[subjectFilter] ?? subjectFilter) : null;
+
     return students.fold(0, (total, student) {
       if (collected) {
-        // Sum up all subject payments for this student
-        return total + student.subjectPayments.values.fold(0.0, (a, b) => a + b);
-      } else {
-        // Calculate remaining fee by summing up (total - paid) for each subject
-        double remaining = 0;
-        for (final sub in student.subjectSchedules.keys) {
-          remaining += student.getSubjectRemaining(sub);
+        if (modelSubject != null) {
+          return total + student.getSubjectPaid(modelSubject);
+        } else {
+          return total + student.feeSubmitted;
         }
-        return total + remaining;
+      } else {
+        if (modelSubject != null) {
+          return total + student.getSubjectRemaining(modelSubject);
+        } else {
+          return total + student.feeRemaining;
+        }
       }
     });
   }
@@ -994,28 +1006,33 @@ class _RevenueDrillDownDialogState extends State<RevenueDrillDownDialog> {
     }).toList();
   }
 
-  double _getMetricValue(List<StudentModel> students, String metric) {
+  double _getMetricValue(List<StudentModel> students, String metric, {String? subjectFilter}) {
     if (metric == 'Total') {
-      return _sumAmount(students, true) + _sumAmount(students, false);
+      return _sumAmount(students, true, subjectFilter: subjectFilter) +
+          _sumAmount(students, false, subjectFilter: subjectFilter);
     } else if (metric == 'Collected') {
-      return _sumAmount(students, true);
+      return _sumAmount(students, true, subjectFilter: subjectFilter);
     } else {
-      return _sumAmount(students, false);
+      return _sumAmount(students, false, subjectFilter: subjectFilter);
     }
   }
 
-  double _sumAmount(List<StudentModel> students, bool collected) {
+  double _sumAmount(List<StudentModel> students, bool collected, {String? subjectFilter}) {
+    final modelSubject = subjectFilter != null ? (_subjectDashboardToModel[subjectFilter] ?? subjectFilter) : null;
+
     return students.fold(0, (total, student) {
       if (collected) {
-        // Sum up all subject payments for this student
-        return total + student.subjectPayments.values.fold(0.0, (a, b) => a + b);
-      } else {
-        // Calculate remaining fee by summing up (total - paid) for each subject
-        double remaining = 0;
-        for (final sub in student.subjectSchedules.keys) {
-          remaining += student.getSubjectRemaining(sub);
+        if (modelSubject != null) {
+          return total + student.getSubjectPaid(modelSubject);
+        } else {
+          return total + student.feeSubmitted;
         }
-        return total + remaining;
+      } else {
+        if (modelSubject != null) {
+          return total + student.getSubjectRemaining(modelSubject);
+        } else {
+          return total + student.feeRemaining;
+        }
       }
     });
   }
@@ -1224,7 +1241,7 @@ class _RevenueDrillDownDialogState extends State<RevenueDrillDownDialog> {
           _filterStudents(classType: widget.classType, grade: _selectedGrade);
       final subVals = _subjectsList.map((sub) {
         final list = filtered.where((s) => _matchesSubject(s, sub)).toList();
-        return _getMetricValue(list, _selectedMetric!);
+        return _getMetricValue(list, _selectedMetric!, subjectFilter: sub);
       }).toList();
 
       double maxVal = subVals.reduce((a, b) => a > b ? a : b);
@@ -1314,8 +1331,8 @@ class _RevenueDrillDownDialogState extends State<RevenueDrillDownDialog> {
         grade: _selectedGrade,
         subject: _selectedSubject,
       );
-      double col = _sumAmount(finalStudents, true);
-      double pen = _sumAmount(finalStudents, false);
+      double col = _sumAmount(finalStudents, true, subjectFilter: _selectedSubject);
+      double pen = _sumAmount(finalStudents, false, subjectFilter: _selectedSubject);
       double tot = col + pen;
       currentSubTitle =
           '${widget.classType} > $_selectedMetric > $_selectedGrade > $_selectedSubject';
@@ -1323,9 +1340,11 @@ class _RevenueDrillDownDialogState extends State<RevenueDrillDownDialog> {
       List<StudentModel> studentsToShow;
       Widget metricRow;
 
+      final modelSub = _selectedSubject != null ? (_subjectDashboardToModel[_selectedSubject] ?? _selectedSubject!) : '';
+
       if (_selectedMetric == 'Collected') {
         studentsToShow =
-            finalStudents.where((s) => s.feeSubmitted > 0).toList();
+            finalStudents.where((s) => s.getSubjectPaid(modelSub) > 0).toList();
         metricRow = Row(
           children: [
             _buildDetailMetricCard('Collected Fee', col, Colors.green),
@@ -1333,7 +1352,7 @@ class _RevenueDrillDownDialogState extends State<RevenueDrillDownDialog> {
         );
       } else if (_selectedMetric == 'Pending') {
         studentsToShow =
-            finalStudents.where((s) => s.feeRemaining > 0).toList();
+            finalStudents.where((s) => s.getSubjectRemaining(modelSub) > 0).toList();
         metricRow = Row(
           children: [
             _buildDetailMetricCard('Pending Fee', pen, Colors.red),
@@ -1390,7 +1409,7 @@ class _RevenueDrillDownDialogState extends State<RevenueDrillDownDialog> {
                   Widget trailingText;
                   if (_selectedMetric == 'Collected') {
                     trailingText = Text(
-                      'Rs ${s.feeSubmitted.toStringAsFixed(0)}',
+                      'Rs ${s.getSubjectPaid(modelSub).toStringAsFixed(0)}',
                       style: const TextStyle(
                           fontSize: 11,
                           fontWeight: FontWeight.bold,
@@ -1398,18 +1417,18 @@ class _RevenueDrillDownDialogState extends State<RevenueDrillDownDialog> {
                     );
                   } else if (_selectedMetric == 'Pending') {
                     trailingText = Text(
-                      'Rs ${s.feeRemaining.toStringAsFixed(0)}',
+                      'Rs ${s.getSubjectRemaining(modelSub).toStringAsFixed(0)}',
                       style: const TextStyle(
                           fontSize: 11,
                           fontWeight: FontWeight.bold,
                           color: Colors.red),
                     );
                   } else {
-                    final isPaid = s.feeRemaining <= 0;
+                    final isPaid = s.getSubjectRemaining(modelSub) <= 0;
                     trailingText = Text(
                       isPaid
                           ? 'PAID'
-                          : 'Rs ${s.feeRemaining.toStringAsFixed(0)}',
+                          : 'Rs ${s.getSubjectRemaining(modelSub).toStringAsFixed(0)}',
                       style: TextStyle(
                         fontSize: 11,
                         fontWeight: FontWeight.bold,
