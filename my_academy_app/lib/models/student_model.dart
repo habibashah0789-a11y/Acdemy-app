@@ -83,8 +83,12 @@ class StudentModel extends HiveObject {
   @HiveField(24)
   String? subjectSchedulesJson;
 
+  @HiveField(25)
+  String? storedStudentCode;
+
   StudentModel({
     required this.id,
+    String? studentCode,
     required this.firstName,
     required this.lastName,
     required this.fatherName,
@@ -109,7 +113,8 @@ class StudentModel extends HiveObject {
     this.subjectPaymentsJson,
     this.paymentHistoryJson,
     this.subjectSchedulesJson,
-  }) : createdAt = createdAt ?? DateTime.now();
+  }) : createdAt = createdAt ?? DateTime.now(),
+       storedStudentCode = studentCode;
 
   // Computed properties
   Map<String, double> get subjectPayments {
@@ -198,6 +203,11 @@ class StudentModel extends HiveObject {
     return '';
   }
   String get studentCode {
+    // Prefer the explicitly stored student code
+    if (storedStudentCode != null && storedStudentCode!.isNotEmpty) {
+      return storedStudentCode!;
+    }
+    // Fallback: derive from ID for legacy records
     if (id.isEmpty) return 'QA-000000';
     if (id.startsWith('QA-')) return id;
     final cleanId = id.replaceAll(RegExp(r'[^a-zA-Z0-9]'), '');
@@ -268,6 +278,7 @@ class StudentModel extends HiveObject {
   Map<String, dynamic> toMap() {
     return {
       'id': id,
+      'studentCode': studentCode,
       'firstName': firstName,
       'lastName': lastName,
       'fatherName': fatherName,
@@ -335,6 +346,7 @@ class StudentModel extends HiveObject {
     // Handle null values for all fields
     return StudentModel(
       id: docId,
+      studentCode: map['studentCode'] as String?,
       firstName: firstName,
       lastName: lastName,
       fatherName: map['fatherName'] ?? '',
@@ -374,6 +386,7 @@ class StudentModel extends HiveObject {
   factory StudentModel.empty() {
     return StudentModel(
       id: '',
+      studentCode: '',
       firstName: '',
       lastName: '',
       fatherName: '',
@@ -394,6 +407,7 @@ class StudentModel extends HiveObject {
   // Create copy with updated fields
   StudentModel copyWith({
     String? id,
+    String? studentCode,
     String? firstName,
     String? lastName,
     String? fatherName,
@@ -421,6 +435,7 @@ class StudentModel extends HiveObject {
   }) {
     return StudentModel(
       id: id ?? this.id,
+      studentCode: studentCode ?? storedStudentCode,
       firstName: firstName ?? this.firstName,
       lastName: lastName ?? this.lastName,
       fatherName: fatherName ?? this.fatherName,

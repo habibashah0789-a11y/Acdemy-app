@@ -65,11 +65,11 @@ class _StudentLoginScreenState extends State<StudentLoginScreen> {
         scannedQrToken: _scannedToken!,
       );
 
+      // After successful login, the main app's AuthWrapper will detect
+      // the auth state change and route to StudentMainWrapper automatically.
+      // We just need to pop back to the root so AuthWrapper takes over.
       if (mounted) {
-        Navigator.of(context).pushAndRemoveUntil(
-          MaterialPageRoute(builder: (_) => const StudentMainWrapper()),
-          (_) => false,
-        );
+        Navigator.of(context).popUntil((route) => route.isFirst);
       }
     } catch (e) {
       if (mounted) {
@@ -241,15 +241,21 @@ class _StudentLoginScreenState extends State<StudentLoginScreen> {
                   _buildStepCard(
                     stepNumber: '2',
                     title: 'Enter Your Student Code',
+                    isLocked: _scannedToken == null,
                     child: Form(
                       key: _formKey,
                       child: TextFormField(
                         controller: _studentIdController,
                         textCapitalization: TextCapitalization.characters,
-                        decoration: const InputDecoration(
-                          hintText: 'e.g. QA-2026-001',
-                          prefixIcon: Icon(Icons.badge_rounded, color: AppTheme.primaryBlue),
+                        enabled: _scannedToken != null,
+                        decoration: InputDecoration(
+                          hintText: _scannedToken == null ? 'Scan QR first...' : 'e.g. QA-2026-001',
+                          prefixIcon: Icon(
+                            _scannedToken == null ? Icons.lock_outline_rounded : Icons.badge_rounded,
+                            color: _scannedToken == null ? Colors.grey : AppTheme.primaryBlue,
+                          ),
                           labelText: 'Student ID',
+                          enabled: _scannedToken != null,
                         ),
                         validator: (v) {
                           if (v == null || v.trim().isEmpty) {
@@ -347,45 +353,80 @@ class _StudentLoginScreenState extends State<StudentLoginScreen> {
     required String stepNumber,
     required String title,
     required Widget child,
+    bool isLocked = false,
   }) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return CustomCard(
       padding: const EdgeInsets.all(20),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Container(
-                width: 30,
-                height: 30,
-                decoration: const BoxDecoration(
-                  gradient: AppTheme.primaryGradient,
-                  shape: BoxShape.circle,
+      child: Opacity(
+        opacity: isLocked ? 0.5 : 1.0,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Container(
+                  width: 30,
+                  height: 30,
+                  decoration: BoxDecoration(
+                    gradient: isLocked
+                        ? null
+                        : AppTheme.primaryGradient,
+                    color: isLocked
+                        ? (isDark ? Colors.grey.shade700 : Colors.grey.shade300)
+                        : null,
+                    shape: BoxShape.circle,
+                  ),
+                  child: Center(
+                    child: isLocked
+                        ? Icon(Icons.lock_outline_rounded,
+                            color: isDark ? Colors.grey.shade400 : Colors.grey.shade600,
+                            size: 16)
+                        : Text(
+                            stepNumber,
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 14,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                  ),
                 ),
-                child: Center(
+                const SizedBox(width: 12),
+                Expanded(
                   child: Text(
-                    stepNumber,
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 14,
-                      fontWeight: FontWeight.bold,
+                    title,
+                    style: GoogleFonts.poppins(
+                      fontWeight: FontWeight.w600,
+                      fontSize: 15,
+                      color: isLocked
+                          ? (isDark ? Colors.grey.shade500 : Colors.grey.shade600)
+                          : null,
                     ),
                   ),
                 ),
-              ),
-              const SizedBox(width: 12),
-              Text(
-                title,
-                style: GoogleFonts.poppins(
-                  fontWeight: FontWeight.w600,
-                  fontSize: 15,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 16),
-          child,
-        ],
+                if (isLocked)
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                    decoration: BoxDecoration(
+                      color: isDark ? Colors.grey.shade800 : Colors.grey.shade200,
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Text(
+                      'Locked',
+                      style: TextStyle(
+                        fontSize: 10,
+                        fontWeight: FontWeight.bold,
+                        color: isDark ? Colors.grey.shade400 : Colors.grey.shade600,
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            child,
+          ],
+        ),
       ),
     );
   }

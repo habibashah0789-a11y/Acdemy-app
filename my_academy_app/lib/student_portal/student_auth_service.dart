@@ -56,12 +56,18 @@ class StudentAuthService {
 
   // ── Student Login Flow ──────────────────────────────────────────────────
 
-  /// Performs full student login:
-  /// 1. Verifies studentCode + scanned QR token against Firestore
-  /// 2. Checks accountStatus == 'active'
-  /// 3. Verifies or binds device
-  /// 4. Signs into Firebase Auth with student's linked email/password
-  /// 5. Writes session to Hive
+  /// Performs full student login using a secondary Firebase App for
+  /// pre-authentication Firestore reads. This prevents the main app's
+  /// AuthWrapper from being triggered prematurely.
+  ///
+  /// Flow:
+  /// 1. Creates a secondary Firebase App + signs in anonymously on it
+  /// 2. Queries student_auth by studentCode via secondary Firestore
+  /// 3. Verifies QR token hash, account status, device binding
+  /// 4. Retrieves authEmail + authPassword from student_auth
+  /// 5. Cleans up secondary app
+  /// 6. Signs into MAIN Firebase Auth with student email/password
+  /// 7. Saves session to Hive
   ///
   /// Returns: student Firestore ID (doc ID) on success
   /// Throws: descriptive [Exception] on failure
@@ -69,110 +75,147 @@ class StudentAuthService {
     required String studentCode,
     required String scannedQrToken,
   }) async {
- // Step 0: Ensure an authenticated context (anonymous sign‑in)
-    await _auth.signInAnonymously();
-
-    // Step 1: Find student by studentCode in Firestore
-    QuerySnapshot<Map<String, dynamic>> studentQuery;
+    // ── Step 1: Create a secondary Firebase App for pre-auth reads ──
+    // This keeps the main app's auth state untouched until the final step.
+    FirebaseApp? secondaryApp;
     try {
-      studentQuery = await _firestore
-          .collection('students')
-          .where('id', isEqualTo: studentCode.trim())
-          .limit(1)
-          .get()
-          .timeout(const Duration(seconds: 10));
-    } catch (e) {
-      await _auth.signOut();
-      throw Exception(
-          'Cannot connect to server. Please check your internet connection.');
-    }
-
-    if (studentQuery.docs.isEmpty) {
-      throw Exception('Invalid Student ID. Please check and try again.');
-    }
-
-    final studentDoc = studentQuery.docs.first;
-    final studentId = studentDoc.id;
-
-    // Step 2: Fetch student_auth record
-    DocumentSnapshot<Map<String, dynamic>> authDoc;
-    try {
-      authDoc = await _firestore
-          .collection('student_auth')
-          .doc(studentId)
-          .get()
-          .timeout(const Duration(seconds: 10));
-    } catch (e) {
-      await _auth.signOut();
-      throw Exception('Cannot verify credentials. Please try again.');
-    }
-
-    if (!authDoc.exists || authDoc.data() == null) {
-      throw Exception(
-          'Student account is not configured. Please contact the academy.');
-    }
-
-    final authData = authDoc.data()!;
-
-    // Step 3: Check account status
-    final accountStatus = authData['accountStatus'] as String? ?? 'inactive';
-    if (accountStatus != 'active') {
-      throw Exception(
-          'This student account is disabled. Please contact the academy.');
-    }
-
-    // Step 4: Verify QR token hash
-    final storedTokenHash = authData['qrTokenHash'] as String? ?? '';
-    final providedTokenHash = hashQrToken(scannedQrToken.trim());
-    if (storedTokenHash.isEmpty || storedTokenHash != providedTokenHash) {
-      throw Exception(
-          'Invalid QR Code. Please use the QR code issued by the academy.');
-    }
-
-    // Step 5: Device binding check
-    final deviceFingerprint = await getDeviceFingerprint();
-    final linkedDeviceId = authData['linkedDeviceId'] as String? ?? '';
-
-    if (linkedDeviceId.isEmpty) {
-      // First-time login on a device — bind this device
-      await _firestore.collection('student_auth').doc(studentId).update({
-        'linkedDeviceId': deviceFingerprint,
-        'deviceLinkedAt': FieldValue.serverTimestamp(),
-      });
-    } else if (linkedDeviceId != deviceFingerprint) {
-      throw Exception(
-          'This student account is already active on another device. '
-          'Please contact the academy administration to reset your device.');
-    }
-
-    // Step 6: Sign into Firebase Auth using student's linked credentials
-    final authEmail = authData['authEmail'] as String? ?? '';
-    final authPassword = authData['authPassword'] as String? ?? '';
-
-    if (authEmail.isEmpty || authPassword.isEmpty) {
-      throw Exception(
-          'Student account credentials are not configured. Contact the academy.');
-    }
-
-    try {
-      await _auth.signInWithEmailAndPassword(
-        email: authEmail,
-        password: authPassword,
-      );
-    } on FirebaseException catch (e) {
-      await _auth.signOut();
-      if (e.code == 'user-disabled') {
-        throw Exception('This student account has been disabled.');
+      try {
+        secondaryApp = Firebase.app('StudentLoginApp');
+      } catch (_) {
+        secondaryApp = await Firebase.initializeApp(
+          name: 'StudentLoginApp',
+          options: Firebase.app().options,
+        );
       }
-      throw Exception('Login failed. Please contact the academy.');
     } catch (e) {
-      throw Exception('Login failed. Please contact the academy.');
+      throw Exception(
+          'Cannot initialize login service. Please restart the app.');
     }
 
-    // Step 7: Save session to Hive
-    await _saveSession(studentId: studentId, studentCode: studentCode);
+    final secondaryAuth = FirebaseAuth.instanceFor(app: secondaryApp);
+    final secondaryFirestore = FirebaseFirestore.instanceFor(app: secondaryApp);
 
-    return studentId;
+    try {
+      // Sign in anonymously on the SECONDARY app only
+      await secondaryAuth.signInAnonymously();
+
+      // ── Step 2: Find student by studentCode in student_auth ──
+      // student_auth documents store 'studentCode' field directly,
+      // so we query by that instead of querying 'students' by 'id'.
+      QuerySnapshot<Map<String, dynamic>> authQuery;
+      try {
+        authQuery = await secondaryFirestore
+            .collection('student_auth')
+            .where('studentCode', isEqualTo: studentCode.trim())
+            .limit(1)
+            .get()
+            .timeout(const Duration(seconds: 10));
+      } catch (e) {
+        throw Exception(
+            'Cannot connect to server. Please check your internet connection.');
+      }
+
+      if (authQuery.docs.isEmpty) {
+        throw Exception('Invalid Student ID. Please check and try again.');
+      }
+
+      final authDoc = authQuery.docs.first;
+      final studentId = authDoc.id;
+      final authData = authDoc.data();
+
+      // ── Step 3: Check account status ──
+      final accountStatus =
+          authData['accountStatus'] as String? ?? 'inactive';
+      if (accountStatus != 'active') {
+        throw Exception(
+            'This student account is disabled. Please contact the academy.');
+      }
+
+      // ── Step 4: Verify QR token hash ──
+      final storedTokenHash = authData['qrTokenHash'] as String? ?? '';
+      final providedTokenHash = hashQrToken(scannedQrToken.trim());
+      if (storedTokenHash.isEmpty || storedTokenHash != providedTokenHash) {
+        throw Exception(
+            'Invalid QR Code. Please use the QR code issued by the academy.');
+      }
+
+      // ── Step 5: Device binding check ──
+      final deviceFingerprint = await getDeviceFingerprint();
+      final linkedDeviceId = authData['linkedDeviceId'] as String? ?? '';
+
+      if (linkedDeviceId.isEmpty) {
+        // First-time login — bind this device via secondary Firestore
+        // Note: We cannot update via anonymous auth due to security rules.
+        // The device binding will be done after signing into the main app.
+      } else if (linkedDeviceId != deviceFingerprint) {
+        throw Exception(
+            'This student account is already active on another device. '
+            'Please contact the academy administration to reset your device.');
+      }
+
+      // ── Step 6: Retrieve student credentials ──
+      final authEmail = authData['authEmail'] as String? ?? '';
+      final authPassword = authData['authPassword'] as String? ?? '';
+
+      if (authEmail.isEmpty || authPassword.isEmpty) {
+        throw Exception(
+            'Student account credentials are not configured. Contact the academy.');
+      }
+
+      // ── Step 7: Clean up secondary app before main sign-in ──
+      await secondaryAuth.signOut();
+      try {
+        await secondaryApp.delete();
+      } catch (_) {
+        // Ignore cleanup errors
+      }
+      secondaryApp = null; // Mark as cleaned up
+
+      // ── Step 8: Sign into MAIN Firebase Auth with student credentials ──
+      // This is the ONLY point where the main auth state changes,
+      // correctly triggering AuthWrapper → RoleRoutingWrapper → StudentMainWrapper
+      try {
+        await _auth.signInWithEmailAndPassword(
+          email: authEmail,
+          password: authPassword,
+        );
+      } on FirebaseException catch (e) {
+        if (e.code == 'user-disabled') {
+          throw Exception('This student account has been disabled.');
+        }
+        throw Exception('Login failed. Please contact the academy.');
+      }
+
+      // ── Step 8b: Bind device if first-time login ──
+      // Now we're authenticated as the student, so Firestore rules allow this.
+      if (linkedDeviceId.isEmpty) {
+        try {
+          await _firestore.collection('student_auth').doc(studentId).update({
+            'linkedDeviceId': deviceFingerprint,
+            'deviceLinkedAt': FieldValue.serverTimestamp(),
+          });
+        } catch (e) {
+          debugPrint('Device binding update failed: $e');
+          // Non-fatal — login still succeeds
+        }
+      }
+
+      // ── Step 9: Save session to Hive ──
+      await _saveSession(studentId: studentId, studentCode: studentCode);
+
+      return studentId;
+    } catch (e) {
+      // Clean up secondary app on error
+      if (secondaryApp != null) {
+        try {
+          await secondaryAuth.signOut();
+          await secondaryApp.delete();
+        } catch (_) {}
+      }
+      // Re-throw the original exception
+      if (e is Exception) rethrow;
+      throw Exception('Login failed. Please try again.');
+    }
   }
 
   // ── Session Management ──────────────────────────────────────────────────

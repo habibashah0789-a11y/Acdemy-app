@@ -1,16 +1,20 @@
 import 'dart:convert';
 import 'dart:typed_data';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:google_fonts/google_fonts.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:flutter_spinkit/flutter_spinkit.dart';
 import 'package:firebase_storage/firebase_storage.dart';
+import 'package:qr_flutter/qr_flutter.dart';
 import '../models/student_model.dart';
 import '../services/database_service.dart';
 import '../services/notification_service.dart';
 import '../widgets/crop_image_dialog.dart';
 import '../theme/app_theme.dart';
 import '../utils/image_utils.dart';
+import '../student_portal/student_auth_service.dart';
 
 class AddStudentScreen extends StatefulWidget {
   final String? presetClassType;
@@ -365,6 +369,27 @@ class _AddStudentScreenState extends State<AddStudentScreen> {
     }
   }
 
+  /// Generates a unique student code in format QA-YYYY-NNN by counting
+  /// existing students in Firestore for the current year.
+  Future<String> _generateStudentCode() async {
+    final year = DateTime.now().year;
+    try {
+      // Count how many students already have a studentCode starting with QA-YYYY
+      final snapshot = await FirebaseFirestore.instance
+          .collection('students')
+          .where('studentCode', isGreaterThanOrEqualTo: 'QA-$year-')
+          .where('studentCode', isLessThan: 'QA-${year + 1}-')
+          .get()
+          .timeout(const Duration(seconds: 8));
+      final nextNum = snapshot.docs.length + 1;
+      return 'QA-$year-${nextNum.toString().padLeft(3, '0')}';
+    } catch (_) {
+      // Fallback: use timestamp suffix
+      final ts = DateTime.now().millisecondsSinceEpoch % 100000;
+      return 'QA-$year-${ts.toString().padLeft(5, '0')}';
+    }
+  }
+
   Future<void> _save() async {
     if (!_formKey.currentState!.validate()) return;
     if (_selectedSubjectSchedules.isEmpty) {
@@ -376,6 +401,7 @@ class _AddStudentScreenState extends State<AddStudentScreen> {
     setState(() => _isSaving = true);
     try {
       final studentId = DateTime.now().millisecondsSinceEpoch.toString();
+      final studentCode = await _generateStudentCode();
       String picUrl = '';
       
       // Upload image to Firebase Storage and save locally if provided
@@ -422,6 +448,7 @@ class _AddStudentScreenState extends State<AddStudentScreen> {
 
       final student = StudentModel(
         id: studentId,
+        studentCode: studentCode,
         firstName: _nameC.text.trim(),
         fatherName: _fatherC.text.trim(),
         lastName: '',
@@ -454,7 +481,31 @@ class _AddStudentScreenState extends State<AddStudentScreen> {
       // Trigger Notification
       await NotificationService.createStudentRegistrationNotification(student: student);
 
-      if (mounted) Navigator.pop(context, true);
+      // Create student portal auth record (QR token + Firebase Auth account)
+      String? qrToken;
+      try {
+        final authResult = await StudentAuthService.createStudentAuthRecord(
+          studentId: studentId,
+          studentCode: studentCode,
+          studentName: _nameC.text.trim(),
+        );
+        qrToken = authResult['qrToken'];
+      } catch (authError) {
+        debugPrint('Student auth setup failed (non-fatal): $authError');
+        // Non-fatal — student is still registered, portal setup can be retried
+      }
+
+      if (mounted) {
+        // Show QR card success dialog if we have a token
+        if (qrToken != null) {
+          await _showStudentQrDialog(
+            studentName: _nameC.text.trim(),
+            studentCode: studentCode,
+            qrToken: qrToken,
+          );
+        }
+        Navigator.pop(context, true);
+      }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(
@@ -463,6 +514,161 @@ class _AddStudentScreenState extends State<AddStudentScreen> {
     } finally {
       if (mounted) setState(() => _isSaving = false);
     }
+  }
+
+  /// Shows a premium dialog with the student QR code for printing/sharing.
+  Future<void> _showStudentQrDialog({
+    required String studentName,
+    required String studentCode,
+    required String qrToken,
+  }) async {
+    await showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => Dialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+        child: Container(
+          padding: const EdgeInsets.all(24),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(24),
+            gradient: const LinearGradient(
+              colors: [Color(0xFFF0F4FF), Colors.white],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Header
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: AppTheme.secondaryGreen.withValues(alpha: 0.12),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(Icons.check_circle_rounded, color: AppTheme.secondaryGreen, size: 36),
+              ),
+              const SizedBox(height: 12),
+              Text(
+                'Student Registered!',
+                style: GoogleFonts.poppins(fontSize: 18, fontWeight: FontWeight.bold, color: AppTheme.primaryDarkBlue),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 4),
+              Text(
+                studentName,
+                style: GoogleFonts.poppins(fontSize: 14, color: Colors.grey.shade600),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 20),
+
+              // QR Code
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(16),
+                  boxShadow: [
+                    BoxShadow(
+                      color: AppTheme.primaryBlue.withValues(alpha: 0.12),
+                      blurRadius: 16,
+                      offset: const Offset(0, 4),
+                    )
+                  ],
+                ),
+                child: QrImageView(
+                  data: qrToken,
+                  version: QrVersions.auto,
+                  size: 200,
+                  eyeStyle: const QrEyeStyle(
+                    eyeShape: QrEyeShape.square,
+                    color: AppTheme.primaryDarkBlue,
+                  ),
+                  dataModuleStyle: const QrDataModuleStyle(
+                    dataModuleShape: QrDataModuleShape.square,
+                    color: AppTheme.primaryBlue,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 16),
+
+              // Student Code Badge
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                decoration: BoxDecoration(
+                  gradient: AppTheme.primaryGradient,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Column(
+                  children: [
+                    const Text(
+                      'Student Login Code',
+                      style: TextStyle(color: Colors.white70, fontSize: 11, letterSpacing: 0.5),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      studentCode,
+                      style: GoogleFonts.poppins(
+                        color: Colors.white,
+                        fontSize: 22,
+                        fontWeight: FontWeight.bold,
+                        letterSpacing: 2,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 12),
+
+              // Instructions
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: AppTheme.accentOrange.withValues(alpha: 0.08),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: AppTheme.accentOrange.withValues(alpha: 0.3)),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Icon(Icons.info_outline_rounded, color: AppTheme.accentOrange, size: 16),
+                        const SizedBox(width: 6),
+                        Text(
+                          'Give this to the student:',
+                          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: AppTheme.accentOrange),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 6),
+                    const Text('① Student scans this QR code', style: TextStyle(fontSize: 12)),
+                    const Text('② Then types their Login Code above', style: TextStyle(fontSize: 12)),
+                    const Text('③ Portal access is granted!', style: TextStyle(fontSize: 12)),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 20),
+
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed: () => Navigator.pop(ctx),
+                  style: ElevatedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                  ),
+                  child: Text(
+                    'Done',
+                    style: GoogleFonts.poppins(fontWeight: FontWeight.bold, fontSize: 15),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 
   Widget _sectionTitle(String title) {
