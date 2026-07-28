@@ -5,6 +5,9 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../models/student_model.dart';
 import '../theme/app_theme.dart';
+import '../widgets/custom_card.dart';
+import '../widgets/empty_state_widget.dart';
+import '../widgets/shimmer_loading_widget.dart';
 import 'student_auth_service.dart';
 import 'student_login_screen.dart';
 
@@ -64,16 +67,39 @@ class _StudentProfileScreenState extends State<StudentProfileScreen> {
     final confirm = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Logout?'),
-        content: const Text('Are you sure you want to sign out of your portal?'),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+        title: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: AppTheme.warningRed.withValues(alpha: 0.1),
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(Icons.logout_rounded, color: AppTheme.warningRed, size: 22),
+            ),
+            const SizedBox(width: 12),
+            Text(
+              'Sign Out',
+              style: GoogleFonts.poppins(fontWeight: FontWeight.bold, fontSize: 18),
+            ),
+          ],
+        ),
+        content: Text(
+          'Are you sure you want to sign out of your student portal session?',
+          style: GoogleFonts.poppins(fontSize: 14),
+        ),
         actions: [
-          TextButton(
+          OutlinedButton(
             onPressed: () => Navigator.pop(context, false),
             child: const Text('Cancel'),
           ),
-          TextButton(
+          ElevatedButton(
             onPressed: () => Navigator.pop(context, true),
-            style: TextButton.styleFrom(foregroundColor: Colors.red),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppTheme.warningRed,
+              foregroundColor: Colors.white,
+            ),
             child: const Text('Logout'),
           ),
         ],
@@ -96,35 +122,29 @@ class _StudentProfileScreenState extends State<StudentProfileScreen> {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     if (_isLoading) {
-      return const Scaffold(
-        body: Center(child: CircularProgressIndicator()),
+      return Scaffold(
+        body: ListView(
+          padding: const EdgeInsets.all(20),
+          children: const [
+            SizedBox(height: 40),
+            Center(child: ShimmerLoadingWidget(width: 100, height: 100, borderRadius: 50)),
+            SizedBox(height: 24),
+            ShimmerLoadingWidget(width: double.infinity, height: 140, borderRadius: 18),
+            SizedBox(height: 20),
+            ShimmerLoadingWidget(width: double.infinity, height: 140, borderRadius: 18),
+          ],
+        ),
       );
     }
 
     if (_errorMessage != null || _student == null) {
       return Scaffold(
-        body: Center(
-          child: Padding(
-            padding: const EdgeInsets.all(24),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const Icon(Icons.error_outline_rounded,
-                    size: 64, color: Colors.red),
-                const SizedBox(height: 16),
-                Text(
-                  _errorMessage ?? 'An error occurred',
-                  textAlign: TextAlign.center,
-                  style: const TextStyle(fontSize: 16),
-                ),
-                const SizedBox(height: 16),
-                ElevatedButton(
-                  onPressed: _loadProfileData,
-                  child: const Text('Retry'),
-                ),
-              ],
-            ),
-          ),
+        body: EmptyStateWidget(
+          title: 'Profile Unavailable',
+          description: _errorMessage ?? 'Could not retrieve profile information.',
+          icon: Icons.person_off_rounded,
+          actionLabel: 'Retry',
+          onAction: _loadProfileData,
         ),
       );
     }
@@ -132,13 +152,12 @@ class _StudentProfileScreenState extends State<StudentProfileScreen> {
     final student = _student!;
 
     return Scaffold(
-      backgroundColor:
-          isDark ? AppTheme.darkBackground : const Color(0xFFF5F7FA),
+      backgroundColor: isDark ? AppTheme.darkBackground : AppTheme.lightBackground,
       appBar: AppBar(
         automaticallyImplyLeading: false,
         title: Text(
-          'My Profile',
-          style: GoogleFonts.poppins(fontWeight: FontWeight.bold),
+          'My Student Profile',
+          style: GoogleFonts.poppins(fontWeight: FontWeight.bold, fontSize: 18),
         ),
         backgroundColor: AppTheme.primaryBlue,
         foregroundColor: Colors.white,
@@ -152,195 +171,175 @@ class _StudentProfileScreenState extends State<StudentProfileScreen> {
       ),
       body: RefreshIndicator(
         onRefresh: _loadProfileData,
+        color: AppTheme.primaryBlue,
         child: ListView(
-          padding: const EdgeInsets.all(16),
+          padding: const EdgeInsets.all(20),
           children: [
-            // Header Profile Card
-            Card(
-              elevation: 2,
-              shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(16)),
-              child: Padding(
-                padding: const EdgeInsets.all(20),
-                child: Column(
-                  children: [
-                    Container(
-                      width: 90,
-                      height: 90,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        border: Border.all(
-                            color: AppTheme.primaryBlue, width: 2.5),
-                      ),
-                      child: ClipOval(
-                        child: student.profilePicUrl.isNotEmpty &&
-                                student.profilePicUrl.startsWith('http')
-                            ? CachedNetworkImage(
-                                imageUrl: student.profilePicUrl,
-                                fit: BoxFit.cover,
-                                placeholder: (_, __) => const Icon(
-                                    Icons.person,
-                                    color: Colors.grey,
-                                    size: 48),
-                                errorWidget: (_, __, ___) => const Icon(
-                                    Icons.person,
-                                    color: Colors.grey,
-                                    size: 48),
-                              )
-                            : const Icon(Icons.person,
-                                color: Colors.grey, size: 48),
-                      ),
-                    ).animate().scale(duration: 400.ms),
-                    const SizedBox(height: 14),
-                    Text(
-                      student.name,
-                      style: GoogleFonts.poppins(
-                        fontSize: 18,
+            // Avatar & Name Card
+            CustomCard(
+              padding: const EdgeInsets.all(24),
+              child: Column(
+                children: [
+                  Container(
+                    width: 96,
+                    height: 96,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      border: Border.all(color: AppTheme.primaryBlue, width: 3),
+                      boxShadow: [
+                        BoxShadow(
+                          color: AppTheme.primaryBlue.withValues(alpha: 0.2),
+                          blurRadius: 16,
+                          offset: const Offset(0, 4),
+                        )
+                      ],
+                    ),
+                    child: ClipOval(
+                      child: student.profilePicUrl.isNotEmpty &&
+                              student.profilePicUrl.startsWith('http')
+                          ? CachedNetworkImage(
+                              imageUrl: student.profilePicUrl,
+                              fit: BoxFit.cover,
+                              placeholder: (_, __) => const Icon(Icons.person, color: Colors.grey, size: 52),
+                              errorWidget: (_, __, ___) => const Icon(Icons.person, color: Colors.grey, size: 52),
+                            )
+                          : const Icon(Icons.person, color: Colors.grey, size: 52),
+                    ),
+                  ).animate().scale(duration: 400.ms),
+                  const SizedBox(height: 16),
+                  Text(
+                    student.name,
+                    style: GoogleFonts.poppins(
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: 6),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: AppTheme.primaryBlue.withValues(alpha: 0.12),
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: Text(
+                      student.studentCode,
+                      style: const TextStyle(
+                        color: AppTheme.primaryBlue,
+                        fontSize: 13,
                         fontWeight: FontWeight.bold,
+                        letterSpacing: 0.8,
                       ),
                     ),
-                    const SizedBox(height: 4),
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 8, vertical: 3),
-                      decoration: BoxDecoration(
-                        color: AppTheme.primaryBlue.withValues(alpha: 0.1),
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Text(
-                        student.studentCode,
-                        style: const TextStyle(
-                          color: AppTheme.primaryBlue,
-                          fontSize: 12,
-                          fontWeight: FontWeight.bold,
-                          letterSpacing: 0.8,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
+                  ),
+                ],
               ),
             ).animate().fadeIn(),
 
-            const SizedBox(height: 16),
+            const SizedBox(height: 20),
 
-            // Class Information Card
-            _buildSectionHeader('Class Details'),
-            Card(
-              elevation: 1,
-              shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(14)),
-              child: Padding(
-                padding: const EdgeInsets.all(16),
-                child: Column(
-                  children: [
-                    _buildInfoRow(
-                        Icons.category_rounded, 'Class Type', student.classType),
-                    const Divider(),
-                    _buildInfoRow(
-                        Icons.school_rounded, 'Grade / Year', student.grade),
-                    const Divider(),
-                    _buildInfoRow(Icons.fiber_manual_record_rounded,
-                        'Enrollment Status', student.enrollmentStatusText,
-                        valueColor: student.enrollmentStatusColor),
-                  ],
-                ),
+            // Academic Information
+            _buildSectionHeader('Academic Details', Icons.school_rounded),
+            const SizedBox(height: 10),
+            CustomCard(
+              padding: const EdgeInsets.all(18),
+              child: Column(
+                children: [
+                  _buildInfoRow(Icons.category_rounded, 'Class Format', student.classType),
+                  const Divider(height: 20),
+                  _buildInfoRow(Icons.grade_rounded, 'Grade / Level', student.grade),
+                  const Divider(height: 20),
+                  _buildInfoRow(
+                    Icons.verified_user_rounded,
+                    'Enrollment Status',
+                    student.enrollmentStatusText,
+                    valueColor: student.enrollmentStatusColor,
+                  ),
+                ],
               ),
             ).animate().fadeIn(delay: 100.ms),
 
-            const SizedBox(height: 16),
+            const SizedBox(height: 20),
 
-            // Personal Information Card
-            _buildSectionHeader('Personal Information'),
-            Card(
-              elevation: 1,
-              shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(14)),
-              child: Padding(
-                padding: const EdgeInsets.all(16),
-                child: Column(
-                  children: [
-                    _buildInfoRow(Icons.person_outline_rounded, 'Father\'s Name',
-                        student.fatherName),
-                    const Divider(),
-                    _buildInfoRow(
-                        Icons.phone_android_rounded, 'Phone Number', student.phone),
-                    const Divider(),
-                    _buildInfoRow(Icons.email_outlined, 'Email Address',
-                        student.email.isEmpty ? 'N/A' : student.email),
-                  ],
-                ),
+            // Personal Information
+            _buildSectionHeader('Personal Contact Info', Icons.contact_phone_rounded),
+            const SizedBox(height: 10),
+            CustomCard(
+              padding: const EdgeInsets.all(18),
+              child: Column(
+                children: [
+                  _buildInfoRow(Icons.person_outline_rounded, 'Father\'s Name', student.fatherName),
+                  const Divider(height: 20),
+                  _buildInfoRow(Icons.phone_android_rounded, 'Guardian Phone', student.phone),
+                  const Divider(height: 20),
+                  _buildInfoRow(
+                    Icons.email_outlined,
+                    'Email Address',
+                    student.email.isEmpty ? 'N/A' : student.email,
+                  ),
+                ],
               ),
             ).animate().fadeIn(delay: 200.ms),
 
-            const SizedBox(height: 24),
+            const SizedBox(height: 28),
 
-            // Log out Button
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              child: ElevatedButton.icon(
-                onPressed: _handleLogout,
-                icon: const Icon(Icons.logout_rounded),
-                label: const Text('Logout from Portal'),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.red,
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(vertical: 14),
-                  shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12)),
-                ),
+            // Sign Out Button
+            ElevatedButton.icon(
+              onPressed: _handleLogout,
+              icon: const Icon(Icons.logout_rounded),
+              label: const Text('Sign Out of Portal'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppTheme.warningRed,
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(vertical: 15),
               ),
             ).animate().fadeIn(delay: 300.ms),
 
-            const SizedBox(height: 80),
+            const SizedBox(height: 60),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildSectionHeader(String title) {
-    return Padding(
-      padding: const EdgeInsets.only(left: 4, bottom: 8),
-      child: Text(
-        title,
-        style: GoogleFonts.poppins(
-          fontWeight: FontWeight.bold,
-          fontSize: 14,
-          color: AppTheme.primaryBlue,
+  Widget _buildSectionHeader(String title, IconData icon) {
+    return Row(
+      children: [
+        Icon(icon, size: 18, color: AppTheme.primaryBlue),
+        const SizedBox(width: 8),
+        Text(
+          title,
+          style: GoogleFonts.poppins(
+            fontWeight: FontWeight.bold,
+            fontSize: 15,
+          ),
         ),
-      ),
+      ],
     );
   }
 
-  Widget _buildInfoRow(IconData icon, String label, String value,
-      {Color? valueColor}) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 6),
-      child: Row(
-        children: [
-          Icon(icon, size: 20, color: AppTheme.primaryBlue),
-          const SizedBox(width: 14),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(label,
-                    style: const TextStyle(fontSize: 11, color: Colors.grey)),
-                const SizedBox(height: 2),
-                Text(
-                  value,
-                  style: TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w600,
-                    color: valueColor,
-                  ),
+  Widget _buildInfoRow(IconData icon, String label, String value, {Color? valueColor}) {
+    return Row(
+      children: [
+        Icon(icon, size: 20, color: AppTheme.primaryBlue),
+        const SizedBox(width: 14),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(label, style: const TextStyle(fontSize: 12, color: Colors.grey)),
+              const SizedBox(height: 2),
+              Text(
+                value,
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                  color: valueColor,
                 ),
-              ],
-            ),
+              ),
+            ],
           ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 }

@@ -5,6 +5,7 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 import '../theme/app_theme.dart';
+import '../widgets/custom_card.dart';
 import 'student_auth_service.dart';
 import 'student_main_wrapper.dart';
 
@@ -31,7 +32,7 @@ class _StudentLoginScreenState extends State<StudentLoginScreen> {
   }
 
   void _onQrDetected(BarcodeCapture capture) {
-    if (_scannedToken != null) return; // Already scanned
+    if (_scannedToken != null) return;
     final barcodes = capture.barcodes;
     for (final barcode in barcodes) {
       final raw = barcode.rawValue ?? '';
@@ -74,7 +75,6 @@ class _StudentLoginScreenState extends State<StudentLoginScreen> {
       if (mounted) {
         setState(() {
           _errorMessage = e.toString().replaceFirst('Exception: ', '');
-          // Clear scanned token on error so user can try again
           _scannedToken = null;
         });
       }
@@ -106,16 +106,16 @@ class _StudentLoginScreenState extends State<StudentLoginScreen> {
     return Scaffold(
       body: Stack(
         children: [
-          // Background gradient
-          Container(
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
-                colors: [
-                  AppTheme.primaryBlue.withOpacity(0.08),
-                  Colors.transparent,
-                ],
+          // Elegant Header Gradient Blob Background
+          Positioned(
+            top: -100,
+            left: -50,
+            right: -50,
+            child: Container(
+              height: 320,
+              decoration: BoxDecoration(
+                gradient: AppTheme.primaryGradient,
+                borderRadius: const BorderRadius.vertical(bottom: Radius.circular(160)),
               ),
             ),
           ),
@@ -125,46 +125,56 @@ class _StudentLoginScreenState extends State<StudentLoginScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
-                  const SizedBox(height: 32),
+                  const SizedBox(height: 16),
 
-                  // Back button
+                  // Top Navigation Back Button
                   Align(
                     alignment: Alignment.centerLeft,
                     child: IconButton(
-                      icon: const Icon(Icons.arrow_back_ios_new_rounded),
+                      icon: Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withValues(alpha: 0.2),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: const Icon(Icons.arrow_back_ios_new_rounded, color: Colors.white, size: 18),
+                      ),
                       onPressed: () => Navigator.pop(context),
                     ),
                   ),
 
                   const SizedBox(height: 12),
 
-                  // Logo
+                  // Brand Icon & Title
                   Container(
-                    height: 90,
-                    width: 90,
+                    height: 96,
+                    width: 96,
                     decoration: BoxDecoration(
-                      color: AppTheme.primaryBlue.withOpacity(0.1),
-                      borderRadius: BorderRadius.circular(22),
-                      border: Border.all(
-                        color: AppTheme.primaryBlue.withOpacity(0.2),
-                        width: 1.5,
-                      ),
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(26),
+                      boxShadow: [
+                        BoxShadow(
+                          color: AppTheme.primaryBlue.withValues(alpha: 0.25),
+                          blurRadius: 20,
+                          offset: const Offset(0, 8),
+                        )
+                      ],
                     ),
                     child: const Icon(
                       Icons.school_rounded,
-                      size: 50,
+                      size: 52,
                       color: AppTheme.primaryBlue,
                     ),
-                  ).animate().fadeIn(duration: 500.ms).scale(begin: const Offset(0.8, 0.8)),
+                  ).animate().fadeIn(duration: 500.ms).scale(begin: const Offset(0.85, 0.85)),
 
-                  const SizedBox(height: 16),
+                  const SizedBox(height: 20),
 
                   Text(
                     'Quaid Academy',
                     style: GoogleFonts.poppins(
                       fontSize: 26,
                       fontWeight: FontWeight.bold,
-                      color: AppTheme.primaryBlue,
+                      color: isDark ? Colors.white : AppTheme.primaryDarkBlue,
                     ),
                   ).animate().fadeIn(delay: 150.ms),
 
@@ -172,10 +182,9 @@ class _StudentLoginScreenState extends State<StudentLoginScreen> {
                     'Student Access Portal',
                     style: GoogleFonts.poppins(
                       fontSize: 14,
-                      color: isDark
-                          ? AppTheme.darkTextSecondary
-                          : AppTheme.lightTextSecondary,
-                      letterSpacing: 0.8,
+                      color: isDark ? AppTheme.darkTextSecondary : AppTheme.lightTextSecondary,
+                      fontWeight: FontWeight.w500,
+                      letterSpacing: 0.5,
                     ),
                   ).animate().fadeIn(delay: 250.ms),
 
@@ -184,60 +193,54 @@ class _StudentLoginScreenState extends State<StudentLoginScreen> {
                   // Step 1: QR Code Section
                   _buildStepCard(
                     stepNumber: '1',
-                    title: 'Scan Your QR Code',
+                    title: 'Scan Your QR Access Code',
                     child: Column(
                       children: [
                         Text(
                           _scannedToken == null
-                              ? 'Scan the QR code issued by the academy'
-                              : 'QR Code scanned successfully',
+                              ? 'Scan the official student QR code provided by administration'
+                              : 'QR Code verified successfully',
                           textAlign: TextAlign.center,
                           style: TextStyle(
                             fontSize: 13,
                             color: _scannedToken == null
-                                ? (isDark
-                                    ? AppTheme.darkTextSecondary
-                                    : AppTheme.lightTextSecondary)
-                                : Colors.green,
+                                ? (isDark ? AppTheme.darkTextSecondary : AppTheme.lightTextSecondary)
+                                : AppTheme.secondaryGreen,
+                            fontWeight: _scannedToken != null ? FontWeight.w600 : FontWeight.normal,
                           ),
                         ),
-                        const SizedBox(height: 14),
+                        const SizedBox(height: 16),
                         if (_scannedToken != null)
-                          _buildSuccessBadge('QR Code verified ✓')
+                          _buildSuccessBadge('QR Token Authenticated ✓')
                         else
                           SizedBox(
                             width: double.infinity,
                             child: OutlinedButton.icon(
                               onPressed: _openScanner,
                               icon: const Icon(Icons.qr_code_scanner_rounded),
-                              label: const Text('Scan QR Code'),
+                              label: const Text('Scan Student QR Code'),
                               style: OutlinedButton.styleFrom(
-                                padding:
-                                    const EdgeInsets.symmetric(vertical: 14),
-                                side: const BorderSide(
-                                    color: AppTheme.primaryBlue),
-                                foregroundColor: AppTheme.primaryBlue,
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
+                                padding: const EdgeInsets.symmetric(vertical: 15),
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
                               ),
                             ),
                           ),
                         if (_scannedToken != null)
-                          TextButton(
+                          TextButton.icon(
                             onPressed: _openScanner,
-                            child: const Text('Scan again'),
+                            icon: const Icon(Icons.refresh_rounded, size: 16),
+                            label: const Text('Scan Different Code'),
                           ),
                       ],
                     ),
-                  ).animate().fadeIn(delay: 350.ms).slideY(begin: 0.1),
+                  ).animate().fadeIn(delay: 350.ms).slideY(begin: 0.08),
 
-                  const SizedBox(height: 16),
+                  const SizedBox(height: 18),
 
-                  // Step 2: Student ID
+                  // Step 2: Student ID Input
                   _buildStepCard(
                     stepNumber: '2',
-                    title: 'Enter Your Student ID',
+                    title: 'Enter Your Student Code',
                     child: Form(
                       key: _formKey,
                       child: TextFormField(
@@ -245,60 +248,53 @@ class _StudentLoginScreenState extends State<StudentLoginScreen> {
                         textCapitalization: TextCapitalization.characters,
                         decoration: const InputDecoration(
                           hintText: 'e.g. QA-2026-001',
-                          prefixIcon: Icon(Icons.badge_rounded),
+                          prefixIcon: Icon(Icons.badge_rounded, color: AppTheme.primaryBlue),
                           labelText: 'Student ID',
                         ),
                         validator: (v) {
                           if (v == null || v.trim().isEmpty) {
-                            return 'Please enter your Student ID';
+                            return 'Please enter your assigned Student ID';
                           }
                           return null;
                         },
                       ),
                     ),
-                  ).animate().fadeIn(delay: 450.ms).slideY(begin: 0.1),
+                  ).animate().fadeIn(delay: 450.ms).slideY(begin: 0.08),
 
-                  const SizedBox(height: 12),
+                  const SizedBox(height: 16),
 
-                  // Error message
+                  // Error Banner
                   if (_errorMessage != null)
                     Container(
                       width: double.infinity,
-                      margin: const EdgeInsets.only(bottom: 12),
+                      margin: const EdgeInsets.only(bottom: 16),
                       padding: const EdgeInsets.all(14),
                       decoration: BoxDecoration(
-                        color: Colors.red.shade50,
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: Colors.red.shade200),
+                        color: AppTheme.warningRed.withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(14),
+                        border: Border.all(color: AppTheme.warningRed.withValues(alpha: 0.3)),
                       ),
                       child: Row(
                         children: [
-                          const Icon(Icons.error_outline_rounded,
-                              color: Colors.red, size: 20),
-                          const SizedBox(width: 10),
+                          const Icon(Icons.error_outline_rounded, color: AppTheme.warningRed, size: 20),
+                          const SizedBox(width: 12),
                           Expanded(
                             child: Text(
                               _errorMessage!,
-                              style: const TextStyle(
-                                  color: Colors.red, fontSize: 13),
+                              style: const TextStyle(color: AppTheme.warningRed, fontSize: 13, fontWeight: FontWeight.w500),
                             ),
                           ),
                         ],
                       ),
                     ).animate().fadeIn().shakeX(),
 
-                  // Login button
+                  // Submit Button
                   SizedBox(
                     width: double.infinity,
                     child: ElevatedButton(
                       onPressed: _isLoading ? null : _handleLogin,
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: AppTheme.primaryBlue,
-                        foregroundColor: Colors.white,
                         padding: const EdgeInsets.symmetric(vertical: 16),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(14),
-                        ),
                       ),
                       child: _isLoading
                           ? const SizedBox(
@@ -309,26 +305,30 @@ class _StudentLoginScreenState extends State<StudentLoginScreen> {
                                 strokeWidth: 2.5,
                               ),
                             )
-                          : Text(
-                              'Access My Portal',
-                              style: GoogleFonts.poppins(
-                                fontWeight: FontWeight.w600,
-                                fontSize: 16,
-                              ),
+                          : Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Text(
+                                  'Access Student Portal',
+                                  style: GoogleFonts.poppins(
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 15,
+                                  ),
+                                ),
+                                const SizedBox(width: 8),
+                                const Icon(Icons.arrow_forward_rounded, size: 18),
+                              ],
                             ),
                     ),
                   ).animate().fadeIn(delay: 550.ms),
 
                   const SizedBox(height: 32),
 
-                  // Help text
                   Text(
-                    'Need help? Contact Academy Administration',
+                    'Need assistance? Contact Academy Administration Office',
                     style: TextStyle(
                       fontSize: 12,
-                      color: isDark
-                          ? AppTheme.darkTextSecondary
-                          : AppTheme.lightTextSecondary,
+                      color: isDark ? AppTheme.darkTextSecondary : AppTheme.lightTextSecondary,
                     ),
                     textAlign: TextAlign.center,
                   ),
@@ -348,30 +348,18 @@ class _StudentLoginScreenState extends State<StudentLoginScreen> {
     required String title,
     required Widget child,
   }) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(18),
-      decoration: BoxDecoration(
-        color: Theme.of(context).cardColor,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
+    return CustomCard(
+      padding: const EdgeInsets.all(20),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
               Container(
-                width: 28,
-                height: 28,
+                width: 30,
+                height: 30,
                 decoration: const BoxDecoration(
-                  color: AppTheme.primaryBlue,
+                  gradient: AppTheme.primaryGradient,
                   shape: BoxShape.circle,
                 ),
                 child: Center(
@@ -379,13 +367,13 @@ class _StudentLoginScreenState extends State<StudentLoginScreen> {
                     stepNumber,
                     style: const TextStyle(
                       color: Colors.white,
-                      fontSize: 13,
+                      fontSize: 14,
                       fontWeight: FontWeight.bold,
                     ),
                   ),
                 ),
               ),
-              const SizedBox(width: 10),
+              const SizedBox(width: 12),
               Text(
                 title,
                 style: GoogleFonts.poppins(
@@ -395,7 +383,7 @@ class _StudentLoginScreenState extends State<StudentLoginScreen> {
               ),
             ],
           ),
-          const SizedBox(height: 14),
+          const SizedBox(height: 16),
           child,
         ],
       ),
@@ -405,23 +393,22 @@ class _StudentLoginScreenState extends State<StudentLoginScreen> {
   Widget _buildSuccessBadge(String text) {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 14),
+      padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
       decoration: BoxDecoration(
-        color: Colors.green.shade50,
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: Colors.green.shade200),
+        color: AppTheme.secondaryGreen.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppTheme.secondaryGreen.withValues(alpha: 0.3)),
       ),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          const Icon(Icons.check_circle_rounded,
-              color: Colors.green, size: 18),
-          const SizedBox(width: 8),
+          const Icon(Icons.check_circle_rounded, color: AppTheme.secondaryGreen, size: 20),
+          const SizedBox(width: 10),
           Text(
             text,
             style: const TextStyle(
-              color: Colors.green,
-              fontWeight: FontWeight.w600,
+              color: AppTheme.secondaryGreen,
+              fontWeight: FontWeight.bold,
               fontSize: 13,
             ),
           ),
@@ -441,8 +428,8 @@ class _StudentLoginScreenState extends State<StudentLoginScreen> {
         backgroundColor: Colors.black,
         foregroundColor: Colors.white,
         title: Text(
-          isMobile ? 'Scan QR Code' : 'Enter Auth Token',
-          style: GoogleFonts.poppins(color: Colors.white),
+          isMobile ? 'Scan Academy QR Code' : 'Enter Auth Token',
+          style: GoogleFonts.poppins(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
         ),
         leading: IconButton(
           icon: const Icon(Icons.close_rounded, color: Colors.white),
@@ -459,27 +446,40 @@ class _StudentLoginScreenState extends State<StudentLoginScreen> {
         MobileScanner(
           onDetect: _onQrDetected,
         ),
-        // Overlay frame
         Center(
           child: Container(
-            width: 240,
-            height: 240,
+            width: 250,
+            height: 250,
             decoration: BoxDecoration(
-              border: Border.all(color: AppTheme.primaryBlue, width: 3),
-              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: AppTheme.primaryBlue, width: 3.5),
+              borderRadius: BorderRadius.circular(20),
+              boxShadow: [
+                BoxShadow(
+                  color: AppTheme.primaryBlue.withValues(alpha: 0.3),
+                  blurRadius: 20,
+                  spreadRadius: 4,
+                )
+              ],
             ),
           ),
         ),
         Positioned(
           bottom: 60,
-          left: 0,
-          right: 0,
-          child: Text(
-            'Point camera at your academy-issued QR code',
-            textAlign: TextAlign.center,
-            style: GoogleFonts.poppins(
-              color: Colors.white,
-              fontSize: 14,
+          left: 20,
+          right: 20,
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            decoration: BoxDecoration(
+              color: Colors.black.withValues(alpha: 0.7),
+              borderRadius: BorderRadius.circular(16),
+            ),
+            child: Text(
+              'Align camera frame over your academy student QR code',
+              textAlign: TextAlign.center,
+              style: GoogleFonts.poppins(
+                color: Colors.white,
+                fontSize: 13,
+              ),
             ),
           ),
         ),
@@ -495,7 +495,7 @@ class _StudentLoginScreenState extends State<StudentLoginScreen> {
         margin: const EdgeInsets.symmetric(horizontal: 32),
         decoration: BoxDecoration(
           color: Colors.white,
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(20),
         ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -503,7 +503,7 @@ class _StudentLoginScreenState extends State<StudentLoginScreen> {
             const Icon(Icons.qr_code_scanner_rounded, size: 64, color: AppTheme.primaryBlue),
             const SizedBox(height: 16),
             Text(
-              'Camera Scanner Not Supported',
+              'Manual Token Entry',
               style: GoogleFonts.poppins(
                 fontSize: 18,
                 fontWeight: FontWeight.bold,
@@ -513,7 +513,7 @@ class _StudentLoginScreenState extends State<StudentLoginScreen> {
             ),
             const SizedBox(height: 8),
             Text(
-              'Please manually enter the QR token provided by the academy.',
+              'Please enter the auth token provided on your academy ID slip.',
               style: TextStyle(color: Colors.grey.shade600, fontSize: 13),
               textAlign: TextAlign.center,
             ),
@@ -543,8 +543,6 @@ class _StudentLoginScreenState extends State<StudentLoginScreen> {
                   }
                 },
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: AppTheme.primaryBlue,
-                  foregroundColor: Colors.white,
                   padding: const EdgeInsets.symmetric(vertical: 16),
                 ),
                 child: const Text('Verify Token'),

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:google_fonts/google_fonts.dart';
 import '../models/student_model.dart';
 import '../models/notification_model.dart';
 import '../services/database_service.dart';
@@ -8,6 +9,9 @@ import '../services/notification_service.dart';
 import '../services/fee_defaulters_print_service.dart';
 import '../utils/whatsapp_helper.dart';
 import '../theme/app_theme.dart';
+import '../widgets/custom_card.dart';
+import '../widgets/empty_state_widget.dart';
+import '../widgets/shimmer_loading_widget.dart';
 
 class FeeRemindersScreen extends StatefulWidget {
   const FeeRemindersScreen({super.key});
@@ -100,7 +104,8 @@ class _FeeRemindersScreenState extends State<FeeRemindersScreen> {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Send WhatsApp Reminders'),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: Text('Send WhatsApp Reminders', style: GoogleFonts.poppins(fontWeight: FontWeight.bold)),
         content: Text(
           'This will open WhatsApp for each of the ${filtered.length} student(s) with pending fees.\n\n'
           'Students without a phone number will be skipped.\n\n'
@@ -108,15 +113,15 @@ class _FeeRemindersScreenState extends State<FeeRemindersScreen> {
           'Continue?',
         ),
         actions: [
-          TextButton(
+          OutlinedButton(
               onPressed: () => Navigator.pop(ctx, false),
               child: const Text('Cancel')),
           ElevatedButton(
             onPressed: () => Navigator.pop(ctx, true),
             style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF25D366)),
-            child: const Text('Start Sending',
-                style: TextStyle(color: Colors.white)),
+                backgroundColor: const Color(0xFF25D366),
+                foregroundColor: Colors.white),
+            child: const Text('Start Sending'),
           ),
         ],
       ),
@@ -148,53 +153,32 @@ class _FeeRemindersScreenState extends State<FeeRemindersScreen> {
         if (mounted) {
           await WhatsAppHelper.openWhatsApp(context, phone, message);
         }
+
         setState(() {
           _sendStatus[student.id] = 'sent';
           _sentCount++;
         });
-        // Give the user time to send message in WhatsApp before opening next
-        await Future.delayed(const Duration(seconds: 3));
+
+        await Future.delayed(const Duration(milliseconds: 1500));
       } catch (e) {
         setState(() {
-          _sendStatus[student.id] = 'failed';
+          _sendStatus[student.id] = 'error';
           _skippedCount++;
         });
       }
     }
 
-    // Log a notification about the reminders
-    await _logReminderNotification();
-
     if (mounted) {
       setState(() => _isSending = false);
+      _logReminderNotification();
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content:
-              Text('Done! Sent: $_sentCount, Skipped: $_skippedCount'),
-          backgroundColor: Colors.green,
-          duration: const Duration(seconds: 4),
+          content: Text(
+            'Reminders finished! Sent: $_sentCount, Skipped: $_skippedCount',
+          ),
+          backgroundColor: AppTheme.secondaryGreen,
         ),
       );
-    }
-  }
-
-  Future<void> _sendToOne(StudentModel student) async {
-    final phone = student.phone.trim();
-    if (phone.isEmpty || phone.length < 7) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('No valid phone number for this student.'),
-            backgroundColor: Colors.orange,
-          ),
-        );
-      }
-      return;
-    }
-    final message = _buildReminderMessage(student);
-    if (mounted) {
-      await WhatsAppHelper.openWhatsApp(context, phone, message);
-      setState(() => _sendStatus[student.id] = 'sent');
     }
   }
 
@@ -259,8 +243,11 @@ class _FeeRemindersScreenState extends State<FeeRemindersScreen> {
         filtered.fold<double>(0, (total, s) => total + s.feeRemaining);
 
     return Scaffold(
+      backgroundColor: isDark ? AppTheme.darkBackground : AppTheme.lightBackground,
       appBar: AppBar(
-        title: const Text('Fee Reminders'),
+        title: Text('Fee Reminders', style: GoogleFonts.poppins(fontWeight: FontWeight.bold, fontSize: 18)),
+        backgroundColor: AppTheme.primaryBlue,
+        foregroundColor: Colors.white,
         actions: [
           if (_isPrinting)
             const Center(
@@ -287,173 +274,212 @@ class _FeeRemindersScreenState extends State<FeeRemindersScreen> {
         ],
       ),
       body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
+          ? ListView(
+              padding: const EdgeInsets.all(20),
+              children: const [
+                ShimmerLoadingWidget(width: double.infinity, height: 140, borderRadius: 20),
+                SizedBox(height: 16),
+                ShimmerLoadingWidget(width: double.infinity, height: 80, borderRadius: 14),
+              ],
+            )
           : Column(
               children: [
                 // Summary Card
-                Container(
-                  width: double.infinity,
-                  margin: const EdgeInsets.all(16),
-                  padding: const EdgeInsets.all(20),
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      colors: isDark
-                          ? [const Color(0xFF1A237E), const Color(0xFF0D47A1)]
-                          : [AppTheme.primaryBlue, const Color(0xFF1565C0)],
-                    ),
-                    borderRadius: BorderRadius.circular(16),
-                    boxShadow: [
-                      BoxShadow(
-                        color: AppTheme.primaryBlue.withValues(alpha: 0.3),
-                        blurRadius: 12,
-                        offset: const Offset(0, 4),
-                      ),
-                    ],
-                  ),
-                  child: Column(
-                    children: [
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceAround,
-                        children: [
-                          _summaryItem(
-                            icon: Icons.people_outline,
-                            label: 'Defaulters',
-                            value: '${filtered.length}',
+                Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: CustomCard(
+                    gradient: AppTheme.primaryGradient,
+                    padding: const EdgeInsets.all(20),
+                    child: Column(
+                      children: [
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceAround,
+                          children: [
+                            _summaryItem(
+                              icon: Icons.people_outline,
+                              label: 'Pending Defaulters',
+                              value: '${filtered.length}',
+                            ),
+                            Container(width: 1, height: 44, color: Colors.white24),
+                            _summaryItem(
+                              icon: Icons.money_off_rounded,
+                              label: 'Total Outstanding Dues',
+                              value: 'Rs. ${NumberFormat('#,##0').format(totalPending)}',
+                            ),
+                          ],
+                        ),
+                        if (_isSending) ...[
+                          const SizedBox(height: 16),
+                          LinearProgressIndicator(
+                            value: filtered.isNotEmpty
+                                ? (_sentCount + _skippedCount) / filtered.length
+                                : 0,
+                            backgroundColor: Colors.white24,
+                            valueColor: const AlwaysStoppedAnimation(Colors.greenAccent),
                           ),
-                          Container(
-                              width: 1,
-                              height: 40,
-                              color: Colors.white24),
-                          _summaryItem(
-                            icon: Icons.money_off_rounded,
-                            label: 'Total Pending',
-                            value:
-                                'Rs.${NumberFormat('#,##0').format(totalPending)}',
+                          const SizedBox(height: 8),
+                          Text(
+                            'Sending... $_sentCount sent, $_skippedCount skipped',
+                            style: const TextStyle(color: Colors.white70, fontSize: 12),
                           ),
                         ],
-                      ),
-                      if (_isSending) ...[
-                        const SizedBox(height: 16),
-                        LinearProgressIndicator(
-                          value: filtered.isNotEmpty
-                              ? (_sentCount + _skippedCount) / filtered.length
-                              : 0,
-                          backgroundColor: Colors.white24,
-                          valueColor: const AlwaysStoppedAnimation(
-                              Colors.greenAccent),
-                        ),
-                        const SizedBox(height: 8),
-                        Text(
-                          'Sending... $_sentCount sent, $_skippedCount skipped',
-                          style: const TextStyle(
-                              color: Colors.white70, fontSize: 12),
-                        ),
                       ],
-                    ],
-                  ),
-                ),
-
-                // Grade Filter Chips
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
-                  child: SizedBox(
-                    height: 36,
-                    child: ListView.separated(
-                      scrollDirection: Axis.horizontal,
-                      itemCount: _gradeFilters.length,
-                      separatorBuilder: (_, __) =>
-                          const SizedBox(width: 8),
-                      itemBuilder: (context, index) {
-                        final grade = _gradeFilters[index];
-                        final isSelected = _filterGrade == grade;
-                        return ChoiceChip(
-                          label: Text(grade,
-                              style: TextStyle(
-                                  fontSize: 12,
-                                  color:
-                                      isSelected ? Colors.white : null)),
-                          selected: isSelected,
-                          selectedColor: AppTheme.primaryBlue,
-                          onSelected: (_) =>
-                              setState(() => _filterGrade = grade),
-                          visualDensity: VisualDensity.compact,
-                        );
-                      },
                     ),
                   ),
                 ),
 
-                const SizedBox(height: 8),
-
-                // Send All Button
+                // Grade Filter Choice Chips
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 16),
-                  child: SizedBox(
-                    width: double.infinity,
-                    height: 48,
-                    child: ElevatedButton.icon(
-                      onPressed: (_isSending || filtered.isEmpty)
-                          ? null
-                          : _sendToAll,
-                      icon: _isSending
-                          ? const SizedBox(
-                              width: 18,
-                              height: 18,
-                              child: CircularProgressIndicator(
-                                  strokeWidth: 2, color: Colors.white))
-                          : const Icon(Icons.send_rounded,
-                              color: Colors.white),
-                      label: Text(
-                        _isSending
-                            ? 'Sending Reminders...'
-                            : 'Send Reminders to All (${filtered.length})',
-                        style: const TextStyle(
-                            color: Colors.white,
-                            fontWeight: FontWeight.bold),
-                      ),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFF25D366),
-                        disabledBackgroundColor: Colors.grey.shade400,
-                        shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12)),
-                      ),
+                  child: SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    child: Row(
+                      children: _gradeFilters.map((grade) {
+                        final isSelected = _filterGrade == grade;
+                        return Padding(
+                          padding: const EdgeInsets.only(right: 8),
+                          child: ChoiceChip(
+                            label: Text(grade),
+                            selected: isSelected,
+                            selectedColor: AppTheme.primaryBlue,
+                            backgroundColor: isDark ? Colors.white.withValues(alpha: 0.08) : Colors.grey.shade100,
+                            onSelected: (_) => setState(() => _filterGrade = grade),
+                            labelStyle: TextStyle(
+                              fontSize: 12,
+                              color: isSelected ? Colors.white : (isDark ? Colors.white70 : Colors.black87),
+                              fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
+                            ),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                          ),
+                        );
+                      }).toList(),
                     ),
                   ),
                 ),
 
                 const SizedBox(height: 12),
 
-                // Student List
+                // Send All WhatsApp Reminders Button
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  child: SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton.icon(
+                      onPressed: (_isSending || filtered.isEmpty) ? null : _sendToAll,
+                      icon: _isSending
+                          ? const SizedBox(
+                              width: 18,
+                              height: 18,
+                              child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                          : const Icon(Icons.send_rounded, color: Colors.white),
+                      label: Text(
+                        _isSending
+                            ? 'Sending Reminders...'
+                            : 'Send WhatsApp Reminders (${filtered.length})',
+                        style: GoogleFonts.poppins(fontWeight: FontWeight.bold, fontSize: 14),
+                      ),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF25D366),
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                      ),
+                    ),
+                  ),
+                ),
+
+                const SizedBox(height: 16),
+
+                // Defaulter Students List
                 Expanded(
                   child: filtered.isEmpty
-                      ? Center(
-                          child: Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Icon(Icons.check_circle_outline,
-                                  size: 64,
-                                  color:
-                                      Colors.green.withValues(alpha: 0.5)),
-                              const SizedBox(height: 16),
-                              Text(
-                                _defaulters.isEmpty
-                                    ? 'No fee defaulters! 🎉'
-                                    : 'No defaulters in this class.',
-                                style: TextStyle(
-                                    fontSize: 16,
-                                    color: Colors.grey.shade600),
-                              ),
-                            ],
-                          ),
+                      ? EmptyStateWidget(
+                          title: _defaulters.isEmpty ? 'All Dues Cleared 🎉' : 'No Defaulters in Class',
+                          description: 'No students have outstanding fee balances for this selection.',
+                          icon: Icons.check_circle_outline_rounded,
                         )
                       : ListView.builder(
-                          padding:
-                              const EdgeInsets.symmetric(horizontal: 16),
+                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
                           itemCount: filtered.length,
                           itemBuilder: (context, index) {
                             final student = filtered[index];
-                            return _buildStudentCard(
-                                student, index, isDark);
+                            final status = _sendStatus[student.id];
+
+                            return Padding(
+                              padding: const EdgeInsets.only(bottom: 10),
+                              child: CustomCard(
+                                padding: const EdgeInsets.all(14),
+                                child: Row(
+                                  children: [
+                                    Container(
+                                      width: 44,
+                                      height: 44,
+                                      decoration: BoxDecoration(
+                                        color: AppTheme.warningRed.withValues(alpha: 0.1),
+                                        shape: BoxShape.circle,
+                                      ),
+                                      child: const Icon(Icons.person, color: AppTheme.warningRed, size: 22),
+                                    ),
+                                    const SizedBox(width: 12),
+                                    Expanded(
+                                      child: Column(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        children: [
+                                          Text(
+                                            student.name,
+                                            style: GoogleFonts.poppins(fontWeight: FontWeight.bold, fontSize: 14),
+                                          ),
+                                          const SizedBox(height: 2),
+                                          Text(
+                                            '${student.grade} • ID: ${student.studentCode}',
+                                            style: const TextStyle(fontSize: 12, color: Colors.grey),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                    Column(
+                                      crossAxisAlignment: CrossAxisAlignment.end,
+                                      children: [
+                                        Text(
+                                          'Rs. ${student.feeRemaining.toStringAsFixed(0)}',
+                                          style: GoogleFonts.poppins(
+                                            fontWeight: FontWeight.bold,
+                                            fontSize: 14,
+                                            color: AppTheme.warningRed,
+                                          ),
+                                        ),
+                                        const SizedBox(height: 4),
+                                        if (status == 'sent')
+                                          const Text('Sent ✓', style: TextStyle(color: Colors.green, fontSize: 11, fontWeight: FontWeight.bold))
+                                        else if (status == 'skipped')
+                                          const Text('No Phone', style: TextStyle(color: Colors.orange, fontSize: 11))
+                                        else
+                                          InkWell(
+                                            onTap: () {
+                                              final msg = _buildReminderMessage(student);
+                                              WhatsAppHelper.openWhatsApp(context, student.phone, msg);
+                                            },
+                                            child: Container(
+                                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                                              decoration: BoxDecoration(
+                                                color: const Color(0xFF25D366).withValues(alpha: 0.12),
+                                                borderRadius: BorderRadius.circular(6),
+                                              ),
+                                              child: const Row(
+                                                mainAxisSize: MainAxisSize.min,
+                                                children: [
+                                                  Icon(Icons.send_rounded, size: 10, color: Color(0xFF25D366)),
+                                                  SizedBox(width: 4),
+                                                  Text('Remind', style: TextStyle(color: Color(0xFF25D366), fontSize: 10, fontWeight: FontWeight.bold)),
+                                                ],
+                                              ),
+                                            ),
+                                          ),
+                                      ],
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            );
                           },
                         ),
                 ),
@@ -469,148 +495,21 @@ class _FeeRemindersScreenState extends State<FeeRemindersScreen> {
   }) {
     return Column(
       children: [
-        Icon(icon, color: Colors.white70, size: 22),
-        const SizedBox(height: 6),
-        Text(value,
-            style: const TextStyle(
-                color: Colors.white,
-                fontSize: 18,
-                fontWeight: FontWeight.bold)),
-        const SizedBox(height: 2),
-        Text(label,
-            style:
-                const TextStyle(color: Colors.white60, fontSize: 11)),
-      ],
-    );
-  }
-
-  Widget _buildStudentCard(
-      StudentModel student, int index, bool isDark) {
-    final status = _sendStatus[student.id];
-    final hasPhone =
-        student.phone.trim().isNotEmpty && student.phone.trim().length >= 7;
-
-    Color statusColor;
-    IconData statusIcon;
-    String statusText;
-
-    switch (status) {
-      case 'sent':
-        statusColor = Colors.green;
-        statusIcon = Icons.check_circle;
-        statusText = 'Sent';
-        break;
-      case 'skipped':
-        statusColor = Colors.orange;
-        statusIcon = Icons.skip_next_rounded;
-        statusText = 'Skipped';
-        break;
-      case 'failed':
-        statusColor = Colors.red;
-        statusIcon = Icons.error_outline;
-        statusText = 'Failed';
-        break;
-      default:
-        statusColor = Colors.grey;
-        statusIcon = Icons.schedule;
-        statusText = 'Pending';
-    }
-
-    return Card(
-      margin: const EdgeInsets.only(bottom: 8),
-      shape:
-          RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      elevation: 1,
-      child: Padding(
-        padding: const EdgeInsets.all(12),
-        child: Row(
-          children: [
-            // Index number
-            Container(
-              width: 32,
-              height: 32,
-              decoration: BoxDecoration(
-                color: AppTheme.primaryBlue.withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: Center(
-                child: Text('${index + 1}',
-                    style: TextStyle(
-                        fontWeight: FontWeight.bold,
-                        color: AppTheme.primaryBlue,
-                        fontSize: 13)),
-              ),
-            ),
-            const SizedBox(width: 12),
-
-            // Student Info
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(student.name,
-                      style: const TextStyle(
-                          fontWeight: FontWeight.bold, fontSize: 14)),
-                  const SizedBox(height: 2),
-                  Text(
-                    '${student.classType} ${student.grade} • ${student.phone.isEmpty ? "No phone" : student.phone}',
-                    style: TextStyle(
-                        fontSize: 11, color: Colors.grey.shade600),
-                  ),
-                  const SizedBox(height: 4),
-                  Row(
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 8, vertical: 2),
-                        decoration: BoxDecoration(
-                          color: Colors.red.withValues(alpha: 0.1),
-                          borderRadius: BorderRadius.circular(6),
-                        ),
-                        child: Text(
-                          'Due: Rs.${student.feeRemaining.toStringAsFixed(0)}',
-                          style: const TextStyle(
-                              color: Colors.red,
-                              fontSize: 11,
-                              fontWeight: FontWeight.w600),
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      if (status != null)
-                        Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(statusIcon,
-                                size: 14, color: statusColor),
-                            const SizedBox(width: 3),
-                            Text(statusText,
-                                style: TextStyle(
-                                    fontSize: 10,
-                                    color: statusColor)),
-                          ],
-                        ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-
-            // WhatsApp Button
-            IconButton(
-              icon: Icon(
-                Icons.chat_rounded,
-                color: hasPhone
-                    ? const Color(0xFF25D366)
-                    : Colors.grey.shade400,
-              ),
-              tooltip:
-                  hasPhone ? 'Send WhatsApp Reminder' : 'No phone number',
-              onPressed:
-                  hasPhone && !_isSending ? () => _sendToOne(student) : null,
-            ),
-          ],
+        Icon(icon, color: Colors.white, size: 24),
+        const SizedBox(height: 4),
+        Text(
+          value,
+          style: GoogleFonts.poppins(
+            fontSize: 18,
+            fontWeight: FontWeight.bold,
+            color: Colors.white,
+          ),
         ),
-      ),
+        Text(
+          label,
+          style: const TextStyle(fontSize: 12, color: Colors.white70),
+        ),
+      ],
     );
   }
 }

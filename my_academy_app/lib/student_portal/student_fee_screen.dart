@@ -5,6 +5,9 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../models/student_model.dart';
 import '../theme/app_theme.dart';
+import '../widgets/custom_card.dart';
+import '../widgets/empty_state_widget.dart';
+import '../widgets/shimmer_loading_widget.dart';
 import 'student_auth_service.dart';
 
 class StudentFeeScreen extends StatefulWidget {
@@ -33,7 +36,7 @@ class _StudentFeeScreenState extends State<StudentFeeScreen> {
     try {
       final session = await StudentAuthService.getLocalSession();
       if (session == null) {
-        setState(() => _errorMessage = 'Session expired.');
+        setState(() => _errorMessage = 'Session expired. Please re-login.');
         return;
       }
       final doc = await FirebaseFirestore.instance
@@ -53,10 +56,13 @@ class _StudentFeeScreenState extends State<StudentFeeScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return Scaffold(
+      backgroundColor: isDark ? AppTheme.darkBackground : AppTheme.lightBackground,
       appBar: AppBar(
         automaticallyImplyLeading: false,
-        title: Text('My Fees', style: GoogleFonts.poppins(fontWeight: FontWeight.bold)),
+        title: Text('Fee Management', style: GoogleFonts.poppins(fontWeight: FontWeight.bold, fontSize: 18)),
         backgroundColor: AppTheme.primaryBlue,
         foregroundColor: Colors.white,
         actions: [
@@ -64,26 +70,32 @@ class _StudentFeeScreenState extends State<StudentFeeScreen> {
         ],
       ),
       body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
+          ? ListView(
+              padding: const EdgeInsets.all(20),
+              children: const [
+                ShimmerLoadingWidget(width: double.infinity, height: 160, borderRadius: 20),
+                SizedBox(height: 20),
+                ShimmerLoadingWidget(width: double.infinity, height: 120, borderRadius: 16),
+              ],
+            )
           : _errorMessage != null
-              ? Center(child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const Icon(Icons.error_outline, size: 48, color: Colors.red),
-                    const SizedBox(height: 12),
-                    Text(_errorMessage!),
-                    const SizedBox(height: 12),
-                    ElevatedButton(onPressed: _loadData, child: const Text('Retry')),
-                  ],
-                ))
+              ? EmptyStateWidget(
+                  title: 'Fee Status Error',
+                  description: _errorMessage!,
+                  icon: Icons.account_balance_wallet_outlined,
+                  actionLabel: 'Retry',
+                  onAction: _loadData,
+                )
               : RefreshIndicator(
                   onRefresh: _loadData,
+                  color: AppTheme.primaryBlue,
                   child: _buildContent(),
                 ),
     );
   }
 
   Widget _buildContent() {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     final student = _student!;
     final subjects = {
       'Biology': student.biologyFee,
@@ -98,67 +110,114 @@ class _StudentFeeScreenState extends State<StudentFeeScreen> {
         : 0.0;
 
     return ListView(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(20),
       children: [
-        // Overall summary card
-        Card(
-          elevation: 3,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
-          child: Padding(
-            padding: const EdgeInsets.all(20),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text('Overall Fee Summary',
+        // Overall Summary Banner Card
+        CustomCard(
+          padding: const EdgeInsets.all(22),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    'Academic Fee Status',
                     style: GoogleFonts.poppins(
-                        fontWeight: FontWeight.bold, fontSize: 15)),
-                const SizedBox(height: 16),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceAround,
-                  children: [
-                    _statChip('Total', student.totalFee, AppTheme.primaryBlue),
-                    _statChip('Paid', student.feeSubmitted, Colors.green),
-                    _statChip('Due', student.feeRemaining,
-                        student.feeRemaining > 0 ? Colors.red : Colors.green),
-                  ],
-                ),
-                const SizedBox(height: 16),
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(10),
-                  child: LinearProgressIndicator(
-                    value: feePercent,
-                    minHeight: 12,
-                    backgroundColor: Colors.grey.shade200,
-                    valueColor: AlwaysStoppedAnimation(
-                      feePercent >= 1.0 ? Colors.green : AppTheme.primaryBlue,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 16,
                     ),
                   ),
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  student.feeRemaining <= 0
-                      ? '✓ All fees paid'
-                      : '${(feePercent * 100).toStringAsFixed(0)}% of fees paid',
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: student.feeRemaining <= 0 ? Colors.green : Colors.grey,
-                    fontWeight: student.feeRemaining <= 0
-                        ? FontWeight.bold
-                        : FontWeight.normal,
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: student.feeRemaining <= 0
+                          ? AppTheme.secondaryGreen.withValues(alpha: 0.15)
+                          : AppTheme.warningRed.withValues(alpha: 0.15),
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: Text(
+                      student.feeRemaining <= 0 ? 'Fully Cleared' : 'Balance Pending',
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.bold,
+                        color: student.feeRemaining <= 0 ? AppTheme.secondaryGreen : AppTheme.warningRed,
+                      ),
+                    ),
                   ),
+                ],
+              ),
+              const SizedBox(height: 20),
+              Row(
+                children: [
+                  Expanded(
+                    child: _statChip('Total Due', student.totalFee, AppTheme.primaryBlue),
+                  ),
+                  Container(width: 1, height: 44, color: isDark ? AppTheme.darkBorder : AppTheme.lightBorder),
+                  Expanded(
+                    child: _statChip('Submitted', student.feeSubmitted, AppTheme.secondaryGreen),
+                  ),
+                  Container(width: 1, height: 44, color: isDark ? AppTheme.darkBorder : AppTheme.lightBorder),
+                  Expanded(
+                    child: _statChip(
+                      'Remaining',
+                      student.feeRemaining,
+                      student.feeRemaining > 0 ? AppTheme.warningRed : AppTheme.secondaryGreen,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 20),
+              Stack(
+                children: [
+                  Container(
+                    height: 12,
+                    decoration: BoxDecoration(
+                      color: isDark ? Colors.white.withValues(alpha: 0.1) : Colors.grey.shade200,
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                  ),
+                  FractionallySizedBox(
+                    widthFactor: feePercent,
+                    child: Container(
+                      height: 12,
+                      decoration: BoxDecoration(
+                        gradient: feePercent >= 1.0 ? AppTheme.successGradient : AppTheme.primaryGradient,
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 10),
+              Text(
+                student.feeRemaining <= 0
+                    ? '✓ All course fees have been paid in full.'
+                    : '${(feePercent * 100).toStringAsFixed(0)}% of total fee submitted.',
+                style: TextStyle(
+                  fontSize: 12,
+                  color: student.feeRemaining <= 0 ? AppTheme.secondaryGreen : (isDark ? AppTheme.darkTextSecondary : AppTheme.lightTextSecondary),
+                  fontWeight: student.feeRemaining <= 0 ? FontWeight.bold : FontWeight.w500,
                 ),
-              ],
-            ),
+              ),
+            ],
           ),
         ).animate().fadeIn(delay: 100.ms),
 
-        const SizedBox(height: 20),
+        const SizedBox(height: 24),
 
         if (subjects.isNotEmpty) ...[
-          Text('Subject-wise Fees',
-              style: GoogleFonts.poppins(
-                  fontWeight: FontWeight.bold, fontSize: 15)),
-          const SizedBox(height: 10),
+          Row(
+            children: [
+              const Icon(Icons.menu_book_rounded, size: 18, color: AppTheme.primaryBlue),
+              const SizedBox(width: 8),
+              Text(
+                'Subject-wise Breakdown',
+                style: GoogleFonts.poppins(fontWeight: FontWeight.bold, fontSize: 15),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
           ...subjects.entries.map((entry) {
             final subName = entry.key;
             final totalSubFee = entry.value;
@@ -167,11 +226,9 @@ class _StudentFeeScreenState extends State<StudentFeeScreen> {
             final subPercent =
                 totalSubFee > 0 ? (paidSub / totalSubFee).clamp(0.0, 1.0) : 0.0;
 
-            return Card(
-              margin: const EdgeInsets.only(bottom: 12),
-              shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(14)),
-              child: Padding(
+            return Padding(
+              padding: const EdgeInsets.only(bottom: 12),
+              child: CustomCard(
                 padding: const EdgeInsets.all(16),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -179,16 +236,16 @@ class _StudentFeeScreenState extends State<StudentFeeScreen> {
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        Text(subName,
-                            style: const TextStyle(
-                                fontWeight: FontWeight.bold, fontSize: 14)),
+                        Text(
+                          subName,
+                          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                        ),
                         Container(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 10, vertical: 3),
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                           decoration: BoxDecoration(
                             color: dueSub <= 0
-                                ? Colors.green.shade50
-                                : Colors.orange.shade50,
+                                ? AppTheme.secondaryGreen.withValues(alpha: 0.12)
+                                : AppTheme.accentOrange.withValues(alpha: 0.12),
                             borderRadius: BorderRadius.circular(8),
                           ),
                           child: Text(
@@ -196,25 +253,25 @@ class _StudentFeeScreenState extends State<StudentFeeScreen> {
                             style: TextStyle(
                               fontSize: 12,
                               fontWeight: FontWeight.bold,
-                              color: dueSub <= 0 ? Colors.green : Colors.orange,
+                              color: dueSub <= 0 ? AppTheme.secondaryGreen : AppTheme.accentOrange,
                             ),
                           ),
                         ),
                       ],
                     ),
-                    const SizedBox(height: 10),
+                    const SizedBox(height: 12),
                     ClipRRect(
                       borderRadius: BorderRadius.circular(6),
                       child: LinearProgressIndicator(
                         value: subPercent,
                         minHeight: 8,
-                        backgroundColor: Colors.grey.shade200,
+                        backgroundColor: isDark ? Colors.white.withValues(alpha: 0.1) : Colors.grey.shade200,
                         valueColor: AlwaysStoppedAnimation(
-                          subPercent >= 1.0 ? Colors.green : AppTheme.primaryBlue,
+                          subPercent >= 1.0 ? AppTheme.secondaryGreen : AppTheme.primaryBlue,
                         ),
                       ),
                     ),
-                    const SizedBox(height: 8),
+                    const SizedBox(height: 10),
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
@@ -223,8 +280,8 @@ class _StudentFeeScreenState extends State<StudentFeeScreen> {
                         Text('Paid: Rs ${paidSub.toStringAsFixed(0)}',
                             style: const TextStyle(
                                 fontSize: 12,
-                                color: Colors.green,
-                                fontWeight: FontWeight.w500)),
+                                color: AppTheme.secondaryGreen,
+                                fontWeight: FontWeight.bold)),
                       ],
                     ),
                   ],
@@ -234,13 +291,13 @@ class _StudentFeeScreenState extends State<StudentFeeScreen> {
           }),
         ],
 
-        // Payment History
-        const SizedBox(height: 8),
+        // Payment History Section
+        const SizedBox(height: 12),
         if (student.paymentHistoryJson != null &&
             student.paymentHistoryJson!.isNotEmpty)
           _buildPaymentHistory(student),
 
-        const SizedBox(height: 80),
+        const SizedBox(height: 60),
       ],
     );
   }
@@ -258,12 +315,16 @@ class _StudentFeeScreenState extends State<StudentFeeScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text('Payment History',
-            style:
-                GoogleFonts.poppins(fontWeight: FontWeight.bold, fontSize: 15)),
-        const SizedBox(height: 10),
-        Card(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+        Row(
+          children: [
+            const Icon(Icons.history_rounded, size: 18, color: AppTheme.primaryBlue),
+            const SizedBox(width: 8),
+            Text('Transaction Log', style: GoogleFonts.poppins(fontWeight: FontWeight.bold, fontSize: 15)),
+          ],
+        ),
+        const SizedBox(height: 12),
+        CustomCard(
+          padding: EdgeInsets.zero,
           child: ListView.separated(
             shrinkWrap: true,
             physics: const NeverScrollableScrollPhysics(),
@@ -280,22 +341,21 @@ class _StudentFeeScreenState extends State<StudentFeeScreen> {
               } catch (_) {}
 
               return ListTile(
-                leading: CircleAvatar(
-                  backgroundColor: amount > 0
-                      ? Colors.green.shade50
-                      : Colors.red.shade50,
+                leading: Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: amount > 0 ? AppTheme.secondaryGreen.withValues(alpha: 0.12) : AppTheme.warningRed.withValues(alpha: 0.12),
+                    shape: BoxShape.circle,
+                  ),
                   child: Icon(
-                    amount > 0
-                        ? Icons.add_rounded
-                        : Icons.remove_rounded,
-                    color: amount > 0 ? Colors.green : Colors.red,
+                    amount > 0 ? Icons.arrow_downward_rounded : Icons.arrow_upward_rounded,
+                    color: amount > 0 ? AppTheme.secondaryGreen : AppTheme.warningRed,
                     size: 18,
                   ),
                 ),
                 title: Text(
-                  note.isNotEmpty ? note : 'Payment',
-                  style: const TextStyle(
-                      fontSize: 13, fontWeight: FontWeight.w500),
+                  note.isNotEmpty ? note : 'Fee Payment Received',
+                  style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
                 ),
                 subtitle: parsed != null
                     ? Text(
@@ -307,8 +367,8 @@ class _StudentFeeScreenState extends State<StudentFeeScreen> {
                   'Rs ${amount.abs().toStringAsFixed(0)}',
                   style: TextStyle(
                     fontWeight: FontWeight.bold,
-                    color: amount > 0 ? Colors.green : Colors.red,
-                    fontSize: 13,
+                    color: amount > 0 ? AppTheme.secondaryGreen : AppTheme.warningRed,
+                    fontSize: 14,
                   ),
                 ),
               );
@@ -325,11 +385,13 @@ class _StudentFeeScreenState extends State<StudentFeeScreen> {
         Text(
           'Rs ${amount.toStringAsFixed(0)}',
           style: TextStyle(
-              fontSize: 15, fontWeight: FontWeight.bold, color: color),
+            fontSize: 15,
+            fontWeight: FontWeight.bold,
+            color: color,
+          ),
         ),
-        const SizedBox(height: 4),
-        Text(label,
-            style: const TextStyle(fontSize: 11, color: Colors.grey)),
+        const SizedBox(height: 2),
+        Text(label, style: const TextStyle(fontSize: 12, color: Colors.grey)),
       ],
     );
   }
