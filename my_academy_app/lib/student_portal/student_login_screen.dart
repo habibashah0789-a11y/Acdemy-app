@@ -241,21 +241,20 @@ class _StudentLoginScreenState extends State<StudentLoginScreen> {
                   _buildStepCard(
                     stepNumber: '2',
                     title: 'Enter Your Student Code',
-                    isLocked: _scannedToken == null,
+                    isLocked: false,
                     child: Form(
                       key: _formKey,
                       child: TextFormField(
                         controller: _studentIdController,
                         textCapitalization: TextCapitalization.characters,
-                        enabled: _scannedToken != null,
+                        enabled: true,
                         decoration: InputDecoration(
-                          hintText: _scannedToken == null ? 'Scan QR first...' : 'e.g. QA-2026-001',
-                          prefixIcon: Icon(
-                            _scannedToken == null ? Icons.lock_outline_rounded : Icons.badge_rounded,
-                            color: _scannedToken == null ? Colors.grey : AppTheme.primaryBlue,
+                          hintText: 'e.g. QA-2026-001',
+                          prefixIcon: const Icon(
+                            Icons.badge_rounded,
+                            color: AppTheme.primaryBlue,
                           ),
                           labelText: 'Student ID',
-                          enabled: _scannedToken != null,
                         ),
                         validator: (v) {
                           if (v == null || v.trim().isEmpty) {

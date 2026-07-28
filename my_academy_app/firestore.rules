@@ -40,10 +40,9 @@ service cloud.firestore {
 
     // ── Student Auth ───────────────────────────────────────────────
     match /student_auth/{studentId} {
-      // Allow anonymous reads for the login flow (secondary Firebase App signs in
-      // anonymously to look up the student record before signing into main auth).
+      // Allow public reads for the login flow.
       // The QR token is stored as a SHA-256 hash so raw token exposure is safe.
-      allow read: if request.auth != null;
+      allow read: if true;
       allow create: if isAdmin();
       allow update: if isAdmin() ||
         (isStudentOwner(studentId) &&
