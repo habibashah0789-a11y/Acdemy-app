@@ -5,6 +5,7 @@ import 'package:fl_chart/fl_chart.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 import 'package:hive_flutter/hive_flutter.dart';
+import 'package:smooth_page_indicator/smooth_page_indicator.dart';
 import '../theme/app_theme.dart';
 import '../models/student_model.dart';
 import '../models/notification_model.dart';
@@ -200,82 +201,43 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 
   Widget _buildStatsGrid(List<StudentModel> students) {
-    final screenWidth = MediaQuery.of(context).size.width;
     double collected = _sumAmount(students, true);
     double pending = _sumAmount(students, false);
 
-    return GridView.builder(
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      itemCount: 4,
-      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: screenWidth < 600 ? 1 : 2,
-        crossAxisSpacing: 12,
-        mainAxisSpacing: 12,
-        childAspectRatio: screenWidth < 600 ? 2.8 : 2.2,
-      ),
-      itemBuilder: (context, index) {
-        switch (index) {
-          case 0:
-            return _buildStatCard(
-              'Total Students',
-              '${students.length}',
-              Icons.school_rounded,
-              Colors.blue,
-              onTap: () {
-                showDialog(
-                  context: context,
-                  builder: (context) => Dialog(
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(24),
-                    ),
-                    child: Container(
-                      constraints: const BoxConstraints(maxWidth: 500),
-                      padding: const EdgeInsets.all(4),
-                      child: SingleChildScrollView(
-                        child: _buildStudentStrengthChart(students, isDialog: true),
-                      ),
-                    ),
-                  ),
-                );
-              },
-            );
-          case 1:
-            return _buildStatCard(
-              'Collected',
-              _fmt.format(collected),
-              Icons.payments_rounded,
-              Colors.orange,
-              onTap: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (_) => const DailyRecordsScreen()),
-                );
-              },
-            );
-          case 2:
-            return _buildStatCard(
-              'Pending',
-              _fmt.format(pending),
-              Icons.warning_amber_rounded,
-              Colors.red,
-            );
-          default:
-            return _buildStatCard(
-              'Class Schedules',
-              'View',
-              Icons.schedule_rounded,
-              const Color(0xFF1565C0),
-              onTap: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (_) => const ClassSchedulesScreen()),
-                );
-              },
-            );
-        }
+    return DashboardStatSlider(
+      students: students,
+      collectedAmount: collected,
+      pendingAmount: pending,
+      onTotalStudentsTap: () {
+        showDialog(
+          context: context,
+          builder: (context) => Dialog(
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(24),
+            ),
+            child: Container(
+              constraints: const BoxConstraints(maxWidth: 500),
+              padding: const EdgeInsets.all(4),
+              child: SingleChildScrollView(
+                child: _buildStudentStrengthChart(students, isDialog: true),
+              ),
+            ),
+          ),
+        );
       },
-    ).animate().fadeIn(delay: 200.ms).slideY(begin: 0.1);
+      onCollectedTap: () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (_) => const DailyRecordsScreen()),
+        );
+      },
+      onClassSchedulesTap: () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (_) => const ClassSchedulesScreen()),
+        );
+      },
+    );
   }
 
   Widget _buildStatCard(
@@ -1903,3 +1865,242 @@ class _StudentStrengthDetailDialogState
     );
   }
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// DashboardStatSlider - Horizontal Carousel for Key Statistics
+// ─────────────────────────────────────────────────────────────────────────────
+class DashboardStatSlider extends StatefulWidget {
+  final List<StudentModel> students;
+  final double collectedAmount;
+  final double pendingAmount;
+  final VoidCallback? onTotalStudentsTap;
+  final VoidCallback? onCollectedTap;
+  final VoidCallback? onClassSchedulesTap;
+
+  const DashboardStatSlider({
+    super.key,
+    required this.students,
+    required this.collectedAmount,
+    required this.pendingAmount,
+    this.onTotalStudentsTap,
+    this.onCollectedTap,
+    this.onClassSchedulesTap,
+  });
+
+  @override
+  State<DashboardStatSlider> createState() => _DashboardStatSliderState();
+}
+
+class _DashboardStatSliderState extends State<DashboardStatSlider> {
+  late final PageController _pageController;
+  final NumberFormat _fmt = NumberFormat.currency(symbol: 'Rs', decimalDigits: 0);
+
+  @override
+  void initState() {
+    super.initState();
+    _pageController = PageController(viewportFraction: 0.85);
+  }
+
+  @override
+  void dispose() {
+    _pageController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    final List<Widget> slides = [
+      // Slide 1: Total Students
+      _buildSliderCard(
+        context: context,
+        title: 'Total Students',
+        value: '${widget.students.length}',
+        subtitle: 'Tap to view class strength',
+        icon: Icons.school_rounded,
+        iconColor: AppTheme.primaryBlue,
+        gradientColors: isDark
+            ? [const Color(0xFF1E293B), const Color(0xFF0F172A)]
+            : [const Color(0xFFEFF6FF), const Color(0xFFDBEAFE)],
+        borderColor: AppTheme.primaryBlue,
+        onTap: widget.onTotalStudentsTap,
+      ),
+      // Slide 2: Collected
+      _buildSliderCard(
+        context: context,
+        title: 'Fee Collected',
+        value: _fmt.format(widget.collectedAmount),
+        subtitle: 'Tap for daily records',
+        icon: Icons.payments_rounded,
+        iconColor: AppTheme.secondaryGreen,
+        gradientColors: isDark
+            ? [const Color(0xFF1E293B), const Color(0xFF0F172A)]
+            : [const Color(0xFFECFDF5), const Color(0xFFD1FAE5)],
+        borderColor: AppTheme.secondaryGreen,
+        onTap: widget.onCollectedTap,
+      ),
+      // Slide 3: Pending
+      _buildSliderCard(
+        context: context,
+        title: 'Fee Pending Dues',
+        value: _fmt.format(widget.pendingAmount),
+        subtitle: 'Outstanding student balance',
+        icon: Icons.warning_amber_rounded,
+        iconColor: AppTheme.warningRed,
+        gradientColors: isDark
+            ? [const Color(0xFF1E293B), const Color(0xFF0F172A)]
+            : [const Color(0xFFFEF2F2), const Color(0xFFFEE2E2)],
+        borderColor: AppTheme.warningRed,
+        onTap: null,
+      ),
+      // Slide 4: View Class Schedules
+      _buildSliderCard(
+        context: context,
+        title: 'Class Schedules',
+        value: 'View Schedules',
+        subtitle: 'Tap to view timetable',
+        icon: Icons.schedule_rounded,
+        iconColor: AppTheme.accentIndigo,
+        gradientColors: isDark
+            ? [const Color(0xFF1E293B), const Color(0xFF0F172A)]
+            : [const Color(0xFFEEF2FF), const Color(0xFFE0E7FF)],
+        borderColor: AppTheme.accentIndigo,
+        onTap: widget.onClassSchedulesTap,
+      ),
+    ];
+
+    return Column(
+      children: [
+        SizedBox(
+          height: 130,
+          child: PageView.builder(
+            controller: _pageController,
+            physics: const BouncingScrollPhysics(),
+            itemCount: slides.length,
+            itemBuilder: (context, index) {
+              return Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+                child: slides[index],
+              );
+            },
+          ),
+        ),
+        const SizedBox(height: 12),
+        SmoothPageIndicator(
+          controller: _pageController,
+          count: slides.length,
+          effect: ExpandingDotsEffect(
+            dotHeight: 7,
+            dotWidth: 7,
+            expansionFactor: 3,
+            activeDotColor: AppTheme.primaryBlue,
+            dotColor: isDark ? Colors.white24 : Colors.grey.shade300,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildSliderCard({
+    required BuildContext context,
+    required String title,
+    required String value,
+    required String subtitle,
+    required IconData icon,
+    required Color iconColor,
+    required List<Color> gradientColors,
+    required Color borderColor,
+    VoidCallback? onTap,
+  }) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(20),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: gradientColors,
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(
+              color: isDark ? borderColor.withValues(alpha: 0.3) : borderColor.withValues(alpha: 0.25),
+              width: 1.2,
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: isDark ? Colors.black.withValues(alpha: 0.3) : iconColor.withValues(alpha: 0.12),
+                blurRadius: 12,
+                offset: const Offset(0, 4),
+              ),
+            ],
+          ),
+          child: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: iconColor.withValues(alpha: 0.15),
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(icon, color: iconColor, size: 28),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      style: GoogleFonts.poppins(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                        color: isDark ? AppTheme.darkTextSecondary : AppTheme.lightTextSecondary,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      value,
+                      style: GoogleFonts.poppins(
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                        color: isDark ? AppTheme.darkTextPrimary : AppTheme.lightTextPrimary,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      subtitle,
+                      style: GoogleFonts.poppins(
+                        fontSize: 11,
+                        color: iconColor,
+                        fontWeight: FontWeight.w500,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ],
+                ),
+              ),
+              if (onTap != null)
+                Icon(
+                  Icons.arrow_forward_ios_rounded,
+                  size: 14,
+                  color: isDark ? AppTheme.darkTextSecondary : AppTheme.lightTextSecondary,
+                ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
