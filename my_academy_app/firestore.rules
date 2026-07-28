@@ -1,40 +1,68 @@
 rules_version = '2';
-
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Users collection: authenticated user accesses own document
-    match /users/{userId} {
-      allow read, write: if request.auth != null && request.auth.uid == userId;
+
+    function isSignedIn() {
+      return request.auth != null;
     }
-    
-    // Students collection: authenticated users only
+
+    function isAdmin() {
+      return isSignedIn() &&
+             exists(/databases/$,(database)/documents/roles/$(request.auth.uid)) &&
+             get(/databases/$(database)/documents/roles/$(request.auth.uid)).data.role == 'admin';
+    }
+
+    function isStudent() {
+      return isSignedIn() &&
+             exists(/databases/$(database)/documents/roles/$(request.auth.uid)) &&
+             get(/databases/$(database)/documents/roles/$(request.auth.uid)).data.role == 'student';
+    }
+
+    function isStudentOwner(studentId) {
+      return isStudent() &&
+             get(/databases/$(database)/documents/roles/$(request.auth.uid)).data.studentId == studentId;
+    }
+
+    // ── Roles ──────────────────────────────────────────────────────
+    match /roles/{uid} {
+      // Any authenticated user can read their own role document
+      allow read, create: if isSignedIn() && request.auth.uid == uid;
+
+      // Only admins can update/delete role documents
+      allow update, delete: if isAdmin();
+    }
+
+    // ── Students ───────────────────────────────────────────────────
     match /students/{studentId} {
-      allow read, write: if request.auth != null;
+      allow read: if isAdmin() || isStudentOwner(studentId);
+      allow create, update, delete: if isAdmin();
     }
-    
-    // Recycled students collection: authenticated users only
-    match /recycled_students/{recycledId} {
-      allow read, write: if request.auth != null;
+
+    // ── Student Auth ───────────────────────────────────────────────
+    match /student_auth/{studentId} {
+      allow read: if isAdmin() || isStudentOwner(studentId);
+      allow create: if isAdmin();
+      allow update: if isAdmin() ||
+        (isStudentOwner(studentId) &&
+         request.resource.data.diff(resource.data).affectedKeys()
+           .hasOnly(['linkedDeviceId', 'deviceLinkedAt']) &&
+         resource.data.linkedDeviceId == '');
     }
-    
-    // Notifications collection: authenticated users only
-    match /notifications/{notificationId} {
-      allow read, write: if request.auth != null;
+
+    // ── Notifications ──────────────────────────────────────────────
+    match /notifications/{notifId} {
+      allow read: if isAdmin() || (isStudent() && (resource.data.studentId == '' || resource.data.studentId == 'all' || resource.data.studentId == get(/databases/$(database)/documents/roles/$(request.auth.uid)).data.studentId));
+      allow create, update, delete: if isAdmin();
     }
-    
-    // Academy profile collection: authenticated users only
-    match /academy_profile/{profileId} {
-      allow read, write: if request.auth != null;
+
+    // ── Recycled Students ──────────────────────────────────────────
+    match /recycled_students/{studentId} {
+      allow read, write: if isAdmin();
     }
-    
-    // Teachers collection: authenticated users only
-    match /teachers/{teacherId} {
-      allow read, write: if request.auth != null;
-    }
-    
-    // Catch-all rule for all other documents: authenticated users only
-    match /{document=**} {
-      allow read, write: if request.auth != null;
+
+    // ── Academy Profile ────────────────────────────────────────────
+    match /academy_profile/{uid} {
+      allow read, write: if isAdmin();
     }
   }
 }

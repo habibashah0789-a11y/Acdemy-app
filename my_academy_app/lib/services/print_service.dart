@@ -11,9 +11,13 @@ import 'package:path_provider/path_provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../models/student_model.dart';
 import 'database_service.dart';
+import '../student_portal/student_auth_service.dart';
 
 class PrintService {
   static Future<void> printStudentReport(StudentModel student) async {
+    final authInfo = await StudentAuthService.getStudentAuthInfo(student.id);
+    final qrCodeData = authInfo?['qrToken']?.toString() ?? student.qrData;
+
     final doc = pw.Document();
 
     final profile = DatabaseService.getAcademyProfile();
@@ -165,7 +169,7 @@ class PrintService {
                             ),
                             child: pw.BarcodeWidget(
                               barcode: pw.Barcode.qrCode(),
-                              data: student.qrData,
+                              data: qrCodeData,
                               width: 75,
                               height: 75,
                             ),

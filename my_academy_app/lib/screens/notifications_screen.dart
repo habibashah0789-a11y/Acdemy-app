@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import '../models/notification_model.dart';
 import '../services/notification_service.dart';
 
@@ -132,6 +134,126 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
           );
         },
       ),
+      floatingActionButton: FloatingActionButton(
+        onPressed: _showCreateNotificationDialog,
+        backgroundColor: Colors.blue,
+        foregroundColor: Colors.white,
+        child: const Icon(Icons.add_comment_rounded),
+      ),
+    );
+  }
+
+  Future<void> _showCreateNotificationDialog() async {
+    final formKey = GlobalKey<FormState>();
+    final titleController = TextEditingController();
+    final messageController = TextEditingController();
+    bool isPublishing = false;
+
+    await showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            return AlertDialog(
+              title: const Text('Compose Announcement'),
+              content: Form(
+                key: formKey,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    TextFormField(
+                      controller: titleController,
+                      decoration: const InputDecoration(
+                        labelText: 'Title',
+                        hintText: 'e.g. Academy Holiday',
+                      ),
+                      validator: (v) => (v == null || v.trim().isEmpty)
+                          ? 'Please enter a title'
+                          : null,
+                    ),
+                    const SizedBox(height: 16),
+                    TextFormField(
+                      controller: messageController,
+                      maxLines: 4,
+                      decoration: const InputDecoration(
+                        labelText: 'Message',
+                        hintText: 'Enter announcement details...',
+                        alignLabelWithHint: true,
+                      ),
+                      validator: (v) => (v == null || v.trim().isEmpty)
+                          ? 'Please enter a message'
+                          : null,
+                    ),
+                  ],
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: isPublishing ? null : () => Navigator.pop(context),
+                  child: const Text('Cancel'),
+                ),
+                ElevatedButton(
+                  onPressed: isPublishing
+                      ? null
+                      : () async {
+                          if (!formKey.currentState!.validate()) return;
+                          setDialogState(() => isPublishing = true);
+
+                          try {
+                            final notification = NotificationModel(
+                              id: 'broadcast_${DateTime.now().millisecondsSinceEpoch}',
+                              title: titleController.text.trim(),
+                              message: messageController.text.trim(),
+                              studentName: 'All Students',
+                              className: 'All',
+                              subject: 'General',
+                              registeredBy: FirebaseAuth.instance.currentUser?.email ?? 'Administrator',
+                              timestamp: DateTime.now(),
+                              notificationType: 'broadcast',
+                              isRead: false,
+                              studentId: '', // Empty means broadcast
+                            );
+
+                            await FirebaseFirestore.instance
+                                .collection('notifications')
+                                .doc(notification.id)
+                                .set(notification.toMap());
+
+                            if (context.mounted) {
+                              Navigator.pop(context);
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text('Announcement published successfully!'),
+                                  backgroundColor: Colors.green,
+                                ),
+                              );
+                            }
+                          } catch (e) {
+                            if (context.mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text('Failed to publish: $e'),
+                                  backgroundColor: Colors.red,
+                                ),
+                              );
+                            }
+                            setDialogState(() => isPublishing = false);
+                          }
+                        },
+                  child: isPublishing
+                      ? const SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                        )
+                      : const Text('Publish'),
+                ),
+              ],
+            );
+          },
+        );
+      },
     );
   }
 }

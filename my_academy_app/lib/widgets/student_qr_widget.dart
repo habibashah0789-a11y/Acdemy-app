@@ -12,12 +12,14 @@ class StudentQrWidget extends StatelessWidget {
   final StudentModel student;
   final double size;
   final bool showLabel;
+  final String? customQrData;
 
   const StudentQrWidget({
     super.key,
     required this.student,
     this.size = 140,
     this.showLabel = true,
+    this.customQrData,
   });
 
   @override
@@ -44,7 +46,7 @@ class StudentQrWidget extends StatelessWidget {
           ),
           child: CustomPaint(
             size: Size(size, size),
-            painter: _StudentQrPainter(qrData: student.qrData),
+            painter: _StudentQrPainter(qrData: customQrData ?? student.qrData),
           ),
         ),
         if (showLabel) ...[
@@ -177,7 +179,7 @@ class _StudentQrPainter extends CustomPainter {
   }
 }
 
-void showStudentQrDialog(BuildContext context, StudentModel student) {
+void showStudentQrDialog(BuildContext context, StudentModel student, {String? customQrData}) {
   showDialog(
     context: context,
     builder: (context) {
@@ -225,6 +227,7 @@ void showStudentQrDialog(BuildContext context, StudentModel student) {
                   student: student,
                   size: 200,
                   showLabel: true,
+                  customQrData: customQrData,
                 ),
                 const SizedBox(height: 20),
                 Container(

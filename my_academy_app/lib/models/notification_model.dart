@@ -11,7 +11,7 @@ class NotificationModel {
   final DateTime timestamp;
   final String notificationType;
   bool isRead;
-  final String studentId;
+  final String studentId; 
 
   NotificationModel({
     required this.id,

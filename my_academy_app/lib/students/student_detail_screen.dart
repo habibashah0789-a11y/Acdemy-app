@@ -3,6 +3,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'dart:convert';
+import 'dart:math' as math;
 import 'dart:io' as io;
 import 'dart:typed_data';
 import 'package:flutter/foundation.dart' show kIsWeb;
@@ -18,6 +19,7 @@ import '../widgets/student_qr_widget.dart';
 import '../widgets/crop_image_dialog.dart';
 import '../widgets/student_avatar.dart';
 import '../utils/image_utils.dart';
+import '../student_portal/student_auth_service.dart';
 
 class StudentDetailScreen extends StatefulWidget {
   final StudentModel student;
@@ -34,10 +36,129 @@ class _StudentDetailScreenState extends State<StudentDetailScreen> {
   bool _isUploadingPhoto = false;
   Uint8List? _pendingImageBytes;
 
+  Map<String, dynamic>? _authInfo;
+  bool _isLoadingAuth = true;
+
   @override
   void initState() {
     super.initState();
     student = widget.student;
+    _loadAuthInfo();
+  }
+
+  Future<void> _loadAuthInfo() async {
+    setState(() => _isLoadingAuth = true);
+    try {
+      final info = await StudentAuthService.getStudentAuthInfo(student.id);
+      if (mounted) {
+        setState(() {
+          _authInfo = info;
+          _isLoadingAuth = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _isLoadingAuth = false);
+      }
+    }
+  }
+
+  Future<void> _resetDevice() async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Reset Student Device?'),
+        content: const Text(
+            'This will clear the student\'s linked device. The student will be able to bind a new device on their next login.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: TextButton.styleFrom(foregroundColor: Colors.red),
+            child: const Text('Reset'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm == true) {
+      setState(() => _isLoadingAuth = true);
+      try {
+        await StudentAuthService.resetDeviceBinding(student.id);
+        await _loadAuthInfo();
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Device binding reset successfully.'),
+              backgroundColor: Colors.green,
+            ),
+          );
+        }
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Failed to reset device: $e'),
+              backgroundColor: Colors.red,
+            ),
+          );
+          setState(() => _isLoadingAuth = false);
+        }
+      }
+    }
+  }
+
+  Future<void> _regenerateQrCode() async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Regenerate Student QR Code?'),
+        content: const Text(
+            'This will generate a new secure QR token. The student\'s previous QR code will immediately stop working.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: TextButton.styleFrom(foregroundColor: Colors.orange),
+            child: const Text('Regenerate'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm == true) {
+      setState(() => _isLoadingAuth = true);
+      try {
+        final newPlainToken = await StudentAuthService.generateAndStoreQrToken(student.id);
+        await _loadAuthInfo();
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('QR Code regenerated successfully.'),
+              backgroundColor: Colors.green,
+            ),
+          );
+          // Show the new QR pass in a custom dialog
+          showStudentQrDialog(context, student, customQrData: newPlainToken);
+        }
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Failed to regenerate QR code: $e'),
+              backgroundColor: Colors.red,
+            ),
+          );
+          setState(() => _isLoadingAuth = false);
+        }
+      }
+    }
   }
 
   Widget _buildAvatarImage(String url) {
@@ -628,57 +749,139 @@ class _StudentDetailScreenState extends State<StudentDetailScreen> {
   }
 
   Widget _buildQrCodeCard(BuildContext context, bool isDark) {
+    final qrToken = _authInfo?['qrToken'] as String?;
+    final deviceId = _authInfo?['linkedDeviceId'] as String? ?? '';
+
     return Card(
       elevation: 2,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-      child: InkWell(
-        onTap: () => showStudentQrDialog(context, student),
-        borderRadius: BorderRadius.circular(20),
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Row(
-            children: [
-              StudentQrWidget(
-                student: student,
-                size: 65,
-                showLabel: false,
+      child: Column(
+        children: [
+          InkWell(
+            onTap: () => showStudentQrDialog(context, student, customQrData: qrToken),
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Row(
+                children: [
+                  StudentQrWidget(
+                    student: student,
+                    size: 65,
+                    showLabel: false,
+                    customQrData: qrToken,
+                  ),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Unique Student Pass',
+                          style: GoogleFonts.poppins(
+                            fontSize: 15,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          'Student ID: ${student.studentCode}',
+                          style: const TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.bold,
+                            color: AppTheme.primaryBlue,
+                          ),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          qrToken == null
+                              ? 'Predictive/Not Generated. Tap to setup.'
+                              : 'Secure token active. Tap to enlarge.',
+                          style: TextStyle(
+                            fontSize: 11,
+                            color: qrToken == null ? Colors.orange : Colors.grey.shade500,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const Icon(Icons.qr_code_scanner_rounded, color: AppTheme.primaryBlue),
+                ],
               ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+            ),
+          ),
+          const Divider(height: 1),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            child: Column(
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Text(
-                      'Unique Student Pass',
-                      style: GoogleFonts.poppins(
-                        fontSize: 15,
-                        fontWeight: FontWeight.bold,
+                    const Text('Device Binding:', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w500)),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: deviceId.isEmpty ? Colors.grey.shade100 : Colors.green.shade50,
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: deviceId.isEmpty ? Colors.grey.shade300 : Colors.green.shade200),
                       ),
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      'Student ID: ${student.studentCode}',
-                      style: const TextStyle(
-                        fontSize: 13,
-                        fontWeight: FontWeight.bold,
-                        color: AppTheme.primaryBlue,
-                      ),
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      'Tap to view enlarged QR code for scanning',
-                      style: TextStyle(
-                        fontSize: 11,
-                        color: Colors.grey.shade500,
+                      child: Text(
+                        deviceId.isEmpty ? 'Not Bound' : 'Linked',
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.bold,
+                          color: deviceId.isEmpty ? Colors.grey.shade600 : Colors.green,
+                        ),
                       ),
                     ),
                   ],
                 ),
-              ),
-              const Icon(Icons.qr_code_scanner_rounded, color: AppTheme.primaryBlue),
-            ],
+                if (deviceId.isNotEmpty) ...[
+                  const SizedBox(height: 6),
+                  Align(
+                    alignment: Alignment.centerLeft,
+                    child: Text(
+                      'ID: ${deviceId.substring(0, math.min(16, deviceId.length))}...',
+                      style: const TextStyle(fontSize: 10, color: Colors.grey, fontFamily: 'monospace'),
+                    ),
+                  ),
+                ],
+                const SizedBox(height: 12),
+                Row(
+                  children: [
+                    Expanded(
+                      child: OutlinedButton.icon(
+                        onPressed: _isLoadingAuth ? null : _regenerateQrCode,
+                        icon: const Icon(Icons.qr_code_2_rounded, size: 16),
+                        label: const Text('Regen QR'),
+                        style: OutlinedButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(vertical: 10),
+                          foregroundColor: Colors.orange,
+                          side: const BorderSide(color: Colors.orange),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: OutlinedButton.icon(
+                        onPressed: _isLoadingAuth || deviceId.isEmpty ? null : _resetDevice,
+                        icon: const Icon(Icons.phonelink_erase_rounded, size: 16),
+                        label: const Text('Reset Device'),
+                        style: OutlinedButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(vertical: 10),
+                          foregroundColor: Colors.red,
+                          side: const BorderSide(color: Colors.red),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
           ),
-        ),
+        ],
       ),
     );
   }

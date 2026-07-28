@@ -3,6 +3,7 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../services/auth_service.dart';
 import '../theme/app_theme.dart';
+import '../student_portal/student_login_screen.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -188,6 +189,27 @@ class _LoginScreenState extends State<LoginScreen> {
                                               color: Colors.white,
                                               strokeWidth: 2))
                                       : const Text('SIGN IN'),
+                                ),
+                              ),
+                              const SizedBox(height: 16),
+                              Center(
+                                child: TextButton.icon(
+                                  onPressed: () {
+                                    Navigator.push(
+                                      context,
+                                      MaterialPageRoute(
+                                        builder: (_) => const StudentLoginScreen(),
+                                      ),
+                                    );
+                                  },
+                                  icon: const Icon(Icons.school_rounded, color: AppTheme.primaryBlue),
+                                  label: const Text(
+                                    'Student Access Portal',
+                                    style: TextStyle(
+                                      color: AppTheme.primaryBlue,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
                                 ),
                               ),
                             ],
