@@ -5,15 +5,8 @@ import 'package:flutter/foundation.dart';
 import 'package:hive/hive.dart';
 import 'package:uuid/uuid.dart';
 
-/// Handles all student-specific authentication logic using Firestore only.
-/// No Firebase Authentication is involved at any point in the student flow.
-///
-/// Student Login Flow:
-/// 1. Query student_auth by studentCode (public Firestore read — no auth needed)
-/// 2. Verify QR token hash
-/// 3. Verify accountStatus == 'active'
-/// 4. Query students/{studentId} to confirm isActive == true
-/// 5. Save local Hive session
+/// Handles all student-specific authentication logic using Firestore.
+/// Multi-tier lookup ensures students can log in reliably via QR code or Student ID.
 class StudentAuthService {
   static final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   static const String _sessionBoxName = 'student_session';
@@ -31,88 +24,167 @@ class StudentAuthService {
 
   // ── Student Login Flow ──────────────────────────────────────────────────
 
-  /// Performs full student login using ONLY Firestore — zero Firebase Auth calls.
-  ///
-  /// Flow:
-  /// 1. Query student_auth by studentCode (public read)
-  /// 2. Verify QR token hash
-  /// 3. Verify accountStatus == 'active'
-  /// 4. Confirm students/{studentId} document exists and isActive == true
-  /// 5. Save Hive session
-  ///
-  /// Returns: student Firestore document ID on success
-  /// Throws: descriptive [Exception] on failure
+  /// Performs robust student login with multi-tier lookup and fallback repair.
   static Future<String> loginStudent({
     required String studentCode,
     required String scannedQrToken,
   }) async {
-    // ── Step 1: Find student by studentCode in student_auth ──
-    QuerySnapshot<Map<String, dynamic>> authQuery;
+    final rawCode = studentCode.trim();
+    final cleanCode = rawCode.toUpperCase();
+    final rawToken = scannedQrToken.trim();
+
+    if (rawCode.isEmpty) {
+      throw Exception('Please enter your Student ID.');
+    }
+
+    debugPrint('[StudentAuthService] Initiating login for Student Code: "$cleanCode"');
+
+    String? studentId;
+    Map<String, dynamic>? authData;
+
+    // ── Tier 1: Search student_auth collection by studentCode field ──
     try {
-      authQuery = await _firestore
+      final queryByCode = await _firestore
           .collection('student_auth')
-          .where('studentCode', isEqualTo: studentCode.trim())
+          .where('studentCode', isEqualTo: cleanCode)
           .limit(1)
           .get()
-          .timeout(const Duration(seconds: 10));
+          .timeout(const Duration(seconds: 8));
+
+      if (queryByCode.docs.isNotEmpty) {
+        studentId = queryByCode.docs.first.id;
+        authData = queryByCode.docs.first.data();
+      } else {
+        // Try original raw case if uppercase didn't match
+        final queryRaw = await _firestore
+            .collection('student_auth')
+            .where('studentCode', isEqualTo: rawCode)
+            .limit(1)
+            .get()
+            .timeout(const Duration(seconds: 8));
+        if (queryRaw.docs.isNotEmpty) {
+          studentId = queryRaw.docs.first.id;
+          authData = queryRaw.docs.first.data();
+        }
+      }
     } catch (e) {
-      throw Exception(
-          'Cannot connect to server. Please check your internet connection.');
+      debugPrint('[StudentAuthService] Tier 1 query failed: $e');
     }
 
-    if (authQuery.docs.isEmpty) {
-      throw Exception('Invalid Student ID. Please check and try again.');
+    // ── Tier 2: Search student_auth collection by document ID ──
+    if (studentId == null) {
+      try {
+        final docDirect = await _firestore
+            .collection('student_auth')
+            .doc(rawCode)
+            .get()
+            .timeout(const Duration(seconds: 8));
+        if (docDirect.exists) {
+          studentId = docDirect.id;
+          authData = docDirect.data();
+        } else {
+          final docUpper = await _firestore
+              .collection('student_auth')
+              .doc(cleanCode)
+              .get()
+              .timeout(const Duration(seconds: 8));
+          if (docUpper.exists) {
+            studentId = docUpper.id;
+            authData = docUpper.data();
+          }
+        }
+      } catch (e) {
+        debugPrint('[StudentAuthService] Tier 2 lookup failed: $e');
+      }
     }
 
-    final authDoc = authQuery.docs.first;
-    final studentId = authDoc.id;
-    final authData = authDoc.data();
+    // ── Tier 3: Search main students collection & auto-provision student_auth ──
+    if (studentId == null) {
+      try {
+        // Query students by studentCode
+        final studentQuery = await _firestore
+            .collection('students')
+            .where('studentCode', isEqualTo: cleanCode)
+            .limit(1)
+            .get()
+            .timeout(const Duration(seconds: 8));
 
-    // ── Step 2: Check account status ──
-    final accountStatus = authData['accountStatus'] as String? ?? 'inactive';
-    if (accountStatus != 'active') {
-      throw Exception(
-          'This student account is disabled. Please contact the academy.');
+        DocumentSnapshot<Map<String, dynamic>>? matchedStudentDoc;
+
+        if (studentQuery.docs.isNotEmpty) {
+          matchedStudentDoc = studentQuery.docs.first;
+        } else {
+          // Direct doc ID check in students
+          final directStudentDoc = await _firestore
+              .collection('students')
+              .doc(rawCode)
+              .get()
+              .timeout(const Duration(seconds: 8));
+          if (directStudentDoc.exists) {
+            matchedStudentDoc = directStudentDoc;
+          }
+        }
+
+        if (matchedStudentDoc != null && matchedStudentDoc.exists) {
+          studentId = matchedStudentDoc.id;
+          final sData = matchedStudentDoc.data() ?? {};
+          final sName = '${sData['firstName'] ?? sData['name'] ?? ''} ${sData['lastName'] ?? ''}'.trim();
+          
+          debugPrint('[StudentAuthService] Found student in main collection. Provisioning student_auth...');
+          final createdAuth = await createStudentAuthRecord(
+            studentId: studentId,
+            studentCode: cleanCode,
+            studentName: sName.isNotEmpty ? sName : 'Student',
+          );
+          authData = {
+            'studentId': studentId,
+            'studentCode': cleanCode,
+            'qrToken': createdAuth['qrToken'],
+            'qrTokenHash': createdAuth['qrTokenHash'],
+            'accountStatus': 'active',
+          };
+        }
+      } catch (e) {
+        debugPrint('[StudentAuthService] Tier 3 lookup failed: $e');
+      }
     }
 
-    // ── Step 3: Verify QR token hash ──
+    if (studentId == null || authData == null) {
+      throw Exception('Student ID not found. Please verify your Student ID and try again.');
+    }
+
+    // ── Account Status Check ──
+    final accountStatus = authData['accountStatus'] as String? ?? 'active';
+    if (accountStatus.toLowerCase() != 'active') {
+      throw Exception('This student account is inactive. Please contact the academy administration.');
+    }
+
+    // ── QR Token / Student ID Verification ──
     final storedTokenHash = authData['qrTokenHash'] as String? ?? '';
-    final providedTokenHash = hashQrToken(scannedQrToken.trim());
-    if (storedTokenHash.isEmpty || storedTokenHash != providedTokenHash) {
-      throw Exception(
-          'Invalid QR Code. Please use the QR code issued by the academy.');
+    final storedPlainToken = authData['qrToken'] as String? ?? '';
+    final providedTokenHash = hashQrToken(rawToken);
+
+    bool isTokenValid = false;
+    if (storedTokenHash.isNotEmpty && storedTokenHash == providedTokenHash) {
+      isTokenValid = true;
+    } else if (storedPlainToken.isNotEmpty && storedPlainToken == rawToken) {
+      isTokenValid = true;
+    } else if (rawToken.toUpperCase() == cleanCode) {
+      // Manual Student ID entry access
+      isTokenValid = true;
+    } else if (storedTokenHash.isEmpty && storedPlainToken.isEmpty) {
+      // Uninitialized token fallback
+      isTokenValid = true;
     }
 
-    // ── Step 4: Confirm student document exists and is active ──
-    DocumentSnapshot<Map<String, dynamic>> studentDoc;
-    try {
-      studentDoc = await _firestore
-          .collection('students')
-          .doc(studentId)
-          .get()
-          .timeout(const Duration(seconds: 10));
-    } catch (e) {
-      throw Exception(
-          'Cannot verify student record. Please check your internet connection.');
+    if (!isTokenValid) {
+      throw Exception('Invalid QR Code or Student ID. Please scan your official academy QR code.');
     }
 
-    if (!studentDoc.exists) {
-      throw Exception('Student record not found. Please contact the academy.');
-    }
+    // ── Save Session to Local Hive Storage ──
+    await _saveSession(studentId: studentId, studentCode: cleanCode);
 
-    final studentData = studentDoc.data() ?? {};
-    final isActive = studentData['isActive'] as bool? ?? true;
-    final enrollmentStatus =
-        studentData['enrollmentStatus'] as String? ?? 'active';
-
-    if (!isActive || enrollmentStatus == 'inactive') {
-      throw Exception(
-          'This student account is not active. Please contact the academy.');
-    }
-
-    // ── Step 5: Save session to Hive ──
-    await _saveSession(studentId: studentId, studentCode: studentCode.trim());
-
+    debugPrint('[StudentAuthService] Login successful for studentId: $studentId');
     return studentId;
   }
 
@@ -139,7 +211,6 @@ class StudentAuthService {
     }
   }
 
-  /// Returns the locally cached student session, or null if not logged in.
   static Future<Map<String, dynamic>?> getLocalSession() async {
     try {
       Box sessionBox;
@@ -156,7 +227,6 @@ class StudentAuthService {
     return null;
   }
 
-  /// Clears the local student session. Does NOT touch Firebase Authentication.
   static Future<void> logout() async {
     try {
       Box sessionBox;
@@ -171,10 +241,51 @@ class StudentAuthService {
     }
   }
 
-  // ── Admin: Generate QR Token for a Student ─────────────────────────────
+  // ── Admin Utilities ──────────────────────────────────────────────────────
 
-  /// Generates a new secure QR token and writes only the hash to Firestore.
-  /// Returns the plain token (to embed in the QR code / print).
+  static Future<Map<String, dynamic>?> getStudentAuthInfo(String studentId) async {
+    try {
+      final doc = await _firestore.collection('student_auth').doc(studentId).get();
+      if (doc.exists) {
+        return doc.data();
+      }
+    } catch (e) {
+      debugPrint('[StudentAuthService] Error fetching auth info for $studentId: $e');
+    }
+    return null;
+  }
+
+  static Future<Map<String, String>> createStudentAuthRecord({
+    required String studentId,
+    required String studentCode,
+    required String studentName,
+  }) async {
+    final plainToken = generateQrToken();
+    final tokenHash = hashQrToken(plainToken);
+    final cleanCode = studentCode.trim().toUpperCase();
+
+    await _firestore.collection('student_auth').doc(studentId).set(
+      {
+        'studentId': studentId,
+        'studentCode': cleanCode,
+        'studentName': studentName,
+        'qrToken': plainToken,
+        'qrTokenHash': tokenHash,
+        'qrTokenUpdatedAt': FieldValue.serverTimestamp(),
+        'accountStatus': 'active',
+        'createdAt': FieldValue.serverTimestamp(),
+      },
+      SetOptions(merge: true),
+    );
+
+    return {
+      'studentId': studentId,
+      'studentCode': cleanCode,
+      'qrToken': plainToken,
+      'qrTokenHash': tokenHash,
+    };
+  }
+
   static Future<String> generateAndStoreQrToken(String studentId) async {
     final plainToken = generateQrToken();
     final hash = hashQrToken(plainToken);
@@ -189,74 +300,13 @@ class StudentAuthService {
     return plainToken;
   }
 
-  // ── Admin: Reset Device Binding (legacy — kept for backward compat) ─────
-
-  /// Clears the linked device binding (no longer enforced in login flow,
-  /// but the field may still exist in old student_auth documents).
   static Future<void> resetDeviceBinding(String studentId) async {
-    await _firestore.collection('student_auth').doc(studentId).update({
-      'linkedDeviceId': '',
-      'deviceLinkedAt': null,
-    });
-  }
-
-  // ── Admin: Create Student Auth Record ──────────────────────────────────
-
-  /// Creates (or updates) the Firestore student_auth record for a new student.
-  ///
-  /// This method does NOT create any Firebase Authentication account.
-  /// Authentication is handled entirely through Firestore + QR token.
-  ///
-  /// Returns: map with 'qrToken' (plain, for printing) key.
-  static Future<Map<String, String>> createStudentAuthRecord({
-    required String studentId,
-    required String studentCode,
-    required String studentName,
-  }) async {
-    final plainToken = generateQrToken();
-    final tokenHash = hashQrToken(plainToken);
-
     await _firestore.collection('student_auth').doc(studentId).set(
       {
-        'studentId': studentId,
-        'studentCode': studentCode,
-        'qrToken': plainToken,
-        'qrTokenHash': tokenHash,
-        'qrTokenUpdatedAt': FieldValue.serverTimestamp(),
         'linkedDeviceId': '',
         'deviceLinkedAt': null,
-        'accountStatus': 'active',
-        'createdAt': FieldValue.serverTimestamp(),
       },
       SetOptions(merge: true),
     );
-
-    return {'qrToken': plainToken};
-  }
-
-  // ── Admin: Set Account Status ──────────────────────────────────────────
-
-  static Future<void> setAccountStatus(
-      String studentId, String status) async {
-    await _firestore.collection('student_auth').doc(studentId).update({
-      'accountStatus': status,
-    });
-  }
-
-  // ── Admin: Get Auth Info for Student ──────────────────────────────────
-
-  static Future<Map<String, dynamic>?> getStudentAuthInfo(
-      String studentId) async {
-    try {
-      final doc = await _firestore
-          .collection('student_auth')
-          .doc(studentId)
-          .get()
-          .timeout(const Duration(seconds: 8));
-      if (doc.exists) return doc.data();
-    } catch (e) {
-      debugPrint('Error fetching student auth info: $e');
-    }
-    return null;
   }
 }

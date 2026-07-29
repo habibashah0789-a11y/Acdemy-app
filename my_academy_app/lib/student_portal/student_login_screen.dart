@@ -51,10 +51,11 @@ class _StudentLoginScreenState extends State<StudentLoginScreen> {
 
   Future<void> _handleLogin() async {
     if (!(_formKey.currentState?.validate() ?? false)) return;
-    if (_scannedToken == null || _scannedToken!.isEmpty) {
-      setState(() => _errorMessage = 'Please scan your academy QR code first.');
-      return;
-    }
+
+    final enteredCode = _studentIdController.text.trim();
+    final tokenToUse = (_scannedToken != null && _scannedToken!.isNotEmpty)
+        ? _scannedToken!
+        : enteredCode;
 
     setState(() {
       _isLoading = true;
@@ -63,13 +64,10 @@ class _StudentLoginScreenState extends State<StudentLoginScreen> {
 
     try {
       await StudentAuthService.loginStudent(
-        studentCode: _studentIdController.text.trim(),
-        scannedQrToken: _scannedToken!,
+        studentCode: enteredCode,
+        scannedQrToken: tokenToUse,
       );
 
-      // Login is purely Firestore-based — no Firebase Auth state change.
-      // Navigate directly to the Student portal and remove all back-stack
-      // so the user cannot swipe back to the login screen.
       if (mounted) {
         Navigator.of(context).pushAndRemoveUntil(
           MaterialPageRoute(builder: (_) => const StudentMainWrapper()),
@@ -80,7 +78,6 @@ class _StudentLoginScreenState extends State<StudentLoginScreen> {
       if (mounted) {
         setState(() {
           _errorMessage = e.toString().replaceFirst('Exception: ', '');
-          _scannedToken = null;
         });
       }
     } finally {
@@ -235,6 +232,10 @@ class _StudentLoginScreenState extends State<StudentLoginScreen> {
                         controller: _studentIdController,
                         textCapitalization: TextCapitalization.characters,
                         enabled: true,
+                        textInputAction: TextInputAction.done,
+                        onFieldSubmitted: (_) {
+                          if (!_isLoading) _handleLogin();
+                        },
                         decoration: InputDecoration(
                           hintText: 'e.g. QA-2026-001',
                           prefixIcon: const Icon(
