@@ -2,67 +2,57 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
+    // ── Admin helper ────────────────────────────────────────────────
+    // Only Firebase-authenticated admins may write data.
     function isSignedIn() {
       return request.auth != null;
     }
 
     function isAdmin() {
       return isSignedIn() &&
-             exists(/databases/$,(database)/documents/roles/$(request.auth.uid)) &&
+             exists(/databases/$(database)/documents/roles/$(request.auth.uid)) &&
              get(/databases/$(database)/documents/roles/$(request.auth.uid)).data.role == 'admin';
     }
 
-    function isStudent() {
-      return isSignedIn() &&
-             exists(/databases/$(database)/documents/roles/$(request.auth.uid)) &&
-             get(/databases/$(database)/documents/roles/$(request.auth.uid)).data.role == 'student';
-    }
-
-    function isStudentOwner(studentId) {
-      return isStudent() &&
-             get(/databases/$(database)/documents/roles/$(request.auth.uid)).data.studentId == studentId;
-    }
-
-    // ── Roles ──────────────────────────────────────────────────────
+    // ── Roles ───────────────────────────────────────────────────────
+    // Admin-only: role documents are never read by student portal.
     match /roles/{uid} {
-      // Any authenticated user can read their own role document
       allow read, create: if isSignedIn() && request.auth.uid == uid;
-
-      // Only admins can update/delete role documents
       allow update, delete: if isAdmin();
     }
 
-    // ── Students ───────────────────────────────────────────────────
+    // ── Students ────────────────────────────────────────────────────
+    // Public read: student portal uses Firestore-only login (no Firebase Auth).
+    // All writes remain admin-only.
     match /students/{studentId} {
-      allow read: if isAdmin() || isStudentOwner(studentId);
-      allow create, update, delete: if isAdmin();
-    }
-
-    // ── Student Auth ───────────────────────────────────────────────
-    match /student_auth/{studentId} {
-      // Allow public reads for the login flow.
-      // The QR token is stored as a SHA-256 hash so raw token exposure is safe.
       allow read: if true;
-      allow create: if isAdmin();
-      allow update: if isAdmin() ||
-        (isStudentOwner(studentId) &&
-         request.resource.data.diff(resource.data).affectedKeys()
-           .hasOnly(['linkedDeviceId', 'deviceLinkedAt']) &&
-         resource.data.linkedDeviceId == '');
-    }
-
-    // ── Notifications ──────────────────────────────────────────────
-    match /notifications/{notifId} {
-      allow read: if isAdmin() || (isStudent() && (resource.data.studentId == '' || resource.data.studentId == 'all' || resource.data.studentId == get(/databases/$(database)/documents/roles/$(request.auth.uid)).data.studentId));
       allow create, update, delete: if isAdmin();
     }
 
-    // ── Recycled Students ──────────────────────────────────────────
+    // ── Student Auth ─────────────────────────────────────────────────
+    // Public read: used during QR-code login to verify the token hash.
+    // The QR token is stored as a SHA-256 hash, so exposure is safe.
+    // All writes remain admin-only.
+    match /student_auth/{studentId} {
+      allow read: if true;
+      allow create, update, delete: if isAdmin();
+    }
+
+    // ── Notifications / Announcements ────────────────────────────────
+    // Public read: student portal displays admin-created announcements.
+    // Client-side filtering handles per-student vs. broadcast notices.
+    // All writes remain admin-only.
+    match /notifications/{notifId} {
+      allow read: if true;
+      allow create, update, delete: if isAdmin();
+    }
+
+    // ── Recycled Students ────────────────────────────────────────────
     match /recycled_students/{studentId} {
       allow read, write: if isAdmin();
     }
 
-    // ── Academy Profile ────────────────────────────────────────────
+    // ── Academy Profile ──────────────────────────────────────────────
     match /academy_profile/{uid} {
       allow read, write: if isAdmin();
     }

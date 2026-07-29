@@ -25,6 +25,8 @@ import 'provider/theme_provider.dart';
 import 'login/login_screen.dart';
 import 'screens/main_wrapper.dart';
 import 'student_portal/student_main_wrapper.dart';
+import 'student_portal/student_login_screen.dart';
+
 
 // Firebase options
 import 'firebase_options.dart';
@@ -85,7 +87,6 @@ class MyApp extends StatelessWidget {
   }
 }
 
-
 class AuthWrapper extends StatefulWidget {
   const AuthWrapper({super.key});
 
@@ -117,9 +118,55 @@ class _AuthWrapperState extends State<AuthWrapper> {
         if (snapshot.hasData && snapshot.data != null) {
           return RoleRoutingWrapper(user: snapshot.data!);
         }
-        return const LoginScreen();
+        return const StudentPortalEntryWrapper();
       },
     );
+  }
+}
+
+class StudentPortalEntryWrapper extends StatefulWidget {
+  const StudentPortalEntryWrapper({super.key});
+
+  @override
+  State<StudentPortalEntryWrapper> createState() =>
+      _StudentPortalEntryWrapperState();
+}
+
+class _StudentPortalEntryWrapperState extends State<StudentPortalEntryWrapper> {
+  bool _checkingSession = true;
+  bool _hasSession = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _checkLocalSession();
+  }
+
+  Future<void> _checkLocalSession() async {
+    final session = await StudentAuthService.getLocalSession();
+    if (mounted) {
+      setState(() {
+        _hasSession = session != null;
+        _checkingSession = false;
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (_checkingSession) {
+      return const Scaffold(
+        body: Center(child: CircularProgressIndicator()),
+      );
+    }
+
+    if (_hasSession) {
+      return const StudentMainWrapper();
+    }
+
+    // Default unauthenticated entry: Student portal login.
+    // Admins can reach their login via the link inside StudentLoginScreen.
+    return const StudentLoginScreen();
   }
 }
 
@@ -164,23 +211,13 @@ class _RoleRoutingWrapperState extends State<RoleRoutingWrapper> {
           .get()
           .timeout(const Duration(seconds: 10));
 
-      // If the role document doesn't exist, auto-bootstrap for admin users.
-      // Student accounts have emails ending with '@quaid-student.app'.
-      // Any other email is treated as an admin (first-time setup).
+      // Auto-bootstrap for admin users.
       if (!roleDoc.exists) {
-        final email = widget.user.email ?? '';
-        if (email.endsWith('@quaid-student.app')) {
-          throw Exception(
-              'Student account not fully configured. Please contact the academy.');
-        }
-
-        // Auto-create admin role document for first-time admin login
         await roleDocRef.set({
           'role': 'admin',
           'createdAt': FieldValue.serverTimestamp(),
         });
 
-        // Re-read the document to confirm it was created
         roleDoc = await roleDocRef
             .get()
             .timeout(const Duration(seconds: 10));
@@ -196,11 +233,6 @@ class _RoleRoutingWrapperState extends State<RoleRoutingWrapper> {
       if (role == 'admin') {
         setState(() {
           _role = 'admin';
-          _isLoading = false;
-        });
-      } else if (role == 'student') {
-        setState(() {
-          _role = 'student';
           _isLoading = false;
         });
       } else {
@@ -258,8 +290,6 @@ class _RoleRoutingWrapperState extends State<RoleRoutingWrapper> {
 
     if (_role == 'admin') {
       return const MainWrapper();
-    } else if (_role == 'student') {
-      return const StudentMainWrapper();
     }
 
     return const LoginScreen();

@@ -4,10 +4,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
+import '../login/login_screen.dart';
 import '../theme/app_theme.dart';
 import '../widgets/custom_card.dart';
 import 'student_auth_service.dart';
 import 'student_main_wrapper.dart';
+
 
 class StudentLoginScreen extends StatefulWidget {
   const StudentLoginScreen({super.key});
@@ -65,11 +67,14 @@ class _StudentLoginScreenState extends State<StudentLoginScreen> {
         scannedQrToken: _scannedToken!,
       );
 
-      // After successful login, the main app's AuthWrapper will detect
-      // the auth state change and route to StudentMainWrapper automatically.
-      // We just need to pop back to the root so AuthWrapper takes over.
+      // Login is purely Firestore-based — no Firebase Auth state change.
+      // Navigate directly to the Student portal and remove all back-stack
+      // so the user cannot swipe back to the login screen.
       if (mounted) {
-        Navigator.of(context).popUntil((route) => route.isFirst);
+        Navigator.of(context).pushAndRemoveUntil(
+          MaterialPageRoute(builder: (_) => const StudentMainWrapper()),
+          (_) => false,
+        );
       }
     } catch (e) {
       if (mounted) {
@@ -125,25 +130,7 @@ class _StudentLoginScreenState extends State<StudentLoginScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
-                  const SizedBox(height: 16),
-
-                  // Top Navigation Back Button
-                  Align(
-                    alignment: Alignment.centerLeft,
-                    child: IconButton(
-                      icon: Container(
-                        padding: const EdgeInsets.all(8),
-                        decoration: BoxDecoration(
-                          color: Colors.white.withValues(alpha: 0.2),
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: const Icon(Icons.arrow_back_ios_new_rounded, color: Colors.white, size: 18),
-                      ),
-                      onPressed: () => Navigator.pop(context),
-                    ),
-                  ),
-
-                  const SizedBox(height: 12),
+                  const SizedBox(height: 36),
 
                   // Brand Icon & Title
                   Container(
@@ -329,16 +316,49 @@ class _StudentLoginScreenState extends State<StudentLoginScreen> {
 
                   const SizedBox(height: 32),
 
+                  // Admin Portal Link
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Text(
+                        'Are you staff? ',
+                        style: TextStyle(
+                          fontSize: 13,
+                          color: isDark ? AppTheme.darkTextSecondary : AppTheme.lightTextSecondary,
+                        ),
+                      ),
+                      GestureDetector(
+                        onTap: () {
+                          Navigator.of(context).push(
+                            MaterialPageRoute(builder: (_) => const LoginScreen()),
+                          );
+                        },
+                        child: Text(
+                          'Administration Portal →',
+                          style: TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.bold,
+                            color: isDark ? AppTheme.primaryBlue.withValues(alpha: 0.85) : AppTheme.primaryBlue,
+                            decoration: TextDecoration.underline,
+                            decorationColor: AppTheme.primaryBlue,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+
+                  const SizedBox(height: 16),
+
                   Text(
-                    'Need assistance? Contact Academy Administration Office',
+                    'Need assistance? Contact the Academy Administration',
                     style: TextStyle(
-                      fontSize: 12,
+                      fontSize: 11,
                       color: isDark ? AppTheme.darkTextSecondary : AppTheme.lightTextSecondary,
                     ),
                     textAlign: TextAlign.center,
                   ),
 
-                  const SizedBox(height: 24),
+                  const SizedBox(height: 32),
                 ],
               ),
             ),

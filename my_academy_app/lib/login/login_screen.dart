@@ -5,7 +5,6 @@ import '../services/auth_service.dart';
 import '../theme/app_theme.dart';
 import '../theme/ui_helpers.dart';
 import '../widgets/custom_card.dart';
-import '../student_portal/student_login_screen.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -225,12 +224,11 @@ class _LoginScreenState extends State<LoginScreen> {
                                 ),
                                 child: TextButton.icon(
                                   onPressed: () {
-                                    Navigator.push(
-                                      context,
-                                      MaterialPageRoute(
-                                        builder: (_) => const StudentLoginScreen(),
-                                      ),
-                                    );
+                                    // Admin login is pushed on top of StudentLoginScreen,
+                                    // so simply pop back to the student portal.
+                                    if (Navigator.canPop(context)) {
+                                      Navigator.pop(context);
+                                    }
                                   },
                                   icon: const Icon(Icons.school_rounded, color: AppTheme.primaryBlue, size: 18),
                                   label: const Text(
