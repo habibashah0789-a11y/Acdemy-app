@@ -527,144 +527,154 @@ class _AddStudentScreenState extends State<AddStudentScreen> {
       barrierDismissible: false,
       builder: (ctx) => Dialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-        child: Container(
-          padding: const EdgeInsets.all(24),
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(24),
-            gradient: const LinearGradient(
-              colors: [Color(0xFFF0F4FF), Colors.white],
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-            ),
+        child: ConstrainedBox(
+          constraints: BoxConstraints(
+            maxHeight: MediaQuery.of(ctx).size.height * 0.85,
+            maxWidth: 480,
           ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              // Header
-              Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: AppTheme.secondaryGreen.withValues(alpha: 0.12),
-                  shape: BoxShape.circle,
-                ),
-                child: const Icon(Icons.check_circle_rounded, color: AppTheme.secondaryGreen, size: 36),
-              ),
-              const SizedBox(height: 12),
-              Text(
-                'Student Registered!',
-                style: GoogleFonts.poppins(fontSize: 18, fontWeight: FontWeight.bold, color: AppTheme.primaryDarkBlue),
-                textAlign: TextAlign.center,
-              ),
-              const SizedBox(height: 4),
-              Text(
-                studentName,
-                style: GoogleFonts.poppins(fontSize: 14, color: Colors.grey.shade600),
-                textAlign: TextAlign.center,
-              ),
-              const SizedBox(height: 20),
-
-              // QR Code
-              Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(16),
-                  boxShadow: [
-                    BoxShadow(
-                      color: AppTheme.primaryBlue.withValues(alpha: 0.12),
-                      blurRadius: 16,
-                      offset: const Offset(0, 4),
-                    )
-                  ],
-                ),
-                child: QrImageView(
-                  data: qrToken,
-                  version: QrVersions.auto,
-                  size: 200,
-                  eyeStyle: const QrEyeStyle(
-                    eyeShape: QrEyeShape.square,
-                    color: AppTheme.primaryDarkBlue,
-                  ),
-                  dataModuleStyle: const QrDataModuleStyle(
-                    dataModuleShape: QrDataModuleShape.square,
-                    color: AppTheme.primaryBlue,
-                  ),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(24),
+            child: Container(
+              decoration: const BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [Color(0xFFF0F4FF), Colors.white],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
                 ),
               ),
-              const SizedBox(height: 16),
-
-              // Student Code Badge
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-                decoration: BoxDecoration(
-                  gradient: AppTheme.primaryGradient,
-                  borderRadius: BorderRadius.circular(12),
-                ),
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.all(24),
                 child: Column(
+                  mainAxisSize: MainAxisSize.min,
                   children: [
-                    const Text(
-                      'Student Login Code',
-                      style: TextStyle(color: Colors.white70, fontSize: 11, letterSpacing: 0.5),
+                    // Header
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: AppTheme.secondaryGreen.withValues(alpha: 0.12),
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(Icons.check_circle_rounded, color: AppTheme.secondaryGreen, size: 36),
+                    ),
+                    const SizedBox(height: 12),
+                    Text(
+                      'Student Registered!',
+                      style: GoogleFonts.poppins(fontSize: 18, fontWeight: FontWeight.bold, color: AppTheme.primaryDarkBlue),
+                      textAlign: TextAlign.center,
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      studentCode,
-                      style: GoogleFonts.poppins(
+                      studentName,
+                      style: GoogleFonts.poppins(fontSize: 14, color: Colors.grey.shade600),
+                      textAlign: TextAlign.center,
+                    ),
+                    const SizedBox(height: 20),
+
+                    // QR Code
+                    Container(
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
                         color: Colors.white,
-                        fontSize: 22,
-                        fontWeight: FontWeight.bold,
-                        letterSpacing: 2,
+                        borderRadius: BorderRadius.circular(16),
+                        boxShadow: [
+                          BoxShadow(
+                            color: AppTheme.primaryBlue.withValues(alpha: 0.12),
+                            blurRadius: 16,
+                            offset: const Offset(0, 4),
+                          )
+                        ],
+                      ),
+                      child: QrImageView(
+                        data: qrToken,
+                        version: QrVersions.auto,
+                        size: 180,
+                        eyeStyle: const QrEyeStyle(
+                          eyeShape: QrEyeShape.square,
+                          color: AppTheme.primaryDarkBlue,
+                        ),
+                        dataModuleStyle: const QrDataModuleStyle(
+                          dataModuleShape: QrDataModuleShape.square,
+                          color: AppTheme.primaryBlue,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+
+                    // Student Code Badge
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                      decoration: BoxDecoration(
+                        gradient: AppTheme.primaryGradient,
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Column(
+                        children: [
+                          const Text(
+                            'Student Login Code',
+                            style: TextStyle(color: Colors.white70, fontSize: 11, letterSpacing: 0.5),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            studentCode,
+                            style: GoogleFonts.poppins(
+                              color: Colors.white,
+                              fontSize: 22,
+                              fontWeight: FontWeight.bold,
+                              letterSpacing: 2,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+
+                    // Instructions
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: AppTheme.accentOrange.withValues(alpha: 0.08),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: AppTheme.accentOrange.withValues(alpha: 0.3)),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              Icon(Icons.info_outline_rounded, color: AppTheme.accentOrange, size: 16),
+                              const SizedBox(width: 6),
+                              Text(
+                                'Give this to the student:',
+                                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: AppTheme.accentOrange),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 6),
+                          const Text('① Student scans this QR code', style: TextStyle(fontSize: 12)),
+                          const Text('② Then types their Login Code above', style: TextStyle(fontSize: 12)),
+                          const Text('③ Portal access is granted!', style: TextStyle(fontSize: 12)),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 20),
+
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton(
+                        onPressed: () => Navigator.pop(ctx),
+                        style: ElevatedButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                        ),
+                        child: Text(
+                          'Done',
+                          style: GoogleFonts.poppins(fontWeight: FontWeight.bold, fontSize: 15),
+                        ),
                       ),
                     ),
                   ],
                 ),
               ),
-              const SizedBox(height: 12),
-
-              // Instructions
-              Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: AppTheme.accentOrange.withValues(alpha: 0.08),
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: AppTheme.accentOrange.withValues(alpha: 0.3)),
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        Icon(Icons.info_outline_rounded, color: AppTheme.accentOrange, size: 16),
-                        const SizedBox(width: 6),
-                        Text(
-                          'Give this to the student:',
-                          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: AppTheme.accentOrange),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 6),
-                    const Text('① Student scans this QR code', style: TextStyle(fontSize: 12)),
-                    const Text('② Then types their Login Code above', style: TextStyle(fontSize: 12)),
-                    const Text('③ Portal access is granted!', style: TextStyle(fontSize: 12)),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 20),
-
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton(
-                  onPressed: () => Navigator.pop(ctx),
-                  style: ElevatedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(vertical: 14),
-                  ),
-                  child: Text(
-                    'Done',
-                    style: GoogleFonts.poppins(fontWeight: FontWeight.bold, fontSize: 15),
-                  ),
-                ),
-              ),
-            ],
+            ),
           ),
         ),
       ),
