@@ -1,14 +1,13 @@
 import 'dart:async';
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:mobile_scanner/mobile_scanner.dart';
 import '../login/login_screen.dart';
 import '../theme/app_theme.dart';
 import '../widgets/custom_card.dart';
 import 'student_auth_service.dart';
 import 'student_main_wrapper.dart';
+import 'student_qr_scanner_screen.dart';
 
 
 class StudentLoginScreen extends StatefulWidget {
@@ -24,29 +23,12 @@ class _StudentLoginScreenState extends State<StudentLoginScreen> {
 
   String? _scannedToken;
   bool _isLoading = false;
-  bool _isScannerOpen = false;
   String? _errorMessage;
 
   @override
   void dispose() {
     _studentIdController.dispose();
     super.dispose();
-  }
-
-  void _onQrDetected(BarcodeCapture capture) {
-    if (_scannedToken != null) return;
-    final barcodes = capture.barcodes;
-    for (final barcode in barcodes) {
-      final raw = barcode.rawValue ?? '';
-      if (raw.isNotEmpty) {
-        setState(() {
-          _scannedToken = raw;
-          _isScannerOpen = false;
-          _errorMessage = null;
-        });
-        return;
-      }
-    }
   }
 
   Future<void> _handleLogin() async {
@@ -85,25 +67,32 @@ class _StudentLoginScreenState extends State<StudentLoginScreen> {
     }
   }
 
-  void _openScanner() {
-    setState(() {
-      _isScannerOpen = true;
-      _scannedToken = null;
-      _errorMessage = null;
-    });
-  }
+  Future<void> _openScanner() async {
+    setState(() => _errorMessage = null);
 
-  void _closeScanner() {
-    setState(() => _isScannerOpen = false);
+    final result = await Navigator.of(context).push<StudentQrScanResult>(
+      MaterialPageRoute(
+        builder: (_) => const StudentQrScannerScreen(),
+      ),
+    );
+
+    if (result != null && mounted) {
+      setState(() {
+        if (result.studentCode.isNotEmpty) {
+          _studentIdController.text = result.studentCode;
+        }
+        _scannedToken = result.token ?? result.rawData;
+        _errorMessage = null;
+      });
+
+      // Automatically trigger login process upon scanning valid QR code
+      _handleLogin();
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-
-    if (_isScannerOpen) {
-      return _buildScannerView();
-    }
 
     return Scaffold(
       body: Stack(
@@ -474,143 +463,6 @@ class _StudentLoginScreenState extends State<StudentLoginScreen> {
             ),
           ),
         ],
-      ),
-    );
-  }
-
-  Widget _buildScannerView() {
-    final bool isMobile = !kIsWeb && 
-        (defaultTargetPlatform == TargetPlatform.android || 
-         defaultTargetPlatform == TargetPlatform.iOS);
-
-    return Scaffold(
-      backgroundColor: Colors.black,
-      appBar: AppBar(
-        backgroundColor: Colors.black,
-        foregroundColor: Colors.white,
-        title: Text(
-          isMobile ? 'Scan Academy QR Code' : 'Enter Auth Token',
-          style: GoogleFonts.poppins(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
-        ),
-        leading: IconButton(
-          icon: const Icon(Icons.close_rounded, color: Colors.white),
-          onPressed: _closeScanner,
-        ),
-      ),
-      body: isMobile ? _buildCameraScanner() : _buildManualTokenEntry(),
-    );
-  }
-
-  Widget _buildCameraScanner() {
-    return Stack(
-      children: [
-        MobileScanner(
-          onDetect: _onQrDetected,
-        ),
-        Center(
-          child: Container(
-            width: 250,
-            height: 250,
-            decoration: BoxDecoration(
-              border: Border.all(color: AppTheme.primaryBlue, width: 3.5),
-              borderRadius: BorderRadius.circular(20),
-              boxShadow: [
-                BoxShadow(
-                  color: AppTheme.primaryBlue.withValues(alpha: 0.3),
-                  blurRadius: 20,
-                  spreadRadius: 4,
-                )
-              ],
-            ),
-          ),
-        ),
-        Positioned(
-          bottom: 60,
-          left: 20,
-          right: 20,
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-            decoration: BoxDecoration(
-              color: Colors.black.withValues(alpha: 0.7),
-              borderRadius: BorderRadius.circular(16),
-            ),
-            child: Text(
-              'Align camera frame over your academy student QR code',
-              textAlign: TextAlign.center,
-              style: GoogleFonts.poppins(
-                color: Colors.white,
-                fontSize: 13,
-              ),
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildManualTokenEntry() {
-    final tokenController = TextEditingController();
-    return Center(
-      child: Container(
-        padding: const EdgeInsets.all(24),
-        margin: const EdgeInsets.symmetric(horizontal: 32),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(20),
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Icon(Icons.qr_code_scanner_rounded, size: 64, color: AppTheme.primaryBlue),
-            const SizedBox(height: 16),
-            Text(
-              'Manual Token Entry',
-              style: GoogleFonts.poppins(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-                color: Colors.black87,
-              ),
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: 8),
-            Text(
-              'Please enter the auth token provided on your academy ID slip.',
-              style: TextStyle(color: Colors.grey.shade600, fontSize: 13),
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: 24),
-            TextField(
-              controller: tokenController,
-              style: const TextStyle(color: Colors.black87),
-              decoration: InputDecoration(
-                labelText: 'QR Token / Auth Code',
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-              ),
-            ),
-            const SizedBox(height: 24),
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton(
-                onPressed: () {
-                  final token = tokenController.text.trim();
-                  if (token.isNotEmpty) {
-                    setState(() {
-                      _scannedToken = token;
-                      _isScannerOpen = false;
-                      _errorMessage = null;
-                    });
-                  }
-                },
-                style: ElevatedButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(vertical: 16),
-                ),
-                child: const Text('Verify Token'),
-              ),
-            ),
-          ],
-        ),
       ),
     );
   }
