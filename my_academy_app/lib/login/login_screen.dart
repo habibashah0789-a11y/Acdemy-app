@@ -7,7 +7,7 @@ import '../theme/app_theme.dart';
 import '../theme/ui_helpers.dart';
 import '../widgets/custom_card.dart';
 
-class LoginScreen extends StatefulWidget {
+class LoginScreen extends StatefulWidget {   
   const LoginScreen({super.key});
 
   @override
