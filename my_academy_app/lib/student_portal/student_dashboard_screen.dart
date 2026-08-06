@@ -1,3 +1,5 @@
+import 'dart:async';
+import 'dart:convert';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
@@ -6,6 +8,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 import '../models/student_model.dart';
 import '../models/notification_model.dart';
+import '../services/database_service.dart';
 import '../theme/app_theme.dart';
 import '../widgets/custom_card.dart';
 import '../widgets/empty_state_widget.dart';
@@ -24,14 +27,31 @@ class _StudentDashboardScreenState extends State<StudentDashboardScreen> {
   List<NotificationModel> _recentNotices = [];
   bool _isLoading = true;
   String? _errorMessage;
+  int _totalNoticesCount = 0;
+
+  StreamSubscription<DocumentSnapshot>? _studentSubscription;
+  StreamSubscription<QuerySnapshot>? _noticesSubscription;
+
+  static const List<String> _scheduleSlots = [
+    '7:00 AM', '8:00 AM', '9:00 AM', '10:00 AM', '11:00 AM',
+    '12:00 PM', '1:00 PM', '2:00 PM', '3:00 PM', '4:00 PM',
+    '5:00 PM', '6:00 PM', '7:00 PM', '8:00 PM', '9:00 PM', '10:00 PM',
+  ];
 
   @override
   void initState() {
     super.initState();
-    _loadStudentData();
+    _initRealTimeListeners();
   }
 
-  Future<void> _loadStudentData() async {
+  @override
+  void dispose() {
+    _studentSubscription?.cancel();
+    _noticesSubscription?.cancel();
+    super.dispose();
+  }
+
+  void _initRealTimeListeners() async {
     setState(() {
       _isLoading = true;
       _errorMessage = null;
@@ -47,6 +67,7 @@ class _StudentDashboardScreenState extends State<StudentDashboardScreen> {
       final studentId = session['studentId'] as String? ?? '';
       final studentCode = session['studentCode'] as String?;
 
+<<<<<<< HEAD
       final student = await StudentAuthService.fetchCurrentStudent(
         studentId: studentId,
         studentCode: studentCode,
@@ -57,15 +78,51 @@ class _StudentDashboardScreenState extends State<StudentDashboardScreen> {
             () => _errorMessage = 'Student record not found. Contact the academy.');
         return;
       }
+=======
+      _studentSubscription?.cancel();
+      _noticesSubscription?.cancel();
 
-      // Fetch recent notices
-      final noticesSnapshot = await FirebaseFirestore.instance
+      // Listen to Student doc in real-time
+      _studentSubscription = FirebaseFirestore.instance
+          .collection('students')
+          .doc(studentId)
+          .snapshots()
+          .listen((doc) {
+        if (!doc.exists) {
+          setState(() {
+            _errorMessage = 'Student record not found. Contact the academy.';
+            _isLoading = false;
+          });
+          return;
+        }
+
+        if (mounted) {
+          setState(() {
+            _student = StudentModel.fromFirestore(doc);
+            if (_student != null && _recentNotices.isNotEmpty) {
+              _isLoading = false;
+            }
+          });
+        }
+      }, onError: (e) {
+        if (mounted) {
+          setState(() => _errorMessage = 'Connection error. Please try again.');
+        }
+      });
+>>>>>>> f3ea761015c75ae110b34ffdbd3ba32c332190b4
+
+      // Listen to notifications in real-time
+      _noticesSubscription = FirebaseFirestore.instance
           .collection('notifications')
           .orderBy('timestamp', descending: true)
-          .limit(30)
-          .get()
-          .timeout(const Duration(seconds: 10));
+          .snapshots()
+          .listen((noticesSnapshot) {
+        final noticesList = noticesSnapshot.docs
+            .map((doc) => NotificationModel.fromMap(doc.data(), doc.id))
+            .where((n) => n.studentId.isEmpty || n.studentId == studentId)
+            .toList();
 
+<<<<<<< HEAD
       final noticesList = noticesSnapshot.docs
           .map((doc) => NotificationModel.fromMap(doc.data(), doc.id))
           .where((n) => n.studentId.isEmpty || n.studentId == student.id || n.studentId == studentId)
@@ -75,12 +132,34 @@ class _StudentDashboardScreenState extends State<StudentDashboardScreen> {
       setState(() {
         _student = student;
         _recentNotices = noticesList;
+=======
+        if (mounted) {
+          setState(() {
+            _totalNoticesCount = noticesList.length;
+            _recentNotices = noticesList.take(3).toList();
+            _isLoading = false;
+          });
+        }
+      }, onError: (e) {
+        if (mounted) {
+          setState(() => _errorMessage = 'Notice fetch error.');
+        }
+>>>>>>> f3ea761015c75ae110b34ffdbd3ba32c332190b4
       });
+
     } catch (e) {
-      setState(() => _errorMessage = 'Failed to load data. Please try again.');
-    } finally {
-      if (mounted) setState(() => _isLoading = false);
+      if (mounted) {
+        setState(() {
+          _errorMessage = 'Failed to load data. Please try again.';
+          _isLoading = false;
+        });
+      }
     }
+  }
+
+  Future<void> _refreshData() async {
+    _initRealTimeListeners();
+    await Future.delayed(const Duration(milliseconds: 500));
   }
 
   @override
@@ -115,7 +194,7 @@ class _StudentDashboardScreenState extends State<StudentDashboardScreen> {
           description: _errorMessage ?? 'An error occurred while fetching your record.',
           icon: Icons.cloud_off_rounded,
           actionLabel: 'Retry',
-          onAction: _loadStudentData,
+          onAction: _initRealTimeListeners,
         ),
       );
     }
@@ -128,7 +207,7 @@ class _StudentDashboardScreenState extends State<StudentDashboardScreen> {
     return Scaffold(
       backgroundColor: isDark ? AppTheme.darkBackground : AppTheme.lightBackground,
       body: RefreshIndicator(
-        onRefresh: _loadStudentData,
+        onRefresh: _refreshData,
         color: AppTheme.primaryBlue,
         child: CustomScrollView(
           physics: const AlwaysScrollableScrollPhysics(),
@@ -174,17 +253,6 @@ class _StudentDashboardScreenState extends State<StudentDashboardScreen> {
                                   ),
                                 ),
                               ],
-                            ),
-                            IconButton(
-                              onPressed: _loadStudentData,
-                              icon: Container(
-                                padding: const EdgeInsets.all(8),
-                                decoration: BoxDecoration(
-                                  color: Colors.white.withValues(alpha: 0.15),
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
-                                child: const Icon(Icons.refresh_rounded, color: Colors.white, size: 20),
-                              ),
                             ),
                           ],
                         ),
@@ -591,6 +659,9 @@ class _StudentDashboardScreenState extends State<StudentDashboardScreen> {
   }
 
   Widget _buildClassInfoCard(StudentModel student) {
+    final subjects = student.subject.split(',').map((s) => s.trim()).where((s) => s.isNotEmpty).toList();
+    final isMultiSubject = subjects.length > 1;
+
     return CustomCard(
       padding: const EdgeInsets.all(16),
       child: Column(
@@ -598,9 +669,64 @@ class _StudentDashboardScreenState extends State<StudentDashboardScreen> {
           _buildInfoRow(Icons.category_rounded, 'Class Format', student.classType),
           const Divider(height: 20),
           _buildInfoRow(Icons.school_rounded, 'Academic Grade', student.grade),
-          if (student.schedule.isNotEmpty) ...[
+          if (student.schedule.isNotEmpty || isMultiSubject) ...[
             const Divider(height: 20),
-            _buildInfoRow(Icons.access_time_rounded, 'Batch Schedule', student.schedule),
+            if (isMultiSubject) ...[
+              Row(
+                children: [
+                  const Icon(Icons.access_time_rounded, size: 20, color: AppTheme.primaryBlue),
+                  const SizedBox(width: 12),
+                  const Text(
+                    'Batch Schedule',
+                    style: TextStyle(fontSize: 13, color: Colors.grey),
+                  ),
+                  const Spacer(),
+                  IconButton(
+                    icon: const Icon(Icons.edit_calendar_rounded, size: 18, color: AppTheme.primaryBlue),
+                    tooltip: 'Adjust Schedule',
+                    visualDensity: VisualDensity.compact,
+                    onPressed: () => _showAdjustScheduleBottomSheet(context, student),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 4),
+              ...subjects.map((subj) {
+                final subjSchedule = student.getScheduleForSubject(subj);
+                return Padding(
+                  padding: const EdgeInsets.only(left: 32, top: 4, bottom: 4, right: 8),
+                  child: Row(
+                    children: [
+                      Container(
+                        width: 6,
+                        height: 6,
+                        decoration: const BoxDecoration(
+                          color: AppTheme.primaryBlue,
+                          shape: BoxShape.circle,
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Text(
+                        subj,
+                        style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500),
+                      ),
+                      const Spacer(),
+                      Text(
+                        subjSchedule.isNotEmpty ? subjSchedule : 'Not set',
+                        style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                          color: subjSchedule.isNotEmpty 
+                              ? (Theme.of(context).brightness == Brightness.dark ? AppTheme.darkTextSecondary : AppTheme.lightTextSecondary)
+                              : AppTheme.warningRed,
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+              }),
+            ] else ...[
+              _buildInfoRow(Icons.access_time_rounded, 'Batch Schedule', student.schedule),
+            ],
           ],
           const Divider(height: 20),
           _buildInfoRow(
@@ -612,6 +738,244 @@ class _StudentDashboardScreenState extends State<StudentDashboardScreen> {
         ],
       ),
     ).animate().fadeIn(delay: 400.ms);
+  }
+
+  void _showAdjustScheduleBottomSheet(BuildContext context, StudentModel student) {
+    final subjects = student.subject.split(',').map((s) => s.trim()).where((s) => s.isNotEmpty).toList();
+    
+    // Initialize temporary map of selected schedules
+    final Map<String, String> tempSchedules = {};
+    for (final subj in subjects) {
+      final current = student.getScheduleForSubject(subj);
+      tempSchedules[subj] = _scheduleSlots.contains(current) ? current : _scheduleSlots.first;
+    }
+
+    bool isSaving = false;
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+      ),
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setBottomSheetState) {
+            return Padding(
+              padding: EdgeInsets.fromLTRB(24, 16, 24, MediaQuery.of(context).viewInsets.bottom + 24),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Drag Handle
+                  Center(
+                    child: Container(
+                      width: 48,
+                      height: 5,
+                      decoration: BoxDecoration(
+                        color: Colors.grey.withValues(alpha: 0.3),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+                  
+                  // Header
+                  Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(10),
+                        decoration: BoxDecoration(
+                          color: AppTheme.primaryBlue.withValues(alpha: 0.12),
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Icon(Icons.edit_calendar_rounded, color: AppTheme.primaryBlue, size: 24),
+                      ),
+                      const SizedBox(width: 14),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Adjust Schedules',
+                              style: GoogleFonts.poppins(
+                                fontSize: 18,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            Text(
+                              'Select preferred time slots for each subject',
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: Colors.grey.shade600,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 24),
+
+                  // Subjects list
+                  ...subjects.map((subj) {
+                    final selectedVal = tempSchedules[subj]!;
+                    return Container(
+                      margin: const EdgeInsets.only(bottom: 12),
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                      decoration: BoxDecoration(
+                        border: Border.all(
+                          color: Theme.of(context).brightness == Brightness.dark
+                              ? AppTheme.darkBorder
+                              : AppTheme.lightBorder,
+                        ),
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            subj,
+                            style: const TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                          DropdownButton<String>(
+                            value: selectedVal,
+                            underline: const SizedBox(),
+                            icon: const Icon(Icons.keyboard_arrow_down_rounded, color: AppTheme.primaryBlue),
+                            items: _scheduleSlots.map((slot) {
+                              return DropdownMenuItem<String>(
+                                value: slot,
+                                child: Text(
+                                  slot,
+                                  style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
+                                ),
+                              );
+                            }).toList(),
+                            onChanged: isSaving
+                                ? null
+                                : (newVal) {
+                                    if (newVal != null) {
+                                      setBottomSheetState(() {
+                                        tempSchedules[subj] = newVal;
+                                      });
+                                    }
+                                  },
+                          ),
+                        ],
+                      ),
+                    );
+                  }),
+
+                  const SizedBox(height: 24),
+
+                  // Actions
+                  Row(
+                    children: [
+                      Expanded(
+                        child: OutlinedButton(
+                          onPressed: isSaving ? null : () => Navigator.pop(context),
+                          style: OutlinedButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(vertical: 14),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(14),
+                            ),
+                          ),
+                          child: const Text('Cancel'),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: ElevatedButton(
+                          onPressed: isSaving
+                              ? null
+                              : () async {
+                                  setBottomSheetState(() {
+                                    isSaving = true;
+                                  });
+                                  
+                                  try {
+                                    // Prepare updated data
+                                    final scheduleString = tempSchedules.entries
+                                        .map((e) => '${e.key}: ${e.value}')
+                                        .join(', ');
+                                    final schedulesJson = jsonEncode(tempSchedules);
+
+                                    // 1. Update Firestore
+                                    await FirebaseFirestore.instance
+                                        .collection('students')
+                                        .doc(student.id)
+                                        .update({
+                                      'schedule': scheduleString,
+                                      'subjectSchedulesJson': schedulesJson,
+                                    }).timeout(const Duration(seconds: 10));
+
+                                    // 2. Update Hive local cache
+                                    final updatedStudent = student.copyWith(
+                                      schedule: scheduleString,
+                                      subjectSchedulesJson: schedulesJson,
+                                    );
+                                    await DatabaseService.studentBox.put(student.id, updatedStudent);
+
+                                    // 3. Update dashboard state
+                                    setState(() {
+                                      _student = updatedStudent;
+                                    });
+
+                                    if (context.mounted) {
+                                      Navigator.pop(context);
+                                      ScaffoldMessenger.of(context).showSnackBar(
+                                        const SnackBar(
+                                          content: Text('Schedules updated successfully!'),
+                                          backgroundColor: AppTheme.secondaryGreen,
+                                        ),
+                                      );
+                                    }
+                                  } catch (e) {
+                                    setBottomSheetState(() {
+                                      isSaving = false;
+                                    });
+                                    if (context.mounted) {
+                                      ScaffoldMessenger.of(context).showSnackBar(
+                                        SnackBar(
+                                          content: Text('Failed to update: $e'),
+                                          backgroundColor: AppTheme.warningRed,
+                                        ),
+                                      );
+                                    }
+                                  }
+                                },
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: AppTheme.primaryBlue,
+                            foregroundColor: Colors.white,
+                            padding: const EdgeInsets.symmetric(vertical: 14),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(14),
+                            ),
+                          ),
+                          child: isSaving
+                              ? const SizedBox(
+                                  width: 20,
+                                  height: 20,
+                                  child: CircularProgressIndicator(
+                                    color: Colors.white,
+                                    strokeWidth: 2,
+                                  ),
+                                )
+                              : const Text('Save Changes'),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            );
+          },
+        );
+      },
+    );
   }
 
   Widget _buildInfoRow(IconData icon, String label, String value, {Color? valueColor}) {
@@ -643,7 +1007,7 @@ class _StudentDashboardScreenState extends State<StudentDashboardScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _buildSectionHeader('Recent Announcements', Icons.campaign_rounded),
+        _buildSectionHeader('Recent Announcements ($_totalNoticesCount)', Icons.campaign_rounded),
         const SizedBox(height: 12),
         CustomCard(
           padding: const EdgeInsets.all(16),

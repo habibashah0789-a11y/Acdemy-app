@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
@@ -20,14 +21,21 @@ class _StudentFeeScreenState extends State<StudentFeeScreen> {
   StudentModel? _student;
   bool _isLoading = true;
   String? _errorMessage;
+  StreamSubscription<DocumentSnapshot>? _studentSubscription;
 
   @override
   void initState() {
     super.initState();
-    _loadData();
+    _initRealTimeListener();
   }
 
-  Future<void> _loadData() async {
+  @override
+  void dispose() {
+    _studentSubscription?.cancel();
+    super.dispose();
+  }
+
+  void _initRealTimeListener() async {
     setState(() {
       _isLoading = true;
       _errorMessage = null;
@@ -38,6 +46,7 @@ class _StudentFeeScreenState extends State<StudentFeeScreen> {
         setState(() => _errorMessage = 'Session expired. Please re-login.');
         return;
       }
+<<<<<<< HEAD
       final studentId = session['studentId'] as String? ?? '';
       final studentCode = session['studentCode'] as String?;
 
@@ -51,11 +60,52 @@ class _StudentFeeScreenState extends State<StudentFeeScreen> {
       } else {
         setState(() => _errorMessage = 'Student fee record not found. Contact the academy.');
       }
+=======
+      final studentId = session['studentId'] as String;
+
+      _studentSubscription?.cancel();
+      _studentSubscription = FirebaseFirestore.instance
+          .collection('students')
+          .doc(studentId)
+          .snapshots()
+          .listen((doc) {
+        if (doc.exists) {
+          if (mounted) {
+            setState(() {
+              _student = StudentModel.fromFirestore(doc);
+              _isLoading = false;
+            });
+          }
+        } else {
+          if (mounted) {
+            setState(() {
+              _errorMessage = 'Student fee record not found.';
+              _isLoading = false;
+            });
+          }
+        }
+      }, onError: (e) {
+        if (mounted) {
+          setState(() {
+            _errorMessage = 'Failed to sync fee data.';
+            _isLoading = false;
+          });
+        }
+      });
+>>>>>>> f3ea761015c75ae110b34ffdbd3ba32c332190b4
     } catch (e) {
-      setState(() => _errorMessage = 'Failed to load fee data.');
-    } finally {
-      if (mounted) setState(() => _isLoading = false);
+      if (mounted) {
+        setState(() {
+          _errorMessage = 'Failed to load fee data.';
+          _isLoading = false;
+        });
+      }
     }
+  }
+
+  Future<void> _refreshData() async {
+    _initRealTimeListener();
+    await Future.delayed(const Duration(milliseconds: 500));
   }
 
   @override
@@ -69,9 +119,6 @@ class _StudentFeeScreenState extends State<StudentFeeScreen> {
         title: Text('Fee Management', style: GoogleFonts.poppins(fontWeight: FontWeight.bold, fontSize: 18)),
         backgroundColor: AppTheme.primaryBlue,
         foregroundColor: Colors.white,
-        actions: [
-          IconButton(icon: const Icon(Icons.refresh_rounded), onPressed: _loadData),
-        ],
       ),
       body: _isLoading
           ? ListView(
@@ -88,10 +135,10 @@ class _StudentFeeScreenState extends State<StudentFeeScreen> {
                   description: _errorMessage ?? 'Student fee record not found. Contact the academy.',
                   icon: Icons.account_balance_wallet_outlined,
                   actionLabel: 'Retry',
-                  onAction: _loadData,
+                  onAction: _initRealTimeListener,
                 )
               : RefreshIndicator(
-                  onRefresh: _loadData,
+                  onRefresh: _refreshData,
                   color: AppTheme.primaryBlue,
                   child: _buildContent(),
                 ),

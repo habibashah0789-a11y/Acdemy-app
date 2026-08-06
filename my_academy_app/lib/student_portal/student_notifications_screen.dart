@@ -1,6 +1,8 @@
+import 'dart:async';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
+import '../services/notification_service.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 import '../models/notification_model.dart';
@@ -22,14 +24,22 @@ class _StudentNotificationsScreenState extends State<StudentNotificationsScreen>
   bool _isLoading = true;
   String? _errorMessage;
   List<NotificationModel> _notices = [];
+  bool _isInitialLoad = true;
+  StreamSubscription<QuerySnapshot>? _noticesSubscription;
 
   @override
   void initState() {
     super.initState();
-    _loadNotices();
+    _initRealTimeNotices();
   }
 
-  Future<void> _loadNotices() async {
+  @override
+  void dispose() {
+    _noticesSubscription?.cancel();
+    super.dispose();
+  }
+
+  void _initRealTimeNotices() async {
     setState(() {
       _isLoading = true;
       _errorMessage = null;
@@ -43,27 +53,64 @@ class _StudentNotificationsScreenState extends State<StudentNotificationsScreen>
       }
       _studentId = session['studentId'] as String;
 
-      final snapshot = await FirebaseFirestore.instance
+      _noticesSubscription?.cancel();
+      _noticesSubscription = FirebaseFirestore.instance
           .collection('notifications')
           .orderBy('timestamp', descending: true)
-          .limit(100)
-          .get()
-          .timeout(const Duration(seconds: 10));
+          .snapshots()
+          .listen((snapshot) {
+        final allNotices = snapshot.docs
+            .map((doc) => NotificationModel.fromMap(doc.data(), doc.id))
+            .toList();
 
-      final allNotices = snapshot.docs
-          .map((doc) => NotificationModel.fromMap(doc.data(), doc.id))
-          .toList();
+        final filteredNotices = allNotices.where((n) {
+          return n.studentId.isEmpty || n.studentId == _studentId;
+        }).toList();
 
-      _notices = allNotices.where((n) {
-        return n.studentId.isEmpty || n.studentId == _studentId;
-      }).toList();
+        // Sound trigger logic for new notifications
+        if (!_isInitialLoad) {
+          for (final item in filteredNotices) {
+            final alreadyExists = _notices.any((n) => n.id == item.id);
+            if (!alreadyExists) {
+              NotificationService.showLocalNotification(
+                title: item.title,
+                body: item.message,
+              );
+            }
+          }
+        }
+
+        if (mounted) {
+          setState(() {
+            _notices = filteredNotices;
+            _isLoading = false;
+            _isInitialLoad = false;
+          });
+        }
+      }, onError: (e) {
+        debugPrint('Student notification fetch error: $e');
+        if (mounted) {
+          setState(() {
+            _errorMessage = 'Failed to load notifications.';
+            _isLoading = false;
+          });
+        }
+      });
 
     } catch (e) {
-      debugPrint('Student notification fetch error: $e');
-      setState(() => _errorMessage = 'Failed to load notifications.');
-    } finally {
-      if (mounted) setState(() => _isLoading = false);
+      debugPrint('Student notification initialization error: $e');
+      if (mounted) {
+        setState(() {
+          _errorMessage = 'Failed to load notifications.';
+          _isLoading = false;
+        });
+      }
     }
+  }
+
+  Future<void> _refreshData() async {
+    _initRealTimeNotices();
+    await Future.delayed(const Duration(milliseconds: 500));
   }
 
   @override
@@ -75,17 +122,11 @@ class _StudentNotificationsScreenState extends State<StudentNotificationsScreen>
       appBar: AppBar(
         automaticallyImplyLeading: false,
         title: Text(
-          'Academy Announcements',
+          _isLoading ? 'Academy Announcements' : 'Academy Announcements (${_notices.length})',
           style: GoogleFonts.poppins(fontWeight: FontWeight.bold, fontSize: 18),
         ),
         backgroundColor: AppTheme.primaryBlue,
         foregroundColor: Colors.white,
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.refresh_rounded),
-            onPressed: _loadNotices,
-          ),
-        ],
       ),
       body: _isLoading
           ? ListView.builder(
@@ -102,7 +143,7 @@ class _StudentNotificationsScreenState extends State<StudentNotificationsScreen>
                   description: _errorMessage!,
                   icon: Icons.error_outline_rounded,
                   actionLabel: 'Retry',
-                  onAction: _loadNotices,
+                  onAction: _initRealTimeNotices,
                 )
               : _notices.isEmpty
                   ? EmptyStateWidget(
@@ -110,10 +151,10 @@ class _StudentNotificationsScreenState extends State<StudentNotificationsScreen>
                       description: 'All official notices and updates will appear here.',
                       icon: Icons.notifications_off_outlined,
                       actionLabel: 'Refresh',
-                      onAction: _loadNotices,
+                      onAction: _refreshData,
                     )
                   : RefreshIndicator(
-                      onRefresh: _loadNotices,
+                      onRefresh: _refreshData,
                       color: AppTheme.primaryBlue,
                       child: ListView.builder(
                         padding: const EdgeInsets.all(20),
@@ -195,19 +236,45 @@ class _StudentNotificationsScreenState extends State<StudentNotificationsScreen>
                                         Row(
                                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                           children: [
-                                            Text(
-                                              'Issued by: ${item.registeredBy.isNotEmpty ? item.registeredBy : "Administration"}',
-                                              style: TextStyle(
-                                                fontSize: 11,
-                                                color: isDark ? AppTheme.darkTextSecondary : AppTheme.lightTextSecondary,
-                                                fontStyle: FontStyle.italic,
+                                            Expanded(
+                                              child: Text(
+                                                'Issued by: ${item.registeredBy.isNotEmpty ? item.registeredBy : "Administration"}',
+                                                style: TextStyle(
+                                                  fontSize: 11,
+                                                  color: isDark ? AppTheme.darkTextSecondary : AppTheme.lightTextSecondary,
+                                                  fontStyle: FontStyle.italic,
+                                                ),
+                                                overflow: TextOverflow.ellipsis,
                                               ),
                                             ),
+                                            const SizedBox(width: 8),
                                             Text(
                                               DateFormat('hh:mm a').format(item.timestamp),
                                               style: TextStyle(
                                                 fontSize: 10,
                                                 color: isDark ? AppTheme.darkTextSecondary : AppTheme.lightTextSecondary,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                        const SizedBox(height: 6),
+                                        Row(
+                                          children: [
+                                            const Icon(Icons.email_outlined, size: 12, color: Colors.grey),
+                                            const SizedBox(width: 4),
+                                            Expanded(
+                                              child: Align(
+                                                alignment: Alignment.centerLeft,
+                                                child: FittedBox(
+                                                  fit: BoxFit.scaleDown,
+                                                  child: Text(
+                                                    'info@quaidacademy.com',
+                                                    style: TextStyle(
+                                                      fontSize: 11,
+                                                      color: isDark ? AppTheme.darkTextSecondary : AppTheme.lightTextSecondary,
+                                                    ),
+                                                  ),
+                                                ),
                                               ),
                                             ),
                                           ],
