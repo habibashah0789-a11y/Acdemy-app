@@ -4,6 +4,7 @@ import 'package:crypto/crypto.dart';
 import 'package:flutter/foundation.dart';
 import 'package:hive/hive.dart';
 import 'package:uuid/uuid.dart';
+import '../models/student_model.dart';
 
 /// Handles all student-specific authentication logic using Firestore.
 /// Multi-tier lookup ensures students can log in reliably via QR code or Student ID.
@@ -52,8 +53,8 @@ class StudentAuthService {
           .timeout(const Duration(seconds: 8));
 
       if (queryByCode.docs.isNotEmpty) {
-        studentId = queryByCode.docs.first.id;
         authData = queryByCode.docs.first.data();
+        studentId = authData['studentId'] as String? ?? queryByCode.docs.first.id;
       } else {
         // Try original raw case if uppercase didn't match
         final queryRaw = await _firestore
@@ -63,8 +64,8 @@ class StudentAuthService {
             .get()
             .timeout(const Duration(seconds: 8));
         if (queryRaw.docs.isNotEmpty) {
-          studentId = queryRaw.docs.first.id;
           authData = queryRaw.docs.first.data();
+          studentId = authData['studentId'] as String? ?? queryRaw.docs.first.id;
         }
       }
     } catch (e) {
@@ -80,8 +81,8 @@ class StudentAuthService {
             .get()
             .timeout(const Duration(seconds: 8));
         if (docDirect.exists) {
-          studentId = docDirect.id;
           authData = docDirect.data();
+          studentId = authData?['studentId'] as String? ?? docDirect.id;
         } else {
           final docUpper = await _firestore
               .collection('student_auth')
@@ -89,8 +90,8 @@ class StudentAuthService {
               .get()
               .timeout(const Duration(seconds: 8));
           if (docUpper.exists) {
-            studentId = docUpper.id;
             authData = docUpper.data();
+            studentId = authData?['studentId'] as String? ?? docUpper.id;
           }
         }
       } catch (e) {
@@ -181,11 +182,113 @@ class StudentAuthService {
       throw Exception('Invalid QR Code or Student ID. Please scan your official academy QR code.');
     }
 
-    // ── Save Session to Local Hive Storage ──
-    await _saveSession(studentId: studentId, studentCode: cleanCode);
+    // Ensure studentId matches document ID in main students collection
+    try {
+      final sDoc = await _firestore.collection('students').doc(studentId).get();
+      if (!sDoc.exists) {
+        final queryS = await _firestore
+            .collection('students')
+            .where('studentCode', isEqualTo: cleanCode)
+            .limit(1)
+            .get();
+        if (queryS.docs.isNotEmpty) {
+          studentId = queryS.docs.first.id;
+        }
+      }
+    } catch (e) {
+      debugPrint('[StudentAuthService] Final studentId verification error: $e');
+    }
 
-    debugPrint('[StudentAuthService] Login successful for studentId: $studentId');
-    return studentId;
+    // ── Save Session to Local Hive Storage ──
+    final String validStudentId = studentId!;
+    await _saveSession(studentId: validStudentId, studentCode: cleanCode);
+
+    debugPrint('[StudentAuthService] Login successful for studentId: $validStudentId');
+    return validStudentId;
+  }
+
+  // ── Session Management ──────────────────────────────────────────────────
+
+  /// Fetches current [StudentModel] using local session info with fallback resolution logic.
+  static Future<StudentModel?> fetchCurrentStudent({
+    required String studentId,
+    String? studentCode,
+  }) async {
+    // 1. Try direct lookup by studentId
+    if (studentId.isNotEmpty) {
+      try {
+        final doc = await _firestore
+            .collection('students')
+            .doc(studentId)
+            .get()
+            .timeout(const Duration(seconds: 8));
+        if (doc.exists && doc.data() != null) {
+          return StudentModel.fromFirestore(doc);
+        }
+      } catch (e) {
+        debugPrint('[StudentAuthService] Direct fetch failed for $studentId: $e');
+      }
+    }
+
+    // 2. Query by studentCode if available or fallback
+    final codeToQuery = (studentCode != null && studentCode.isNotEmpty)
+        ? studentCode
+        : studentId;
+
+    if (codeToQuery.isNotEmpty) {
+      try {
+        final upperCode = codeToQuery.toUpperCase();
+        final queryUpper = await _firestore
+            .collection('students')
+            .where('studentCode', isEqualTo: upperCode)
+            .limit(1)
+            .get()
+            .timeout(const Duration(seconds: 8));
+
+        if (queryUpper.docs.isNotEmpty) {
+          final matchedDoc = queryUpper.docs.first;
+          await _saveSession(studentId: matchedDoc.id, studentCode: upperCode);
+          return StudentModel.fromFirestore(matchedDoc);
+        }
+
+        final queryRaw = await _firestore
+            .collection('students')
+            .where('studentCode', isEqualTo: codeToQuery)
+            .limit(1)
+            .get()
+            .timeout(const Duration(seconds: 8));
+
+        if (queryRaw.docs.isNotEmpty) {
+          final matchedDoc = queryRaw.docs.first;
+          await _saveSession(studentId: matchedDoc.id, studentCode: codeToQuery);
+          return StudentModel.fromFirestore(matchedDoc);
+        }
+      } catch (e) {
+        debugPrint('[StudentAuthService] Query student by code failed: $e');
+      }
+    }
+
+    // 3. Fallback: full collection lookup by id field or doc ID
+    try {
+      final allDocs = await _firestore
+          .collection('students')
+          .get()
+          .timeout(const Duration(seconds: 8));
+
+      for (final doc in allDocs.docs) {
+        final data = doc.data();
+        final sCode = data['studentCode']?.toString().toUpperCase() ?? '';
+        final sId = data['id']?.toString() ?? doc.id;
+        if (doc.id == studentId || sId == studentId || (studentCode != null && sCode == studentCode.toUpperCase())) {
+          await _saveSession(studentId: doc.id, studentCode: sCode.isNotEmpty ? sCode : codeToQuery);
+          return StudentModel.fromFirestore(doc);
+        }
+      }
+    } catch (e) {
+      debugPrint('[StudentAuthService] Fallback student scan failed: $e');
+    }
+
+    return null;
   }
 
   // ── Session Management ──────────────────────────────────────────────────

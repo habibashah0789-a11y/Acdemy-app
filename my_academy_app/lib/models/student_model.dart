@@ -121,7 +121,15 @@ class StudentModel extends HiveObject {
     if (subjectPaymentsJson == null || subjectPaymentsJson!.isEmpty) return {};
     try {
       final Map<String, dynamic> decoded = jsonDecode(subjectPaymentsJson!);
-      return decoded.map((key, value) => MapEntry(key, (value as num).toDouble()));
+      return decoded.map((key, value) {
+        double val = 0.0;
+        if (value is num) {
+          val = value.toDouble();
+        } else if (value is String) {
+          val = double.tryParse(value) ?? 0.0;
+        }
+        return MapEntry(key, val);
+      });
     } catch (e) {
       return {};
     }
@@ -306,6 +314,16 @@ class StudentModel extends HiveObject {
     };
   }
 
+  // Helper for safe double parsing
+  static double _safeDouble(dynamic val) {
+    if (val == null) return 0.0;
+    if (val is num) return val.toDouble();
+    if (val is String) {
+      return double.tryParse(val) ?? 0.0;
+    }
+    return 0.0;
+  }
+
   // Create from Firestore document
   factory StudentModel.fromMap(Map<String, dynamic> map, String docId) {
     // Safely parse createdAt
@@ -353,18 +371,18 @@ class StudentModel extends HiveObject {
       phone: map['phone'] ?? '',
       email: map['email'] ?? '',
       schedule: map['schedule'] ?? '',
-      feeSubmitted: (map['feeSubmitted'] ?? 0.0).toDouble(),
-      feeRemaining: (map['feeRemaining'] ?? 0.0).toDouble(),
-      biologyFee: (map['biologyFee'] ?? 0.0).toDouble(),
-      physicsFee: (map['physicsFee'] ?? 0.0).toDouble(),
-      chemistryFee: (map['chemistryFee'] ?? 0.0).toDouble(),
-      englishFee: (map['englishFee'] ?? 0.0).toDouble(),
+      feeSubmitted: _safeDouble(map['feeSubmitted']),
+      feeRemaining: _safeDouble(map['feeRemaining']),
+      biologyFee: _safeDouble(map['biologyFee']),
+      physicsFee: _safeDouble(map['physicsFee']),
+      chemistryFee: _safeDouble(map['chemistryFee']),
+      englishFee: _safeDouble(map['englishFee']),
       profilePicUrl: map['profilePicUrl'] ?? '',
       enrollmentStatus: map['enrollmentStatus'] ?? 'active',
       classType: map['classType'] ?? 'FSc',
       grade: map['grade'] ?? 'First Year',
       subject: map['subject'] ?? 'Biology',
-      mathFee: (map['mathFee'] ?? 0.0).toDouble(),
+      mathFee: _safeDouble(map['mathFee']),
       createdAt: parsedCreatedAt,
       updatedAt: parsedUpdatedAt,
       isActive: map['isActive'] ?? true,

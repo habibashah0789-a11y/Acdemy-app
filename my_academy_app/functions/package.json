@@ -1,0 +1,22 @@
+{
+  "name": "quaid-academy-functions",
+  "version": "1.0.0",
+  "description": "Firebase Cloud Functions for Quaid Academy Management System Push Notifications",
+  "main": "index.js",
+  "scripts": {
+    "serve": "firebase serve --only functions",
+    "shell": "firebase functions:shell",
+    "start": "npm run shell",
+    "deploy": "firebase deploy --only functions"
+  },
+  "dependencies": {
+    "firebase-admin": "^12.0.0",
+    "firebase-functions": "^5.0.0",
+    "express": "^4.19.2",
+    "cors": "^2.8.5"
+  },
+  "engines": {
+    "node": "18"
+  },
+  "private": true
+}

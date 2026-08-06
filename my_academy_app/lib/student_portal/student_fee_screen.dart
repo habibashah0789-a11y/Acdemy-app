@@ -1,5 +1,4 @@
 import 'dart:convert';
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -39,13 +38,18 @@ class _StudentFeeScreenState extends State<StudentFeeScreen> {
         setState(() => _errorMessage = 'Session expired. Please re-login.');
         return;
       }
-      final doc = await FirebaseFirestore.instance
-          .collection('students')
-          .doc(session['studentId'] as String)
-          .get()
-          .timeout(const Duration(seconds: 10));
-      if (doc.exists) {
-        setState(() => _student = StudentModel.fromFirestore(doc));
+      final studentId = session['studentId'] as String? ?? '';
+      final studentCode = session['studentCode'] as String?;
+
+      final student = await StudentAuthService.fetchCurrentStudent(
+        studentId: studentId,
+        studentCode: studentCode,
+      );
+
+      if (student != null) {
+        setState(() => _student = student);
+      } else {
+        setState(() => _errorMessage = 'Student fee record not found. Contact the academy.');
       }
     } catch (e) {
       setState(() => _errorMessage = 'Failed to load fee data.');
@@ -78,10 +82,10 @@ class _StudentFeeScreenState extends State<StudentFeeScreen> {
                 ShimmerLoadingWidget(width: double.infinity, height: 120, borderRadius: 16),
               ],
             )
-          : _errorMessage != null
+          : (_errorMessage != null || _student == null)
               ? EmptyStateWidget(
                   title: 'Fee Status Error',
-                  description: _errorMessage!,
+                  description: _errorMessage ?? 'Student fee record not found. Contact the academy.',
                   icon: Icons.account_balance_wallet_outlined,
                   actionLabel: 'Retry',
                   onAction: _loadData,
@@ -95,6 +99,7 @@ class _StudentFeeScreenState extends State<StudentFeeScreen> {
   }
 
   Widget _buildContent() {
+    if (_student == null) return const SizedBox.shrink();
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final student = _student!;
     final subjects = {
@@ -331,8 +336,13 @@ class _StudentFeeScreenState extends State<StudentFeeScreen> {
             itemCount: history.length,
             separatorBuilder: (_, __) => const Divider(height: 1),
             itemBuilder: (context, i) {
-              final entry = Map<String, dynamic>.from(history[i]);
-              final amount = (entry['amount'] ?? 0).toDouble();
+              final rawEntry = history[i];
+              if (rawEntry is! Map) return const SizedBox.shrink();
+              final entry = Map<String, dynamic>.from(rawEntry);
+              final rawAmt = entry['amount'];
+              final double amount = rawAmt is num
+                  ? rawAmt.toDouble()
+                  : (double.tryParse(rawAmt?.toString() ?? '') ?? 0.0);
               final date = entry['date']?.toString() ?? '';
               final note = entry['note']?.toString() ?? '';
               DateTime? parsed;

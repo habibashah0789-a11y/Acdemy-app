@@ -1,5 +1,4 @@
 import 'package:cached_network_image/cached_network_image.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -42,20 +41,21 @@ class _StudentProfileScreenState extends State<StudentProfileScreen> {
         return;
       }
 
-      final studentId = session['studentId'] as String;
-      final doc = await FirebaseFirestore.instance
-          .collection('students')
-          .doc(studentId)
-          .get()
-          .timeout(const Duration(seconds: 10));
+      final studentId = session['studentId'] as String? ?? '';
+      final studentCode = session['studentCode'] as String?;
 
-      if (!doc.exists) {
+      final student = await StudentAuthService.fetchCurrentStudent(
+        studentId: studentId,
+        studentCode: studentCode,
+      );
+
+      if (student == null) {
         setState(
             () => _errorMessage = 'Profile record not found. Contact the academy.');
         return;
       }
 
-      setState(() => _student = StudentModel.fromFirestore(doc));
+      setState(() => _student = student);
     } catch (e) {
       setState(() => _errorMessage = 'Failed to load profile. Please try again.');
     } finally {

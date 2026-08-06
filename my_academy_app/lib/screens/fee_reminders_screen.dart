@@ -182,6 +182,33 @@ class _FeeRemindersScreenState extends State<FeeRemindersScreen> {
     }
   }
 
+  Future<void> _sendPushToAll() async {
+    final filtered = _filteredDefaulters;
+    if (filtered.isEmpty) return;
+
+    setState(() => _isSending = true);
+    int sent = 0;
+    for (final student in filtered) {
+      await NotificationService.showLocalNotification(
+        channelId: 'fee_reminders',
+        title: 'Pending Fee Reminder 💳',
+        body: 'Dear ${student.name}, your pending fee balance is Rs. ${student.feeRemaining.toStringAsFixed(0)}. Please clear your dues.',
+        payload: '{"type": "fee_reminder", "studentId": "${student.id}", "studentCode": "${student.studentCode}", "screen": "fee_details"}',
+      );
+      sent++;
+    }
+    setState(() => _isSending = false);
+
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Dispatched $sent Push Notification Alerts!'),
+          backgroundColor: AppTheme.primaryBlue,
+        ),
+      );
+    }
+  }
+
   Future<void> _logReminderNotification() async {
     try {
       await NotificationService.init();
@@ -359,31 +386,48 @@ class _FeeRemindersScreenState extends State<FeeRemindersScreen> {
 
                 const SizedBox(height: 12),
 
-                // Send All WhatsApp Reminders Button
+                // Send All WhatsApp & Push Reminders Buttons
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 16),
-                  child: SizedBox(
-                    width: double.infinity,
-                    child: ElevatedButton.icon(
-                      onPressed: (_isSending || filtered.isEmpty) ? null : _sendToAll,
-                      icon: _isSending
-                          ? const SizedBox(
-                              width: 18,
-                              height: 18,
-                              child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-                          : const Icon(Icons.send_rounded, color: Colors.white),
-                      label: Text(
-                        _isSending
-                            ? 'Sending Reminders...'
-                            : 'Send WhatsApp Reminders (${filtered.length})',
-                        style: GoogleFonts.poppins(fontWeight: FontWeight.bold, fontSize: 14),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: ElevatedButton.icon(
+                          onPressed: (_isSending || filtered.isEmpty) ? null : _sendToAll,
+                          icon: _isSending
+                              ? const SizedBox(
+                                  width: 16,
+                                  height: 16,
+                                  child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                              : const Icon(Icons.send_rounded, color: Colors.white, size: 18),
+                          label: Text(
+                            'WhatsApp (${filtered.length})',
+                            style: GoogleFonts.poppins(fontWeight: FontWeight.bold, fontSize: 12),
+                          ),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: const Color(0xFF25D366),
+                            padding: const EdgeInsets.symmetric(vertical: 12),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                          ),
+                        ),
                       ),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFF25D366),
-                        padding: const EdgeInsets.symmetric(vertical: 14),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: ElevatedButton.icon(
+                          onPressed: (_isSending || filtered.isEmpty) ? null : _sendPushToAll,
+                          icon: const Icon(Icons.notifications_active_rounded, color: Colors.white, size: 18),
+                          label: Text(
+                            'Push Alerts (${filtered.length})',
+                            style: GoogleFonts.poppins(fontWeight: FontWeight.bold, fontSize: 12),
+                          ),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: AppTheme.primaryBlue,
+                            padding: const EdgeInsets.symmetric(vertical: 12),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                          ),
+                        ),
                       ),
-                    ),
+                    ],
                   ),
                 ),
 

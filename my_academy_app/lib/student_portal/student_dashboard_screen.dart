@@ -44,16 +44,15 @@ class _StudentDashboardScreenState extends State<StudentDashboardScreen> {
         return;
       }
 
-      final studentId = session['studentId'] as String;
+      final studentId = session['studentId'] as String? ?? '';
+      final studentCode = session['studentCode'] as String?;
 
-      // Load student document
-      final doc = await FirebaseFirestore.instance
-          .collection('students')
-          .doc(studentId)
-          .get()
-          .timeout(const Duration(seconds: 10));
+      final student = await StudentAuthService.fetchCurrentStudent(
+        studentId: studentId,
+        studentCode: studentCode,
+      );
 
-      if (!doc.exists) {
+      if (student == null) {
         setState(
             () => _errorMessage = 'Student record not found. Contact the academy.');
         return;
@@ -69,12 +68,12 @@ class _StudentDashboardScreenState extends State<StudentDashboardScreen> {
 
       final noticesList = noticesSnapshot.docs
           .map((doc) => NotificationModel.fromMap(doc.data(), doc.id))
-          .where((n) => n.studentId.isEmpty || n.studentId == studentId)
+          .where((n) => n.studentId.isEmpty || n.studentId == student.id || n.studentId == studentId)
           .take(3)
           .toList();
 
       setState(() {
-        _student = StudentModel.fromFirestore(doc);
+        _student = student;
         _recentNotices = noticesList;
       });
     } catch (e) {

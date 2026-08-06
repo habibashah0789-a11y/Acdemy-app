@@ -69,6 +69,8 @@ Future<void> main() async {
   FlutterNativeSplash.remove();
 }
 
+final GlobalKey<NavigatorState> appNavigatorKey = GlobalKey<NavigatorState>();
+
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
 
@@ -77,6 +79,7 @@ class MyApp extends StatelessWidget {
     final themeProvider = Provider.of<ThemeProvider>(context);
 
     return MaterialApp(
+      navigatorKey: appNavigatorKey,
       title: 'Quaid Academy',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.lightTheme,
@@ -99,9 +102,8 @@ class _AuthWrapperState extends State<AuthWrapper> {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      // Safely request notification permission after the splash screen finishes rendering
-      NotificationService.init();
-      NotificationService.initializePushNotifications();
+      NotificationService.init(key: appNavigatorKey);
+      NotificationService.requestPermissionWithRationale(context);
     });
   }
 

@@ -5,6 +5,8 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import '../models/notification_model.dart';
 import '../services/notification_service.dart';
 
+import '../screens/notification_settings_screen.dart';
+
 class NotificationsScreen extends StatefulWidget {
   const NotificationsScreen({super.key});
 
@@ -27,6 +29,16 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
       appBar: AppBar(
         title: const Text('Notifications'),
         actions: [
+          IconButton(
+            icon: const Icon(Icons.settings_rounded),
+            tooltip: 'Notification Settings',
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const NotificationSettingsScreen()),
+              );
+            },
+          ),
           PopupMenuButton<String>(
             onSelected: (value) async {
               if (value == 'mark_all') {
@@ -219,6 +231,13 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                                 .collection('notifications')
                                 .doc(notification.id)
                                 .set(notification.toMap());
+
+                            await NotificationService.showLocalNotification(
+                              channelId: 'academy_important_alerts',
+                              title: '📢 ${titleController.text.trim()}',
+                              body: messageController.text.trim(),
+                              payload: '{"type": "announcement", "screen": "notifications"}',
+                            );
 
                             if (context.mounted) {
                               Navigator.pop(context);
