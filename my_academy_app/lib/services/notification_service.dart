@@ -83,7 +83,7 @@ class NotificationService {
 
       FirebaseMessaging.onMessage.listen((RemoteMessage message) {
         if (message.notification != null) {
-          _showLocalNotification(
+          showLocalNotification(
             title: message.notification?.title ?? 'Notification',
             body: message.notification?.body ?? '',
           );
@@ -92,7 +92,7 @@ class NotificationService {
     } catch (_) {}
   }
 
-  static Future<void> _showLocalNotification({
+  static Future<void> showLocalNotification({
     required String title,
     required String body,
   }) async {
@@ -228,7 +228,7 @@ class NotificationService {
     }
 
     await _saveNotification(notification, emitLocal: true);
-    _showLocalNotification(title: notification.title, body: notification.message);
+    showLocalNotification(title: notification.title, body: notification.message);
   }
 
   static NotificationModel buildStudentRegistrationNotification({
@@ -280,7 +280,7 @@ class NotificationService {
     );
 
     await _saveNotification(notification, emitLocal: true);
-    _showLocalNotification(title: notification.title, body: notification.message);
+    showLocalNotification(title: notification.title, body: notification.message);
   }
 
   static Future<void> _saveNotification(NotificationModel notification, {required bool emitLocal}) async {
