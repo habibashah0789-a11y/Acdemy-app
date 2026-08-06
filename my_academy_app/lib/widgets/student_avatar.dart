@@ -11,6 +11,7 @@ class StudentAvatar extends StatefulWidget {
   final StudentModel student;
   final double size;
   final bool isLarge;
+  final bool isCircle;
   final BoxFit fit;
 
   const StudentAvatar({
@@ -18,6 +19,7 @@ class StudentAvatar extends StatefulWidget {
     required this.student,
     this.size = 50,
     this.isLarge = false,
+    this.isCircle = true,
     this.fit = BoxFit.cover,
   });
 
@@ -125,11 +127,13 @@ class _StudentAvatarState extends State<StudentAvatar> {
       imageWidget = _buildFallback();
     }
 
+    final double radius = widget.isCircle ? (widget.size / 2) : (widget.isLarge ? 16.0 : 12.0);
+
     return SizedBox(
       width: widget.size,
       height: widget.size,
       child: ClipRRect(
-        borderRadius: BorderRadius.circular(widget.isLarge ? 16 : widget.size / 2),
+        borderRadius: BorderRadius.circular(radius),
         child: imageWidget,
       ),
     );
@@ -139,12 +143,12 @@ class _StudentAvatarState extends State<StudentAvatar> {
     return Container(
       color: widget.isLarge ? Colors.black12 : AppTheme.primaryBlue.withValues(alpha: 0.1),
       child: Center(
-        child: widget.student.initials.isNotEmpty && !widget.isLarge
+        child: widget.student.initials.isNotEmpty
             ? Text(
                 widget.student.initials,
                 style: TextStyle(
                   fontWeight: FontWeight.bold,
-                  fontSize: widget.size * 0.4,
+                  fontSize: widget.size * (widget.isLarge ? 0.35 : 0.4),
                   color: AppTheme.primaryBlue,
                 ),
               )
