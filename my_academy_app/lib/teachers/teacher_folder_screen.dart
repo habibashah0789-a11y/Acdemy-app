@@ -183,8 +183,8 @@ class _TeacherFolderScreenState extends State<TeacherFolderScreen> {
                 // Tabs
                 TabBar(
                   indicatorColor: AppTheme.primaryBlue,
-                  labelColor: AppTheme.primaryBlue,
-                  unselectedLabelColor: Colors.grey.shade600,
+                  labelColor: Colors.black,
+                  unselectedLabelColor: Colors.black,
                   indicatorSize: TabBarIndicatorSize.tab,
                   labelStyle: GoogleFonts.poppins(
                     fontWeight: FontWeight.bold,

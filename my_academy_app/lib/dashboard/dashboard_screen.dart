@@ -587,6 +587,40 @@ class _DashboardScreenState extends State<DashboardScreen> {
     );
   }
 
+  /// Returns the sum of all payments collected within [month] (same year+month)
+  /// by scanning paymentHistoryJson entries across [students].
+  double _getMonthlyRevenue(List<StudentModel> students, DateTime month) {
+    double total = 0;
+    for (final s in students) {
+      if (s.paymentHistoryJson == null || s.paymentHistoryJson!.isEmpty) continue;
+      try {
+        final List<dynamic> history = jsonDecode(s.paymentHistoryJson!);
+        for (final entry in history) {
+          final map = entry as Map<String, dynamic>;
+          final date = DateTime.tryParse(map['date'] ?? '');
+          if (date != null && date.year == month.year && date.month == month.month) {
+            total += (map['amount'] as num?)?.toDouble() ?? 0;
+          }
+        }
+      } catch (_) {}
+    }
+    return total;
+  }
+
+  /// Returns a formatted percentage string (e.g. '+12%' or '-5%') comparing
+  /// this month's revenue vs last month's. Returns null when there is no data.
+  String? _revenueGrowthLabel(List<StudentModel> students) {
+    final now = DateTime.now();
+    final thisMonth = DateTime(now.year, now.month);
+    final lastMonth = DateTime(now.year, now.month - 1);
+    final current = _getMonthlyRevenue(students, thisMonth);
+    final previous = _getMonthlyRevenue(students, lastMonth);
+    if (previous <= 0 && current <= 0) return null;
+    if (previous <= 0) return '+100%';
+    final pct = ((current - previous) / previous * 100).round();
+    return pct >= 0 ? '+$pct%' : '$pct%';
+  }
+
   Widget _buildClassRevenueChart(String title, List<StudentModel> students,
       void Function(String metric) onMetricTap) {
     double collected = _sumAmount(students, true);
@@ -655,20 +689,30 @@ class _DashboardScreenState extends State<DashboardScreen> {
                         ),
                       ),
                       const SizedBox(height: 2),
-                      Row(
-                        children: [
-                          const Icon(Icons.arrow_upward_rounded, size: 12, color: Color(0xFF2E7D32)),
-                          const SizedBox(width: 2),
-                          Text(
-                            isFsc ? '12% from last month' : '8% from last month',
-                            style: GoogleFonts.poppins(
-                              fontSize: 11,
-                              fontWeight: FontWeight.w500,
-                              color: const Color(0xFF2E7D32),
+                      Builder(builder: (ctx) {
+                        final label = _revenueGrowthLabel(students);
+                        if (label == null) return const SizedBox.shrink();
+                        final isPositive = label.startsWith('+');
+                        final growthColor = isPositive ? const Color(0xFF2E7D32) : const Color(0xFFDC2626);
+                        return Row(
+                          children: [
+                            Icon(
+                              isPositive ? Icons.arrow_upward_rounded : Icons.arrow_downward_rounded,
+                              size: 12,
+                              color: growthColor,
                             ),
-                          ),
-                        ],
-                      ),
+                            const SizedBox(width: 2),
+                            Text(
+                              '$label from last month',
+                              style: GoogleFonts.poppins(
+                                fontSize: 11,
+                                fontWeight: FontWeight.w500,
+                                color: growthColor,
+                              ),
+                            ),
+                          ],
+                        );
+                      }),
                     ],
                   ),
                 ),
@@ -794,21 +838,50 @@ class _DashboardScreenState extends State<DashboardScreen> {
         ));
       }
 
-      // 2. Check Payment History
+      // 2. Check Payment History — show installment rank + amount
       if (s.paymentHistoryJson != null && s.paymentHistoryJson!.isNotEmpty) {
         try {
           final List<dynamic> history = jsonDecode(s.paymentHistoryJson!);
           for (var i = 0; i < history.length; i++) {
             final entry = history[i] as Map<String, dynamic>;
             final date = DateTime.tryParse(entry['date'] ?? '') ?? DateTime.now();
-            
+            final amount = (entry['amount'] as num?)?.toDouble() ?? 0;
+            final fmtAmt = 'Rs\u00a0${amount.toStringAsFixed(0)}';
+
             if (date.isAfter(since)) {
+              String title;
+              String subtitle;
+              IconData icon;
+              Color color;
+
+              if (i == 0) {
+                title = 'Fee Payment Received';
+                subtitle = '${s.name} paid $fmtAmt as their 1st installment/registration fee.';
+                icon = Icons.payments_rounded;
+                color = const Color(0xFFF59E0B);
+              } else if (i == 1) {
+                title = 'Second Installment Received';
+                subtitle = '${s.name} paid $fmtAmt as their 2nd installment.';
+                icon = Icons.account_balance_wallet_rounded;
+                color = const Color(0xFF8B5CF6);
+              } else if (i == 2) {
+                title = 'Third Installment Received';
+                subtitle = '${s.name} paid $fmtAmt as their 3rd installment.';
+                icon = Icons.savings_rounded;
+                color = const Color(0xFF06B6D4);
+              } else {
+                title = 'Installment Received';
+                subtitle = '${s.name} paid $fmtAmt as installment \u00a0${i + 1}.';
+                icon = Icons.attach_money_rounded;
+                color = const Color(0xFF22C55E);
+              }
+
               items.add(_ActivityItem(
-                title: 'Fee collected',
-                subtitle: 'From ${s.name} - ${s.grade}',
+                title: title,
+                subtitle: subtitle,
                 time: date,
-                icon: Icons.attach_money_rounded,
-                color: const Color(0xFFF59E0B),
+                icon: icon,
+                color: color,
               ));
             }
           }
@@ -822,21 +895,35 @@ class _DashboardScreenState extends State<DashboardScreen> {
     items.sort((a, b) => b.time.compareTo(a.time));
 
     if (items.isEmpty) {
-      // Fallback demo activities matching image design if database has no recent activity
+      // Fallback demo activities when database has no recent activity
       items.addAll([
         _ActivityItem(
           title: 'New student registration',
-          subtitle: 'Ali Raza - 1st Year (Pre-Medical)',
+          subtitle: 'Ali Raza enrolled in 1st Year (Pre-Medical)',
           time: DateTime.now().subtract(const Duration(minutes: 2)),
           icon: Icons.group_add_rounded,
           color: const Color(0xFF22C55E),
         ),
         _ActivityItem(
-          title: 'Fee collected',
-          subtitle: 'From Fatima Khan - 2nd Year',
+          title: 'Fee Payment Received',
+          subtitle: 'Fatima Khan paid Rs\u00a04,500 as their 1st installment/registration fee.',
           time: DateTime.now().subtract(const Duration(minutes: 30)),
-          icon: Icons.attach_money_rounded,
+          icon: Icons.payments_rounded,
           color: const Color(0xFFF59E0B),
+        ),
+        _ActivityItem(
+          title: 'Second Installment Received',
+          subtitle: 'Hamza Sheikh paid Rs\u00a03,000 as their 2nd installment.',
+          time: DateTime.now().subtract(const Duration(hours: 2)),
+          icon: Icons.account_balance_wallet_rounded,
+          color: const Color(0xFF8B5CF6),
+        ),
+        _ActivityItem(
+          title: 'Third Installment Received',
+          subtitle: 'Ayesha Malik paid Rs\u00a02,500 as their 3rd installment.',
+          time: DateTime.now().subtract(const Duration(hours: 5)),
+          icon: Icons.savings_rounded,
+          color: const Color(0xFF06B6D4),
         ),
       ]);
     }
@@ -1180,6 +1267,36 @@ class _RevenueDrillDownDialogState extends State<RevenueDrillDownDialog> {
     });
   }
 
+  double _getMonthlyRevenue(List<StudentModel> students, DateTime month) {
+    double total = 0;
+    for (final s in students) {
+      if (s.paymentHistoryJson == null || s.paymentHistoryJson!.isEmpty) continue;
+      try {
+        final List<dynamic> history = jsonDecode(s.paymentHistoryJson!);
+        for (final entry in history) {
+          final map = entry as Map<String, dynamic>;
+          final date = DateTime.tryParse(map['date'] ?? '');
+          if (date != null && date.year == month.year && date.month == month.month) {
+            total += (map['amount'] as num?)?.toDouble() ?? 0;
+          }
+        }
+      } catch (_) {}
+    }
+    return total;
+  }
+
+  String? _revenueGrowthLabel(List<StudentModel> students) {
+    final now = DateTime.now();
+    final thisMonth = DateTime(now.year, now.month);
+    final lastMonth = DateTime(now.year, now.month - 1);
+    final current = _getMonthlyRevenue(students, thisMonth);
+    final previous = _getMonthlyRevenue(students, lastMonth);
+    if (previous <= 0 && current <= 0) return null;
+    if (previous <= 0) return '+100%';
+    final pct = ((current - previous) / previous * 100).round();
+    return pct >= 0 ? '+$pct%' : '$pct%';
+  }
+
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
@@ -1478,34 +1595,45 @@ class _RevenueDrillDownDialogState extends State<RevenueDrillDownDialog> {
                     ),
                   ],
                 ),
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.end,
-                  children: [
-                    Text(
-                      'This Month Growth',
-                      style: GoogleFonts.poppins(
-                        fontSize: 11,
-                        color: isDark ? Colors.grey.shade400 : const Color(0xFF64748B),
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Row(
-                      children: [
-                        const Icon(Icons.arrow_upward_rounded, size: 14, color: Color(0xFF22C55E)),
-                        const SizedBox(width: 2),
-                        Text(
-                          '12%',
-                          style: GoogleFonts.poppins(
-                            fontSize: 15,
-                            fontWeight: FontWeight.bold,
-                            color: const Color(0xFF22C55E),
-                          ),
+                Builder(builder: (ctx) {
+                  final filteredForGrowth = _filterStudents(classType: widget.classType, grade: _selectedGrade);
+                  final label = _revenueGrowthLabel(filteredForGrowth);
+                  if (label == null) return const SizedBox.shrink();
+                  final isPositive = label.startsWith('+');
+                  final growthColor = isPositive ? const Color(0xFF22C55E) : const Color(0xFFDC2626);
+                  return Column(
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: [
+                      Text(
+                        'vs Last Month',
+                        style: GoogleFonts.poppins(
+                          fontSize: 11,
+                          color: isDark ? Colors.grey.shade400 : const Color(0xFF64748B),
+                          fontWeight: FontWeight.w500,
                         ),
-                      ],
-                    ),
-                  ],
-                ),
+                      ),
+                      const SizedBox(height: 4),
+                      Row(
+                        children: [
+                          Icon(
+                            isPositive ? Icons.arrow_upward_rounded : Icons.arrow_downward_rounded,
+                            size: 14,
+                            color: growthColor,
+                          ),
+                          const SizedBox(width: 2),
+                          Text(
+                            label,
+                            style: GoogleFonts.poppins(
+                              fontSize: 15,
+                              fontWeight: FontWeight.bold,
+                              color: growthColor,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  );
+                }),
               ],
             ),
           ),
@@ -1673,7 +1801,15 @@ class _RevenueDrillDownDialogState extends State<RevenueDrillDownDialog> {
       breadcrumbText = '${widget.classType} > ${_selectedMetric ?? "Collected"} > $gradeLabel > $_selectedSubject';
 
       final filtered = _filterStudents(classType: widget.classType, grade: _selectedGrade);
-      final subStudents = filtered.where((s) => _matchesSubject(s, _selectedSubject!)).toList();
+      final allSubStudents = filtered.where((s) => _matchesSubject(s, _selectedSubject!)).toList();
+      // When the user drilled in via the Pending bar, only show students who still owe money.
+      final isPendingView = _selectedMetric == 'Pending';
+      final subStudents = isPendingView
+          ? allSubStudents.where((s) {
+              final modelSubTmp = _subjectDashboardToModel[_selectedSubject] ?? _selectedSubject!;
+              return s.getSubjectRemaining(modelSubTmp) > 0;
+            }).toList()
+          : allSubStudents;
       final modelSub = _subjectDashboardToModel[_selectedSubject] ?? _selectedSubject!;
 
       final subjectColors = {
@@ -1686,15 +1822,16 @@ class _RevenueDrillDownDialogState extends State<RevenueDrillDownDialog> {
       };
       final subColor = subjectColors[_selectedSubject] ?? AppTheme.primaryBlue;
 
+      // Summary stats always computed from ALL enrolled students for accuracy
       double totalSubFee = 0, collectedSubFee = 0, pendingSubFee = 0;
-      for (final s in subStudents) {
+      for (final s in allSubStudents) {
         collectedSubFee += s.getSubjectPaid(modelSub);
         pendingSubFee += s.getSubjectRemaining(modelSub);
       }
       totalSubFee = collectedSubFee + pendingSubFee;
 
-      final paidCount = subStudents.where((s) => s.getSubjectRemaining(modelSub) <= 0).length;
-      final pendingCount = subStudents.length - paidCount;
+      final paidCount = allSubStudents.where((s) => s.getSubjectRemaining(modelSub) <= 0).length;
+      final pendingCount = allSubStudents.length - paidCount;
 
       content = Column(
         key: const ValueKey('level3'),
@@ -1873,7 +2010,7 @@ class _RevenueDrillDownDialogState extends State<RevenueDrillDownDialog> {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(
-                'Student Fee Details',
+                isPendingView ? 'Pending Fee Students' : 'Student Fee Details',
                 style: GoogleFonts.poppins(
                   fontSize: 14,
                   fontWeight: FontWeight.bold,
@@ -1883,24 +2020,43 @@ class _RevenueDrillDownDialogState extends State<RevenueDrillDownDialog> {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                 decoration: BoxDecoration(
-                  color: subColor.withValues(alpha: 0.1),
+                  color: (isPendingView ? const Color(0xFFEF4444) : subColor).withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(20),
                 ),
                 child: Text(
-                  '${subStudents.length} enrolled',
+                  isPendingView
+                      ? '${subStudents.length} pending'
+                      : '${subStudents.length} enrolled',
                   style: GoogleFonts.poppins(
                     fontSize: 11,
                     fontWeight: FontWeight.w600,
-                    color: subColor,
+                    color: isPendingView ? const Color(0xFFEF4444) : subColor,
                   ),
                 ),
               ),
             ],
           ),
+          if (isPendingView && subStudents.isEmpty && allSubStudents.isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 16),
+              child: Center(
+                child: Column(
+                  children: [
+                    const Icon(Icons.check_circle_rounded, size: 40, color: Color(0xFF059669)),
+                    const SizedBox(height: 8),
+                    Text(
+                      'All students have cleared their fees! 🎉',
+                      textAlign: TextAlign.center,
+                      style: GoogleFonts.poppins(fontSize: 13, color: const Color(0xFF059669), fontWeight: FontWeight.w600),
+                    ),
+                  ],
+                ),
+              ),
+            ),
           const SizedBox(height: 10),
 
           // Student Cards
-          if (subStudents.isEmpty)
+          if (subStudents.isEmpty && !(isPendingView && allSubStudents.isNotEmpty))
             Padding(
               padding: const EdgeInsets.symmetric(vertical: 24),
               child: Center(
