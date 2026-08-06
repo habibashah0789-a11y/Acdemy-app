@@ -165,6 +165,8 @@ class _MatricClassRoomScreenState extends State<MatricClassRoomScreen> {
       body: ListView(
         padding: const EdgeInsets.all(20),
         children: [
+          // ── Breadcrumbs ──
+          _buildBreadcrumbs(context),
           // ── Schedule Banner ──
           Container(
             width: double.infinity,
@@ -410,5 +412,67 @@ class _MatricClassRoomScreenState extends State<MatricClassRoomScreen> {
         ),
       ),
     ).animate().fadeIn();
+  }
+
+  Widget _buildBreadcrumbs(BuildContext context) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 16),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      decoration: BoxDecoration(
+        color: Colors.grey.shade100,
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: Colors.grey.shade200),
+      ),
+      child: Row(
+        children: [
+          GestureDetector(
+            onTap: () {
+              Navigator.of(context).popUntil((route) => route.isFirst);
+            },
+            child: Text(
+              'Teacher',
+              style: TextStyle(
+                color: AppTheme.primaryBlue,
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+          Icon(Icons.chevron_right_rounded, size: 16, color: Colors.grey.shade400),
+          GestureDetector(
+            onTap: () => Navigator.of(context).pop(),
+            child: Text(
+              'Matric',
+              style: TextStyle(
+                color: AppTheme.primaryBlue,
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+          Icon(Icons.chevron_right_rounded, size: 16, color: Colors.grey.shade400),
+          Text(
+            widget.subject,
+            style: const TextStyle(
+              color: Colors.black87,
+              fontSize: 13,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+          Icon(Icons.chevron_right_rounded, size: 16, color: Colors.grey.shade400),
+          Expanded(
+            child: Text(
+              widget.grade,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                color: Colors.grey.shade600,
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 }

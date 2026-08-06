@@ -398,7 +398,8 @@ class _StudentDashboardScreenState extends State<StudentDashboardScreen> {
                                         style: TextStyle(fontSize: 11, color: Colors.grey),
                                       ),
                                       Text(
-                                        '${student.subjectSchedules.length > 0 ? student.subjectSchedules.length : 1} Active',
+                                        '${student.subjectSchedules.length > 0 ? 
+                                        student.subjectSchedules.length : 1} Active',
                                         style: const TextStyle(
                                           fontSize: 13,
                                           fontWeight: FontWeight.bold,
