@@ -67,36 +67,37 @@ class _StudentDashboardScreenState extends State<StudentDashboardScreen> {
       final studentId = session['studentId'] as String? ?? '';
       final studentCode = session['studentCode'] as String?;
 
-<<<<<<< HEAD
       final student = await StudentAuthService.fetchCurrentStudent(
         studentId: studentId,
         studentCode: studentCode,
       );
 
       if (student == null) {
-        setState(
-            () => _errorMessage = 'Student record not found. Contact the academy.');
-        return;
-      }
-=======
-      _studentSubscription?.cancel();
-      _noticesSubscription?.cancel();
-
-      // Listen to Student doc in real-time
-      _studentSubscription = FirebaseFirestore.instance
-          .collection('students')
-          .doc(studentId)
-          .snapshots()
-          .listen((doc) {
-        if (!doc.exists) {
+        if (mounted) {
           setState(() {
             _errorMessage = 'Student record not found. Contact the academy.';
             _isLoading = false;
           });
-          return;
         }
+        return;
+      }
 
-        if (mounted) {
+      _studentSubscription?.cancel();
+      _noticesSubscription?.cancel();
+
+      if (mounted) {
+        setState(() {
+          _student = student;
+        });
+      }
+
+      // Listen to Student doc in real-time
+      _studentSubscription = FirebaseFirestore.instance
+          .collection('students')
+          .doc(student.id)
+          .snapshots()
+          .listen((doc) {
+        if (doc.exists && mounted) {
           setState(() {
             _student = StudentModel.fromFirestore(doc);
             if (_student != null && _recentNotices.isNotEmpty) {
@@ -109,7 +110,6 @@ class _StudentDashboardScreenState extends State<StudentDashboardScreen> {
           setState(() => _errorMessage = 'Connection error. Please try again.');
         }
       });
->>>>>>> f3ea761015c75ae110b34ffdbd3ba32c332190b4
 
       // Listen to notifications in real-time
       _noticesSubscription = FirebaseFirestore.instance
@@ -119,20 +119,9 @@ class _StudentDashboardScreenState extends State<StudentDashboardScreen> {
           .listen((noticesSnapshot) {
         final noticesList = noticesSnapshot.docs
             .map((doc) => NotificationModel.fromMap(doc.data(), doc.id))
-            .where((n) => n.studentId.isEmpty || n.studentId == studentId)
+            .where((n) => n.studentId.isEmpty || n.studentId == student.id || n.studentId == studentId)
             .toList();
 
-<<<<<<< HEAD
-      final noticesList = noticesSnapshot.docs
-          .map((doc) => NotificationModel.fromMap(doc.data(), doc.id))
-          .where((n) => n.studentId.isEmpty || n.studentId == student.id || n.studentId == studentId)
-          .take(3)
-          .toList();
-
-      setState(() {
-        _student = student;
-        _recentNotices = noticesList;
-=======
         if (mounted) {
           setState(() {
             _totalNoticesCount = noticesList.length;
@@ -144,7 +133,6 @@ class _StudentDashboardScreenState extends State<StudentDashboardScreen> {
         if (mounted) {
           setState(() => _errorMessage = 'Notice fetch error.');
         }
->>>>>>> f3ea761015c75ae110b34ffdbd3ba32c332190b4
       });
 
     } catch (e) {

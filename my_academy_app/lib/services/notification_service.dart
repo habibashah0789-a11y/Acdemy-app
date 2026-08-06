@@ -230,7 +230,6 @@ class NotificationService {
 
       // Handle Foreground Notifications
       FirebaseMessaging.onMessage.listen((RemoteMessage message) {
-<<<<<<< HEAD
         debugPrint('[NotificationService] Foreground message received: ${message.notification?.title}');
         final notification = message.notification;
         final android = message.notification?.android;
@@ -241,12 +240,6 @@ class NotificationService {
             title: notification.title ?? 'Quaid Academy Alert',
             body: notification.body ?? '',
             payload: jsonEncode(message.data),
-=======
-        if (message.notification != null) {
-          showLocalNotification(
-            title: message.notification?.title ?? 'Notification',
-            body: message.notification?.body ?? '',
->>>>>>> f3ea761015c75ae110b34ffdbd3ba32c332190b4
           );
         }
       });
@@ -275,7 +268,6 @@ class NotificationService {
     }
   }
 
-<<<<<<< HEAD
   // ── 4. FCM Token Management ──────────────────────────────────────────
 
   static Future<void> registerFcmToken({
@@ -341,9 +333,6 @@ class NotificationService {
 
   static Future<void> showLocalNotification({
     String channelId = 'academy_important_alerts',
-=======
-  static Future<void> showLocalNotification({
->>>>>>> f3ea761015c75ae110b34ffdbd3ba32c332190b4
     required String title,
     required String body,
     String? payload,
@@ -519,36 +508,7 @@ class NotificationService {
     return _fromHive().where((n) => !n.isRead).length;
   }
 
-<<<<<<< HEAD
   // ── 8. Notification Creation Triggers ────────────────────────────────
-=======
-  static Future<void> createStudentRegistrationNotification({
-    required StudentModel student,
-    String? registeredBy,
-  }) async {
-    final currentUser = FirebaseAuth.instance.currentUser;
-    final notification = buildStudentRegistrationNotification(
-      student: student,
-      registeredBy: registeredBy ?? currentUser?.email ?? 'Administrator',
-    );
-
-    if (currentUser != null) {
-      try {
-        final exists = await _firestore
-            .collection(_collection)
-            .where('studentId', isEqualTo: student.id)
-            .where('notificationType', isEqualTo: 'student_registered')
-            .get();
-        if (exists.docs.isNotEmpty) {
-          return;
-        }
-      } catch (_) {}
-    }
-
-    await _saveNotification(notification, emitLocal: true);
-    showLocalNotification(title: notification.title, body: notification.message);
-  }
->>>>>>> f3ea761015c75ae110b34ffdbd3ba32c332190b4
 
   static NotificationModel buildStudentRegistrationNotification({
     required StudentModel student,
@@ -613,7 +573,6 @@ class NotificationService {
     );
 
     await _saveNotification(notification, emitLocal: true);
-<<<<<<< HEAD
     showLocalNotification(
       channelId: 'fee_reminders',
       title: notification.title,
@@ -650,9 +609,6 @@ class NotificationService {
       title: title,
       body: body,
     );
-=======
-    showLocalNotification(title: notification.title, body: notification.message);
->>>>>>> f3ea761015c75ae110b34ffdbd3ba32c332190b4
   }
 
   static Future<void> _saveNotification(NotificationModel notification, {required bool emitLocal}) async {

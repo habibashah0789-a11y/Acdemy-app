@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -46,7 +47,6 @@ class _StudentFeeScreenState extends State<StudentFeeScreen> {
         setState(() => _errorMessage = 'Session expired. Please re-login.');
         return;
       }
-<<<<<<< HEAD
       final studentId = session['studentId'] as String? ?? '';
       final studentCode = session['studentCode'] as String?;
 
@@ -56,43 +56,41 @@ class _StudentFeeScreenState extends State<StudentFeeScreen> {
       );
 
       if (student != null) {
-        setState(() => _student = student);
-      } else {
-        setState(() => _errorMessage = 'Student fee record not found. Contact the academy.');
-      }
-=======
-      final studentId = session['studentId'] as String;
-
-      _studentSubscription?.cancel();
-      _studentSubscription = FirebaseFirestore.instance
-          .collection('students')
-          .doc(studentId)
-          .snapshots()
-          .listen((doc) {
-        if (doc.exists) {
-          if (mounted) {
+        _studentSubscription?.cancel();
+        _studentSubscription = FirebaseFirestore.instance
+            .collection('students')
+            .doc(student.id)
+            .snapshots()
+            .listen((doc) {
+          if (doc.exists && mounted) {
             setState(() {
               _student = StudentModel.fromFirestore(doc);
               _isLoading = false;
             });
           }
-        } else {
+        }, onError: (e) {
           if (mounted) {
             setState(() {
-              _errorMessage = 'Student fee record not found.';
+              _errorMessage = 'Failed to sync fee data.';
               _isLoading = false;
             });
           }
-        }
-      }, onError: (e) {
+        });
+
         if (mounted) {
           setState(() {
-            _errorMessage = 'Failed to sync fee data.';
+            _student = student;
             _isLoading = false;
           });
         }
-      });
->>>>>>> f3ea761015c75ae110b34ffdbd3ba32c332190b4
+      } else {
+        if (mounted) {
+          setState(() {
+            _errorMessage = 'Student fee record not found. Contact the academy.';
+            _isLoading = false;
+          });
+        }
+      }
     } catch (e) {
       if (mounted) {
         setState(() {
