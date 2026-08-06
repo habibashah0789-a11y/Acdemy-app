@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:io' as io;
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
@@ -86,23 +87,38 @@ class _StudentAvatarState extends State<StudentAvatar> {
       imageWidget = Image.file(
         io.File(_localPath!),
         fit: widget.fit,
-        errorBuilder: (context, error, stackTrace) {
-          return _buildFallback();
-        },
+        errorBuilder: (context, error, stackTrace) => _buildFallback(),
       );
     } else if (widget.student.profilePicUrl.isNotEmpty) {
-      if (widget.student.profilePicUrl.startsWith('http')) {
+      final url = widget.student.profilePicUrl;
+      if (url.startsWith('http')) {
         imageWidget = CachedNetworkImage(
-          imageUrl: widget.student.profilePicUrl,
+          imageUrl: url,
           fit: widget.fit,
           placeholder: (context, url) => const Center(
             child: CircularProgressIndicator(strokeWidth: 2),
           ),
           errorWidget: (context, url, error) => _buildFallback(),
         );
+      } else if (url.startsWith('data:image') || url.length > 100) {
+        try {
+          final base64Str = url.contains(',') ? url.split(',').last : url;
+          final bytes = base64Decode(base64Str.replaceAll('\n', '').replaceAll('\r', '').trim());
+          imageWidget = Image.memory(
+            bytes,
+            fit: widget.fit,
+            errorBuilder: (_, __, ___) => _buildFallback(),
+          );
+        } catch (_) {
+          imageWidget = _buildFallback();
+        }
+      } else if (!kIsWeb && io.File(url).existsSync()) {
+        imageWidget = Image.file(
+          io.File(url),
+          fit: widget.fit,
+          errorBuilder: (_, __, ___) => _buildFallback(),
+        );
       } else {
-        // Handle potential base64 or other formats if necessary, 
-        // though we prefer local files or URLs.
         imageWidget = _buildFallback();
       }
     } else {
@@ -121,7 +137,7 @@ class _StudentAvatarState extends State<StudentAvatar> {
 
   Widget _buildFallback() {
     return Container(
-      color: widget.isLarge ? Colors.black12 : AppTheme.primaryBlue.withOpacity(0.1),
+      color: widget.isLarge ? Colors.black12 : AppTheme.primaryBlue.withValues(alpha: 0.1),
       child: Center(
         child: widget.student.initials.isNotEmpty && !widget.isLarge
             ? Text(

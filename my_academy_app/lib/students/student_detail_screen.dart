@@ -390,38 +390,48 @@ class _StudentDetailScreenState extends State<StudentDetailScreen> {
   Future<void> _uploadPhoto(Uint8List bytes) async {
     setState(() => _isUploadingPhoto = true);
     try {
-      // Delete old image if it was on Firebase Storage
-      if (student.profilePicUrl.isNotEmpty) {
-        await DatabaseService.deleteImage(student.profilePicUrl);
-      }
+      String newUrl = '';
 
-      // Save locally on device
+      // 1. Save locally on device for immediate local access
       if (!kIsWeb) {
-        await ImageUtils.saveImageLocally(student.id, bytes);
+        try {
+          await ImageUtils.saveImageLocally(student.id, bytes);
+        } catch (e) {
+          debugPrint('Local image save error: $e');
+        }
       }
 
-      // Upload to Firebase Storage
-      final fileName =
-          'students/profile_${student.id}_${DateTime.now().millisecondsSinceEpoch}.jpg';
-      final storageRef = FirebaseStorage.instance.ref().child(fileName);
-      await storageRef
-          .putData(bytes, SettableMetadata(contentType: 'image/jpeg'))
-          .timeout(const Duration(seconds: 30));
-      final newUrl =
-          await storageRef.getDownloadURL().timeout(const Duration(seconds: 10));
+      // 2. Try to upload to Firebase Storage
+      try {
+        if (student.profilePicUrl.isNotEmpty && student.profilePicUrl.startsWith('http')) {
+          await DatabaseService.deleteImage(student.profilePicUrl);
+        }
 
-      // Update the student record with new photo URL
+        final fileName =
+            'students/profile_${student.id}_${DateTime.now().millisecondsSinceEpoch}.jpg';
+        final storageRef = FirebaseStorage.instance.ref().child(fileName);
+        await storageRef
+            .putData(bytes, SettableMetadata(contentType: 'image/jpeg'))
+            .timeout(const Duration(seconds: 10));
+        newUrl = await storageRef.getDownloadURL().timeout(const Duration(seconds: 5));
+      } catch (uploadError) {
+        debugPrint('Firebase Storage upload failed: $uploadError. Using base64 encoding.');
+        final base64String = base64Encode(bytes);
+        newUrl = 'data:image/jpeg;base64,$base64String';
+      }
+
+      // 3. Update the student record with new photo URL
       final updatedStudent = student.copyWith(profilePicUrl: newUrl);
       await DatabaseService.updateStudent(updatedStudent);
 
       if (mounted) {
         setState(() {
           student = updatedStudent;
-          _pendingImageBytes = null; // clear preview – real URL is set
+          _pendingImageBytes = null;
         });
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('Profile photo updated!'),
+            content: Text('Profile photo updated successfully!'),
             backgroundColor: Colors.green,
           ),
         );

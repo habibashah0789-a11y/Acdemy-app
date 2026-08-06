@@ -1,6 +1,5 @@
 import 'dart:async';
 import 'dart:convert';
-import 'package:cached_network_image/cached_network_image.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
@@ -13,6 +12,7 @@ import '../theme/app_theme.dart';
 import '../widgets/custom_card.dart';
 import '../widgets/empty_state_widget.dart';
 import '../widgets/shimmer_loading_widget.dart';
+import '../widgets/student_avatar.dart';
 import 'student_auth_service.dart';
 
 class StudentDashboardScreen extends StatefulWidget {
@@ -261,16 +261,9 @@ class _StudentDashboardScreenState extends State<StudentDashboardScreen> {
                                   )
                                 ],
                               ),
-                              child: ClipOval(
-                                child: student.profilePicUrl.isNotEmpty &&
-                                        student.profilePicUrl.startsWith('http')
-                                    ? CachedNetworkImage(
-                                        imageUrl: student.profilePicUrl,
-                                        fit: BoxFit.cover,
-                                        placeholder: (_, __) => const Icon(Icons.person, color: Colors.white, size: 36),
-                                        errorWidget: (_, __, ___) => const Icon(Icons.person, color: Colors.white, size: 36),
-                                      )
-                                    : const Icon(Icons.person, color: Colors.white, size: 36),
+                              child: StudentAvatar(
+                                student: student,
+                                size: 48,
                               ),
                             ),
                             const SizedBox(width: 16),

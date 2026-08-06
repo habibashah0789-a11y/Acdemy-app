@@ -1,4 +1,3 @@
-import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -7,6 +6,7 @@ import '../theme/app_theme.dart';
 import '../widgets/custom_card.dart';
 import '../widgets/empty_state_widget.dart';
 import '../widgets/shimmer_loading_widget.dart';
+import '../widgets/student_avatar.dart';
 import 'student_auth_service.dart';
 import 'student_login_screen.dart';
 
@@ -194,16 +194,10 @@ class _StudentProfileScreenState extends State<StudentProfileScreen> {
                         )
                       ],
                     ),
-                    child: ClipOval(
-                      child: student.profilePicUrl.isNotEmpty &&
-                              student.profilePicUrl.startsWith('http')
-                          ? CachedNetworkImage(
-                              imageUrl: student.profilePicUrl,
-                              fit: BoxFit.cover,
-                              placeholder: (_, __) => const Icon(Icons.person, color: Colors.grey, size: 52),
-                              errorWidget: (_, __, ___) => const Icon(Icons.person, color: Colors.grey, size: 52),
-                            )
-                          : const Icon(Icons.person, color: Colors.grey, size: 52),
+                    child: StudentAvatar(
+                      student: student,
+                      size: 96,
+                      isLarge: true,
                     ),
                   ).animate().scale(duration: 400.ms),
                   const SizedBox(height: 16),

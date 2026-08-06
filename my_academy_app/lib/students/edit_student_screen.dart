@@ -319,40 +319,32 @@ class _EditStudentScreenState extends State<EditStudentScreen> {
       
       // Upload new image to Firebase Storage and save locally if provided
       if (_imageBytes != null) {
-        try {
-          // Delete old image if exists
-          if (_existingUrl.isNotEmpty) await DatabaseService.deleteImage(_existingUrl);
-          
-          // 1. Save image locally on device (for faster local access)
-          if (!kIsWeb) {
+        if (!kIsWeb) {
+          try {
             await ImageUtils.saveImageLocally(widget.student.id, _imageBytes!);
+          } catch (e) {
+            debugPrint('Local image save error: $e');
+          }
+        }
+        
+        try {
+          if (_existingUrl.isNotEmpty && _existingUrl.startsWith('http')) {
+            await DatabaseService.deleteImage(_existingUrl);
           }
           
-          // 2. Upload to Firebase Storage (for cross-device access)
           final fileName = 'students/profile_${widget.student.id}_${DateTime.now().millisecondsSinceEpoch}.jpg';
           final storageRef = FirebaseStorage.instance.ref().child(fileName);
           
-          // Upload with timeout to prevent hanging
           await storageRef
               .putData(_imageBytes!, SettableMetadata(contentType: 'image/jpeg'))
-              .timeout(const Duration(seconds: 30));
+              .timeout(const Duration(seconds: 15));
           
-          // Get download URL
-          picUrl = await storageRef.getDownloadURL().timeout(const Duration(seconds: 10));
+          picUrl = await storageRef.getDownloadURL().timeout(const Duration(seconds: 8));
           debugPrint('Image uploaded to Firebase Storage: $picUrl');
         } catch (uploadError) {
-          if (mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: const Text('Image upload failed. Please check your internet connection and try again.'),
-                backgroundColor: Colors.orange,
-                duration: const Duration(seconds: 4),
-              ),
-            );
-          }
-          // Don't proceed with update if image upload fails
-          setState(() => _isSaving = false);
-          return;
+          debugPrint('Firebase Storage upload failed: $uploadError. Falling back to base64 encoding.');
+          final base64String = base64Encode(_imageBytes!);
+          picUrl = 'data:image/jpeg;base64,$base64String';
         }
       }
       double oldPaid = widget.student.feeSubmitted;

@@ -55,19 +55,22 @@ class _CropImageDialogState extends State<CropImageDialog> {
   }
 
   Future<void> _crop() async {
+    if (_isCropping) return;
     setState(() => _isCropping = true);
     try {
-      // Small delay to ensure render tree is ready
-      await Future.delayed(const Duration(milliseconds: 100));
+      await Future.delayed(const Duration(milliseconds: 50));
       
       final boundary = _boundaryKey.currentContext?.findRenderObject() as RenderRepaintBoundary?;
       if (boundary == null) {
         throw Exception("Render boundary not found");
       }
       
-      final ui.Image image = await boundary.toImage(pixelRatio: 2.0);
+      final ui.Image image = await boundary.toImage(pixelRatio: 1.5);
       final ByteData? byteData = await image.toByteData(format: ui.ImageByteFormat.png);
-      final croppedBytes = byteData?.buffer.asUint8List();
+      if (byteData == null) {
+        throw Exception("Failed to encode image");
+      }
+      final croppedBytes = byteData.buffer.asUint8List(byteData.offsetInBytes, byteData.lengthInBytes);
       
       if (mounted) {
         Navigator.pop(context, croppedBytes);
