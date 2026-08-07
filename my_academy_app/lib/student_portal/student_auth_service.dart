@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:crypto/crypto.dart';
@@ -575,7 +576,7 @@ class StudentAuthService {
     final tokenHash = hashQrToken(plainToken);
     final cleanCode = studentCode.trim().toUpperCase();
 
-    await _firestore.collection('student_auth').doc(studentId).set(
+    unawaited(_firestore.collection('student_auth').doc(studentId).set(
       {
         'studentId': studentId,
         'studentCode': cleanCode,
@@ -587,7 +588,7 @@ class StudentAuthService {
         'createdAt': FieldValue.serverTimestamp(),
       },
       SetOptions(merge: true),
-    );
+    ).catchError((e) => debugPrint('student_auth write error: $e')));
 
     return {
       'studentId': studentId,

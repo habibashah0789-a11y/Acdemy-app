@@ -1,6 +1,5 @@
+import 'dart:async';
 import 'dart:convert';
-import 'dart:typed_data';
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
@@ -452,7 +451,12 @@ class _AddStudentScreenState extends State<AddStudentScreen> {
             builder: (_) => CropImageDialog(imageBytes: bytes),
           );
           if (cropped != null) {
-            setState(() => _imageBytes = cropped);
+            final compressed = await ImageUtils.compressAndResizeImage(
+              cropped,
+              targetWidth: 512,
+              targetHeight: 512,
+            );
+            setState(() => _imageBytes = compressed);
           }
         }
       }
@@ -466,19 +470,11 @@ class _AddStudentScreenState extends State<AddStudentScreen> {
 
   Future<String> _generateStudentCode() async {
     final year = DateTime.now().year;
-    try {
-      final snapshot = await FirebaseFirestore.instance
-          .collection('students')
-          .where('studentCode', isGreaterThanOrEqualTo: 'QA-$year-')
-          .where('studentCode', isLessThan: 'QA-${year + 1}-')
-          .get()
-          .timeout(const Duration(seconds: 8));
-      final nextNum = snapshot.docs.length + 1;
-      return 'QA-$year-${nextNum.toString().padLeft(3, '0')}';
-    } catch (_) {
-      final ts = DateTime.now().millisecondsSinceEpoch % 100000;
-      return 'QA-$year-${ts.toString().padLeft(5, '0')}';
-    }
+    final baseCount = DatabaseService.getAllStudentsLocal()
+        .where((s) => s.studentCode.startsWith('QA-$year-'))
+        .length;
+    final nextNum = baseCount + 1;
+    return 'QA-$year-${nextNum.toString().padLeft(3, '0')}';
   }
 
   Future<void> _save({bool addAnother = false}) async {
@@ -518,19 +514,23 @@ class _AddStudentScreenState extends State<AddStudentScreen> {
           }
         }
         
-        try {
-          final fileName = 'students/profile_${studentId}_${DateTime.now().millisecondsSinceEpoch}.jpg';
-          final storageRef = FirebaseStorage.instance.ref().child(fileName);
-          
-          await storageRef
-              .putData(_imageBytes!, SettableMetadata(contentType: 'image/jpeg'))
-              .timeout(const Duration(seconds: 15));
-          
-          picUrl = await storageRef.getDownloadURL().timeout(const Duration(seconds: 8));
-        } catch (uploadError) {
-          final base64String = base64Encode(_imageBytes!);
-          picUrl = 'data:image/jpeg;base64,$base64String';
-        }
+        unawaited(() async {
+          try {
+            final fileName = 'students/profile_${studentId}_${DateTime.now().millisecondsSinceEpoch}.jpg';
+            final storageRef = FirebaseStorage.instance.ref().child(fileName);
+            await storageRef
+                .putData(_imageBytes!, SettableMetadata(contentType: 'image/jpeg'))
+                .timeout(const Duration(seconds: 10));
+            final url = await storageRef.getDownloadURL().timeout(const Duration(seconds: 5));
+            final currentStudent = DatabaseService.studentBox.get(studentId);
+            if (currentStudent != null) {
+              final updated = currentStudent.copyWith(profilePicUrl: url);
+              await DatabaseService.updateStudent(updated);
+            }
+          } catch (e) {
+            debugPrint('Background storage upload error: $e');
+          }
+        }());
       }
       final initialFee = double.tryParse(_feeSubC.text.trim()) ?? 0;
       

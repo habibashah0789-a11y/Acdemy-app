@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -27,17 +28,46 @@ class DatabaseService {
   static List<StudentModel> getAllStudentsLocal() => _studentBox.values.toList();
 
   static Future<bool> addStudent(StudentModel student) async {
+    // 1. Instant local Hive put (<1ms)
     await _studentBox.put(student.id, student);
+
+    // 2. Non-blocking background Firestore write
     if (FirebaseAuth.instance.currentUser != null) {
-      try {
-        await _firestore
-            .collection('students')
-            .doc(student.id)
-            .set(student.toMap())
-            .timeout(const Duration(seconds: 4));
-      } catch (e) {
-        debugPrint('Firestore add student failed: $e');
-      }
+      unawaited(_firestore
+          .collection('students')
+          .doc(student.id)
+          .set(student.toMap())
+          .catchError((e) => debugPrint('Firestore add student failed: $e')));
+    }
+    return true;
+  }
+
+  static Future<bool> addStudentsBulk(List<StudentModel> students) async {
+    if (students.isEmpty) return true;
+
+    // 1. Instant local Hive batch putAll (<5ms for 100+ students)
+    final Map<String, StudentModel> map = {
+      for (var s in students) s.id: s
+    };
+    await _studentBox.putAll(map);
+
+    // 2. Fast background WriteBatch for cloud Firestore
+    if (FirebaseAuth.instance.currentUser != null) {
+      unawaited(() async {
+        try {
+          for (var i = 0; i < students.length; i += 450) {
+            final batch = _firestore.batch();
+            final end = (i + 450 < students.length) ? i + 450 : students.length;
+            for (var j = i; j < end; j++) {
+              final s = students[j];
+              batch.set(_firestore.collection('students').doc(s.id), s.toMap());
+            }
+            await batch.commit();
+          }
+        } catch (e) {
+          debugPrint('Firestore bulk add failed: $e');
+        }
+      }());
     }
     return true;
   }
