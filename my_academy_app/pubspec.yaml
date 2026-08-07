@@ -44,7 +44,7 @@ dependencies:
   hive: ^2.2.3
   hive_flutter: ^1.1.0
   path_provider: ^2.1.5
-  firebase_storage: ^13.4.1
+  firebase_storage: ^13.4.3
   image_picker: ^1.1.2
   cached_network_image: ^3.4.1
   intl: ^0.20.2
@@ -57,8 +57,8 @@ dependencies:
   shimmer: ^3.0.0
   fl_chart: ^1.2.0
   flutter_launcher_icons: ^0.14.4
-  file_picker: ^10.1.9
-  share_plus: ^10.1.4
+  file_picker: ^11.0.3
+  share_plus: ^13.1.0
   firebase_messaging: ^16.4.3
   pdf: ^3.12.0
   printing: ^5.14.3
@@ -66,8 +66,8 @@ dependencies:
   flutter_speed_dial: ^7.0.0
   flutter_local_notifications: ^17.2.3
   flutter_native_splash: ^2.3.0
-  mobile_scanner: ^5.2.3
-  device_info_plus: ^10.1.2
+  mobile_scanner: ^7.3.1
+  device_info_plus: ^11.0.0
   crypto: ^3.0.6
   uuid: ^4.5.1
   qr_flutter: ^4.1.0
