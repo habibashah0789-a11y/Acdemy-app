@@ -115,7 +115,7 @@ class StudentQrScannerScreen extends StatefulWidget {
 
 class _StudentQrScannerScreenState extends State<StudentQrScannerScreen>
     with WidgetsBindingObserver, SingleTickerProviderStateMixin {
-  late final MobileScannerController _scannerController;
+  MobileScannerController? _scannerController;
   late final AnimationController _laserController;
   late final Animation<double> _laserAnimation;
 
@@ -156,18 +156,18 @@ class _StudentQrScannerScreenState extends State<StudentQrScannerScreen>
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (!_isMobilePlatform) return;
-    if (!_scannerController.value.isInitialized) return;
+    if (_scannerController == null || !_scannerController!.value.isInitialized) return;
 
     switch (state) {
       case AppLifecycleState.detached:
       case AppLifecycleState.hidden:
       case AppLifecycleState.paused:
       case AppLifecycleState.inactive:
-        _scannerController.stop();
+        _scannerController?.stop();
         break;
       case AppLifecycleState.resumed:
         if (!_isProcessingScan && !_showSuccess) {
-          _scannerController.start();
+          _scannerController?.start();
         }
         break;
     }
@@ -178,7 +178,7 @@ class _StudentQrScannerScreenState extends State<StudentQrScannerScreen>
     WidgetsBinding.instance.removeObserver(this);
     _laserController.dispose();
     if (_isMobilePlatform) {
-      _scannerController.dispose();
+      _scannerController?.dispose();
     }
     super.dispose();
   }
@@ -229,7 +229,7 @@ class _StudentQrScannerScreenState extends State<StudentQrScannerScreen>
     }
 
     try {
-      await _scannerController.stop();
+      await _scannerController?.stop();
     } catch (_) {}
 
     await Future.delayed(const Duration(milliseconds: 350));
@@ -242,7 +242,7 @@ class _StudentQrScannerScreenState extends State<StudentQrScannerScreen>
   void _toggleFlashlight() async {
     if (!_isMobilePlatform) return;
     try {
-      await _scannerController.toggleTorch();
+      await _scannerController?.toggleTorch();
       setState(() {
         _isTorchOn = !_isTorchOn;
       });
@@ -254,7 +254,7 @@ class _StudentQrScannerScreenState extends State<StudentQrScannerScreen>
   void _switchCamera() async {
     if (!_isMobilePlatform) return;
     try {
-      await _scannerController.switchCamera();
+      await _scannerController?.switchCamera();
     } catch (e) {
       debugPrint('[StudentQrScanner] Switch camera error: $e');
     }
@@ -345,7 +345,7 @@ class _StudentQrScannerScreenState extends State<StudentQrScannerScreen>
         MobileScanner(
           controller: _scannerController,
           onDetect: _onDetect,
-          errorBuilder: (context, error, child) {
+          errorBuilder: (context, error) {
             return _buildCameraErrorUI(error);
           },
         ),
@@ -604,7 +604,7 @@ class _StudentQrScannerScreenState extends State<StudentQrScannerScreen>
                   const SizedBox(width: 12),
                   ElevatedButton(
                     onPressed: () {
-                      _scannerController.start();
+                      _scannerController?.start();
                     },
                     child: const Text('Try Again'),
                   ),

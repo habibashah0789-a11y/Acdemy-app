@@ -350,7 +350,7 @@ class _BulkStudentRegistrationWidgetState extends State<BulkStudentRegistrationW
 
   Future<void> _importCsvFile() async {
     try {
-      final result = await FilePicker.platform.pickFiles(
+      final result = await FilePicker.pickFiles(
         type: FileType.custom,
         allowedExtensions: ['csv', 'txt'],
       );
@@ -791,10 +791,10 @@ class _BulkStudentRegistrationWidgetState extends State<BulkStudentRegistrationW
               SizedBox(
                 width: 140,
                 child: DropdownButtonFormField<String>(
-                  initialValue: _defaultClassType,
+                  value: _defaultClassType,
                   isExpanded: true,
                   decoration: const InputDecoration(labelText: 'Default Class', isDense: true),
-                  items: _classTypes.map((t) => DropdownMenuItem(value: t, child: Text(t))).toList(),
+                  items: _classTypes.map((t) => DropdownMenuItem<String>(value: t, child: Text(t))).toList(),
                   onChanged: (v) {
                     if (v != null) {
                       setState(() {
@@ -809,11 +809,11 @@ class _BulkStudentRegistrationWidgetState extends State<BulkStudentRegistrationW
                 width: 150,
                 child: DropdownButtonFormField<String>(
                   key: ValueKey('default_grade_$_defaultClassType'),
-                  initialValue: _defaultGrade,
+                  value: _defaultGrade,
                   isExpanded: true,
                   decoration: const InputDecoration(labelText: 'Default Grade', isDense: true),
                   items: _gradeOptions[_defaultClassType]!
-                      .map((g) => DropdownMenuItem(value: g, child: Text(g, overflow: TextOverflow.ellipsis)))
+                      .map((g) => DropdownMenuItem<String>(value: g, child: Text(g, overflow: TextOverflow.ellipsis)))
                       .toList(),
                   onChanged: (v) {
                     if (v != null) setState(() => _defaultGrade = v);
@@ -1017,7 +1017,7 @@ class _BulkStudentRegistrationWidgetState extends State<BulkStudentRegistrationW
                             underline: const SizedBox(),
                             isDense: true,
                             style: const TextStyle(fontSize: 13, color: Colors.black87),
-                            items: _classTypes.map((t) => DropdownMenuItem(value: t, child: Text(t, style: const TextStyle(fontSize: 13)))).toList(),
+                            items: _classTypes.map((t) => DropdownMenuItem<String>(value: t, child: Text(t, style: const TextStyle(fontSize: 13)))).toList(),
                             onChanged: (v) {
                               if (v != null) {
                                 setState(() {
@@ -1051,7 +1051,7 @@ class _BulkStudentRegistrationWidgetState extends State<BulkStudentRegistrationW
                             isDense: true,
                             style: const TextStyle(fontSize: 13, color: Colors.black87),
                             items: _gradeOptions[r.classType]!
-                                .map((g) => DropdownMenuItem(
+                                .map((g) => DropdownMenuItem<String>(
                                       value: g,
                                       child: Text(g, style: const TextStyle(fontSize: 13), overflow: TextOverflow.ellipsis),
                                     ))

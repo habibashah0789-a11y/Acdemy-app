@@ -1,4 +1,7 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:flutter_animate/flutter_animate.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'daily_records_screen.dart';
@@ -6,90 +9,667 @@ import '../../theme/app_theme.dart';
 import '../../students/student_detail_screen.dart';
 import '../../models/student_model.dart';
 
-class DailyRecordDetailScreen extends StatelessWidget {
+class DailyRecordDetailScreen extends StatefulWidget {
   final DailyRecordData record;
 
   const DailyRecordDetailScreen({super.key, required this.record});
 
   @override
+  State<DailyRecordDetailScreen> createState() =>
+      _DailyRecordDetailScreenState();
+}
+
+class _DailyRecordDetailScreenState extends State<DailyRecordDetailScreen>
+    with SingleTickerProviderStateMixin {
+  late TabController _tabController;
+  final _fmt = NumberFormat.currency(symbol: 'Rs ', decimalDigits: 0);
+
+  // ── derived lists ──────────────────────────────────────────────────────────
+
+  /// All students registered on this date (they are all in record.students)
+  List<StudentModel> get _allStudents => widget.record.students;
+
+  /// Students who still have remaining fee (defaulters)
+  List<StudentModel> get _defaulters =>
+      _allStudents.where((s) => s.feeRemaining > 0).toList();
+
+  /// Students who have a payment entry on this specific date
+  List<StudentModel> get _paidOnDate {
+    final targetDate = widget.record.date;
+    return _allStudents.where((s) {
+      if (s.paymentHistoryJson == null || s.paymentHistoryJson!.isEmpty) {
+        return false;
+      }
+      try {
+        final List<dynamic> history = jsonDecode(s.paymentHistoryJson!);
+        return history.any((entry) {
+          final map = entry as Map<String, dynamic>;
+          final date = DateTime.tryParse(map['date'] ?? '');
+          return date != null &&
+              date.year == targetDate.year &&
+              date.month == targetDate.month &&
+              date.day == targetDate.day;
+        });
+      } catch (_) {
+        return false;
+      }
+    }).toList();
+  }
+
+  /// Sum of amounts paid by [student] on this specific date (from history)
+  double _amountPaidOnDate(StudentModel student) {
+    final targetDate = widget.record.date;
+    if (student.paymentHistoryJson == null ||
+        student.paymentHistoryJson!.isEmpty) return 0;
+    try {
+      final List<dynamic> history = jsonDecode(student.paymentHistoryJson!);
+      return history.fold<double>(0, (sum, entry) {
+        final map = entry as Map<String, dynamic>;
+        final date = DateTime.tryParse(map['date'] ?? '');
+        if (date != null &&
+            date.year == targetDate.year &&
+            date.month == targetDate.month &&
+            date.day == targetDate.day) {
+          return sum + ((map['amount'] as num?)?.toDouble() ?? 0);
+        }
+        return sum;
+      });
+    } catch (_) {
+      return 0;
+    }
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _tabController = TabController(length: 3, vsync: this);
+  }
+
+  @override
+  void dispose() {
+    _tabController.dispose();
+    super.dispose();
+  }
+
+  // ── build ──────────────────────────────────────────────────────────────────
+
+  @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    
+
     return Scaffold(
+      backgroundColor:
+          isDark ? AppTheme.darkBackground : const Color(0xFFF5F7FA),
       appBar: AppBar(
-        title: Text(DateFormat('MMM dd, yyyy').format(record.date)),
+        title: Text(
+          DateFormat('MMM dd, yyyy').format(widget.record.date),
+          style: GoogleFonts.poppins(fontWeight: FontWeight.bold),
+        ),
         elevation: 0,
+        bottom: TabBar(
+          controller: _tabController,
+          labelStyle:
+              GoogleFonts.poppins(fontWeight: FontWeight.w600, fontSize: 13),
+          unselectedLabelStyle:
+              GoogleFonts.poppins(fontWeight: FontWeight.w500, fontSize: 13),
+          indicatorColor: AppTheme.primaryBlue,
+          indicatorWeight: 3,
+          labelColor: AppTheme.primaryBlue,
+          unselectedLabelColor: isDark ? Colors.grey[400] : Colors.grey[600],
+          tabs: [
+            Tab(
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const Icon(Icons.people_rounded, size: 16),
+                  const SizedBox(width: 6),
+                  Text('All (${_allStudents.length})'),
+                ],
+              ),
+            ),
+            Tab(
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(Icons.warning_amber_rounded,
+                      size: 16, color: _defaulters.isNotEmpty ? Colors.orange : null),
+                  const SizedBox(width: 6),
+                  Text('Defaulters (${_defaulters.length})'),
+                ],
+              ),
+            ),
+            Tab(
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const Icon(Icons.check_circle_rounded, size: 16, color: Colors.green),
+                  const SizedBox(width: 6),
+                  Text('Collected (${_paidOnDate.length})'),
+                ],
+              ),
+            ),
+          ],
+        ),
       ),
-      body: Column(
+      body: TabBarView(
+        controller: _tabController,
         children: [
-          // Header Summary
-          Container(
-            padding: const EdgeInsets.all(20),
-            color: AppTheme.primaryBlue,
-            width: double.infinity,
+          _buildAllTab(isDark),
+          _buildDefaultersTab(isDark),
+          _buildCollectedTab(isDark),
+        ],
+      ),
+    );
+  }
+
+  // ── Tab 1 — All ────────────────────────────────────────────────────────────
+
+  Widget _buildAllTab(bool isDark) {
+    final totalRegistered = widget.record.totalRegistrationAmount;
+    final totalCollected = widget.record.totalCollected;
+
+    return CustomScrollView(
+      slivers: [
+        SliverToBoxAdapter(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
             child: Column(
               children: [
-                const Text(
-                  'Total Collected',
-                  style: TextStyle(color: Colors.white70, fontSize: 14),
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  'Rs. ${record.totalCollected.toStringAsFixed(0)}',
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 28,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                const SizedBox(height: 16),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                  decoration: BoxDecoration(
-                    color: Colors.white.withValues(alpha: 0.2),
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      const Icon(Icons.people_alt_rounded, color: Colors.white, size: 16),
-                      const SizedBox(width: 8),
-                      Text(
-                        '${record.studentCount} Students Registered',
-                        style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w500),
+                Row(
+                  children: [
+                    Expanded(
+                      child: _summaryCard(
+                        label: 'Total Fee Due',
+                        amount: totalRegistered,
+                        icon: Icons.receipt_long_rounded,
+                        color: AppTheme.primaryBlue,
+                        isDark: isDark,
                       ),
-                    ],
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: _summaryCard(
+                        label: 'Total Collected',
+                        amount: totalCollected,
+                        icon: Icons.account_balance_wallet_rounded,
+                        color: Colors.green,
+                        isDark: isDark,
+                      ),
+                    ),
+                  ],
+                ).animate().fadeIn(duration: 400.ms).slideY(begin: -0.05),
+                const SizedBox(height: 8),
+                _summaryCard(
+                  label: 'Students Registered on this Day',
+                  amount: null,
+                  icon: Icons.group_add_rounded,
+                  color: Colors.purple,
+                  isDark: isDark,
+                  valueText: '${_allStudents.length} students',
+                ).animate().fadeIn(duration: 400.ms, delay: 100.ms),
+                const SizedBox(height: 8),
+              ],
+            ),
+          ),
+        ),
+        if (_allStudents.isEmpty)
+          const SliverFillRemaining(
+            child: Center(
+              child: Text('No students on this date.'),
+            ),
+          )
+        else
+          SliverPadding(
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
+            sliver: SliverList(
+              delegate: SliverChildBuilderDelegate(
+                (context, index) {
+                  final student = _allStudents[index];
+                  return _allStudentCard(student, isDark, index);
+                },
+                childCount: _allStudents.length,
+              ),
+            ),
+          ),
+      ],
+    );
+  }
+
+  Widget _allStudentCard(StudentModel student, bool isDark, int index) {
+    // Registration / first installment amount from payment history
+    double firstInstallment = 0;
+    if (student.paymentHistoryJson != null &&
+        student.paymentHistoryJson!.isNotEmpty) {
+      try {
+        final List<dynamic> history = jsonDecode(student.paymentHistoryJson!);
+        if (history.isNotEmpty) {
+          firstInstallment =
+              (history[0]['amount'] as num?)?.toDouble() ?? 0;
+        }
+      } catch (_) {}
+    }
+
+    return _studentCard(
+      context: context,
+      student: student,
+      isDark: isDark,
+      index: index,
+      subtitle: Row(
+        children: [
+          _miniChip(
+            label: 'Reg: ${_fmt.format(firstInstallment)}',
+            color: AppTheme.primaryBlue,
+          ),
+          const SizedBox(width: 6),
+          _miniChip(
+            label: 'Total: ${_fmt.format(student.totalFee)}',
+            color: Colors.purple,
+          ),
+        ],
+      ),
+      trailing: _feeBadge(student),
+    );
+  }
+
+  // ── Tab 2 — Defaulters ─────────────────────────────────────────────────────
+
+  Widget _buildDefaultersTab(bool isDark) {
+    final totalPending =
+        _defaulters.fold<double>(0, (s, st) => s + st.feeRemaining);
+
+    return CustomScrollView(
+      slivers: [
+        SliverToBoxAdapter(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+            child: Column(
+              children: [
+                Row(
+                  children: [
+                    Expanded(
+                      child: _summaryCard(
+                        label: 'Total Pending',
+                        amount: totalPending,
+                        icon: Icons.warning_amber_rounded,
+                        color: Colors.orange,
+                        isDark: isDark,
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: _summaryCard(
+                        label: 'Defaulters',
+                        amount: null,
+                        icon: Icons.person_off_rounded,
+                        color: Colors.red,
+                        isDark: isDark,
+                        valueText: '${_defaulters.length} students',
+                      ),
+                    ),
+                  ],
+                ).animate().fadeIn(duration: 400.ms).slideY(begin: -0.05),
+                const SizedBox(height: 8),
+              ],
+            ),
+          ),
+        ),
+        if (_defaulters.isEmpty)
+          SliverFillRemaining(
+            child: Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const Icon(Icons.check_circle_rounded,
+                      size: 72, color: Colors.green),
+                  const SizedBox(height: 16),
+                  Text(
+                    'No Defaulters! 🎉',
+                    style: GoogleFonts.poppins(
+                        fontSize: 20, fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    'All students on this date have\npaid their fees in full.',
+                    textAlign: TextAlign.center,
+                    style: GoogleFonts.poppins(
+                        fontSize: 13, color: Colors.grey[600]),
+                  ),
+                ],
+              ),
+            ),
+          )
+        else
+          SliverPadding(
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
+            sliver: SliverList(
+              delegate: SliverChildBuilderDelegate(
+                (context, index) {
+                  final student = _defaulters[index];
+                  return _defaulterCard(student, isDark, index);
+                },
+                childCount: _defaulters.length,
+              ),
+            ),
+          ),
+      ],
+    );
+  }
+
+  Widget _defaulterCard(StudentModel student, bool isDark, int index) {
+    // Next installment: treat feeRemaining as the amount due next
+    final nextInstallment = student.feeRemaining;
+
+    return _studentCard(
+      context: context,
+      student: student,
+      isDark: isDark,
+      index: index,
+      subtitle: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const SizedBox(height: 4),
+          Row(
+            children: [
+              _miniChip(
+                label: 'Paid: ${_fmt.format(student.feeSubmitted)}',
+                color: Colors.green,
+              ),
+              const SizedBox(width: 6),
+              _miniChip(
+                label: 'Due: ${_fmt.format(student.feeRemaining)}',
+                color: Colors.red,
+              ),
+            ],
+          ),
+          const SizedBox(height: 6),
+          Container(
+            padding:
+                const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+            decoration: BoxDecoration(
+              color: Colors.orange.withValues(alpha: 0.12),
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(
+                  color: Colors.orange.withValues(alpha: 0.4), width: 1),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(Icons.schedule_rounded,
+                    size: 13, color: Colors.orange),
+                const SizedBox(width: 5),
+                Text(
+                  'Next Installment Due: ${_fmt.format(nextInstallment)}',
+                  style: GoogleFonts.poppins(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w600,
+                    color: Colors.orange[800],
                   ),
                 ),
               ],
             ),
           ),
-          
-          // Student List
-          Expanded(
-            child: record.students.isEmpty
-                ? const Center(child: Text('No students found.'))
-                : ListView.builder(
-                    padding: const EdgeInsets.all(16),
-                    itemCount: record.students.length,
-                    itemBuilder: (context, index) {
-                      final student = record.students[index];
-                      return _buildStudentCard(context, student, isDark);
-                    },
+        ],
+      ),
+      trailing: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+        decoration: BoxDecoration(
+          color: Colors.red.withValues(alpha: 0.1),
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: Text(
+          'PENDING',
+          style: GoogleFonts.poppins(
+            fontSize: 10,
+            fontWeight: FontWeight.bold,
+            color: Colors.red,
+          ),
+        ),
+      ),
+    );
+  }
+
+  // ── Tab 3 — Collected ──────────────────────────────────────────────────────
+
+  Widget _buildCollectedTab(bool isDark) {
+    final paidList = _paidOnDate;
+    final totalCollectedOnDate =
+        paidList.fold<double>(0, (s, st) => s + _amountPaidOnDate(st));
+
+    return CustomScrollView(
+      slivers: [
+        SliverToBoxAdapter(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+            child: Column(
+              children: [
+                Row(
+                  children: [
+                    Expanded(
+                      child: _summaryCard(
+                        label: 'Collected on this Day',
+                        amount: totalCollectedOnDate,
+                        icon: Icons.payments_rounded,
+                        color: Colors.green,
+                        isDark: isDark,
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: _summaryCard(
+                        label: 'Payments Received',
+                        amount: null,
+                        icon: Icons.receipt_rounded,
+                        color: Colors.teal,
+                        isDark: isDark,
+                        valueText: '${paidList.length} students',
+                      ),
+                    ),
+                  ],
+                ).animate().fadeIn(duration: 400.ms).slideY(begin: -0.05),
+                const SizedBox(height: 8),
+              ],
+            ),
+          ),
+        ),
+        if (paidList.isEmpty)
+          SliverFillRemaining(
+            child: Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(Icons.money_off_rounded,
+                      size: 72, color: Colors.grey.withValues(alpha: 0.5)),
+                  const SizedBox(height: 16),
+                  Text(
+                    'No Payments on this Date',
+                    style: GoogleFonts.poppins(
+                        fontSize: 18, fontWeight: FontWeight.bold),
                   ),
+                  const SizedBox(height: 8),
+                  Text(
+                    'No payment history entries\nwere recorded on this day.',
+                    textAlign: TextAlign.center,
+                    style: GoogleFonts.poppins(
+                        fontSize: 13, color: Colors.grey[600]),
+                  ),
+                ],
+              ),
+            ),
+          )
+        else
+          SliverPadding(
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
+            sliver: SliverList(
+              delegate: SliverChildBuilderDelegate(
+                (context, index) {
+                  final student = paidList[index];
+                  final amountPaid = _amountPaidOnDate(student);
+                  return _collectedCard(student, amountPaid, isDark, index);
+                },
+                childCount: paidList.length,
+              ),
+            ),
+          ),
+      ],
+    );
+  }
+
+  Widget _collectedCard(
+      StudentModel student, double amountPaid, bool isDark, int index) {
+    // Which installment number was this payment?
+    int installmentNo = 1;
+    if (student.paymentHistoryJson != null &&
+        student.paymentHistoryJson!.isNotEmpty) {
+      try {
+        final List<dynamic> history = jsonDecode(student.paymentHistoryJson!);
+        for (var i = 0; i < history.length; i++) {
+          final map = history[i] as Map<String, dynamic>;
+          final date = DateTime.tryParse(map['date'] ?? '');
+          if (date != null &&
+              date.year == widget.record.date.year &&
+              date.month == widget.record.date.month &&
+              date.day == widget.record.date.day) {
+            installmentNo = i + 1;
+            break;
+          }
+        }
+      } catch (_) {}
+    }
+
+    return _studentCard(
+      context: context,
+      student: student,
+      isDark: isDark,
+      index: index,
+      subtitle: Row(
+        children: [
+          _miniChip(
+            label: 'Installment #$installmentNo',
+            color: Colors.teal,
+          ),
+          const SizedBox(width: 6),
+          _miniChip(
+            label: 'Balance: ${_fmt.format(student.feeRemaining)}',
+            color: student.feeRemaining > 0 ? Colors.red : Colors.green,
+          ),
+        ],
+      ),
+      trailing: Column(
+        crossAxisAlignment: CrossAxisAlignment.end,
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Text(
+            _fmt.format(amountPaid),
+            style: GoogleFonts.poppins(
+              fontSize: 14,
+              fontWeight: FontWeight.bold,
+              color: Colors.green[700],
+            ),
+          ),
+          Text(
+            'collected',
+            style: GoogleFonts.poppins(
+                fontSize: 10, color: Colors.grey[500]),
           ),
         ],
       ),
     );
   }
 
-  Widget _buildStudentCard(BuildContext context, StudentModel student, bool isDark) {
+  // ── Shared widgets ─────────────────────────────────────────────────────────
+
+  Widget _summaryCard({
+    required String label,
+    required double? amount,
+    required IconData icon,
+    required Color color,
+    required bool isDark,
+    String? valueText,
+  }) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: isDark ? AppTheme.darkCard : Colors.white,
+        borderRadius: BorderRadius.circular(18),
+        boxShadow: [
+          BoxShadow(
+            color: color.withValues(alpha: 0.12),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
+          ),
+        ],
+        border: Border.all(
+          color: color.withValues(alpha: 0.18),
+          width: 1,
+        ),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 40,
+            height: 40,
+            decoration: BoxDecoration(
+              color: color.withValues(alpha: 0.12),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Icon(icon, color: color, size: 20),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  label,
+                  maxLines: 2,
+                  style: GoogleFonts.poppins(
+                    fontSize: 11,
+                    color: isDark ? Colors.grey[400] : Colors.grey[600],
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  valueText ??
+                      (amount != null ? _fmt.format(amount) : '—'),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: GoogleFonts.poppins(
+                    fontSize: 15,
+                    fontWeight: FontWeight.bold,
+                    color: color,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _studentCard({
+    required BuildContext context,
+    required StudentModel student,
+    required bool isDark,
+    required int index,
+    required Widget subtitle,
+    required Widget trailing,
+  }) {
     return Card(
       margin: const EdgeInsets.only(bottom: 12),
-      elevation: 2,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      child: ListTile(
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      elevation: 0,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+        side: BorderSide(
+          color: isDark
+              ? Colors.white.withValues(alpha: 0.06)
+              : Colors.black.withValues(alpha: 0.06),
+          width: 1,
+        ),
+      ),
+      color: isDark ? AppTheme.darkCard : Colors.white,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(16),
         onTap: () {
           Navigator.push(
             context,
@@ -98,64 +678,125 @@ class DailyRecordDetailScreen extends StatelessWidget {
             ),
           );
         },
-        leading: Hero(
-          tag: 'daily_student_${student.id}',
-          child: Container(
-            width: 50,
-            height: 50,
-            decoration: BoxDecoration(
-              color: AppTheme.primaryBlue.withValues(alpha: 0.1),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(12),
-              child: student.profilePicUrl.isNotEmpty
-                  ? CachedNetworkImage(
-                      imageUrl: student.profilePicUrl,
-                      fit: BoxFit.cover,
-                      placeholder: (_, __) => const Center(
-                        child: SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2)),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Avatar
+              Hero(
+                tag: 'daily_detail_${student.id}_$index',
+                child: Container(
+                  width: 48,
+                  height: 48,
+                  decoration: BoxDecoration(
+                    color: AppTheme.primaryBlue.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(14),
+                    child: student.profilePicUrl.isNotEmpty
+                        ? CachedNetworkImage(
+                            imageUrl: student.profilePicUrl,
+                            fit: BoxFit.cover,
+                            placeholder: (_, __) => const Center(
+                              child: SizedBox(
+                                  width: 20,
+                                  height: 20,
+                                  child: CircularProgressIndicator(
+                                      strokeWidth: 2)),
+                            ),
+                            errorWidget: (_, __, ___) => const Icon(
+                                Icons.person_rounded,
+                                color: AppTheme.primaryBlue),
+                          )
+                        : Center(
+                            child: Text(
+                              student.initials.isNotEmpty
+                                  ? student.initials
+                                  : 'S',
+                              style: GoogleFonts.poppins(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 18,
+                                color: AppTheme.primaryBlue,
+                              ),
+                            ),
+                          ),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 12),
+              // Name + subtitle
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      student.name,
+                      style: GoogleFonts.poppins(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 14,
+                        color: isDark ? Colors.white : const Color(0xFF1D1D1F),
                       ),
-                      errorWidget: (_, __, ___) => const Icon(Icons.person_rounded, color: AppTheme.primaryBlue),
-                    )
-                  : Center(
-                      child: Text(
-                        student.initials.isNotEmpty ? student.initials : 'S',
-                        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 20, color: AppTheme.primaryBlue),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    Text(
+                      '${student.classType} — ${student.grade}',
+                      style: GoogleFonts.poppins(
+                        fontSize: 11,
+                        color: isDark
+                            ? Colors.grey[400]
+                            : const Color(0xFF64748B),
                       ),
                     ),
-            ),
+                    subtitle,
+                  ],
+                ),
+              ),
+              const SizedBox(width: 8),
+              trailing,
+            ],
           ),
         ),
-        title: Text(
-          student.name,
-          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
+      ),
+    )
+        .animate(delay: Duration(milliseconds: 50 * index))
+        .fadeIn(duration: 350.ms)
+        .slideX(begin: 0.04);
+  }
+
+  Widget _miniChip({required String label, required Color color}) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(6),
+      ),
+      child: Text(
+        label,
+        style: GoogleFonts.poppins(
+          fontSize: 10,
+          fontWeight: FontWeight.w600,
+          color: color,
         ),
-        subtitle: Padding(
-          padding: const EdgeInsets.only(top: 4.0),
-          child: Text(
-            'Collected: Rs. ${student.feeSubmitted.toStringAsFixed(0)}',
-            style: const TextStyle(fontWeight: FontWeight.w500),
-          ),
-        ),
-        trailing: _buildFeeBadge(student),
       ),
     );
   }
 
-  Widget _buildFeeBadge(StudentModel student) {
-    final bool isClear = student.feeRemaining <= 0;
+  Widget _feeBadge(StudentModel student) {
+    final isClear = student.feeRemaining <= 0;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
-        color: isClear ? Colors.green.withValues(alpha: 0.1) : Colors.red.withValues(alpha: 0.1),
+        color: isClear
+            ? Colors.green.withValues(alpha: 0.1)
+            : Colors.red.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(8),
       ),
       child: Text(
-        isClear ? 'SUBMITTED' : 'PENDING',
-        style: TextStyle(
+        isClear ? 'PAID' : 'PENDING',
+        style: GoogleFonts.poppins(
           fontSize: 10,
           fontWeight: FontWeight.bold,
           color: isClear ? Colors.green : Colors.red,

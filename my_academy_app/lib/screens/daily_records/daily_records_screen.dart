@@ -10,6 +10,7 @@ class DailyRecordData {
   final DateTime date;
   final int studentCount;
   final double totalCollected;
+  final double totalRegistrationAmount;
   final List<StudentModel> students;
 
   DailyRecordData({
@@ -17,6 +18,7 @@ class DailyRecordData {
     required this.studentCount,
     required this.totalCollected,
     required this.students,
+    this.totalRegistrationAmount = 0,
   });
 }
 
@@ -42,10 +44,12 @@ class _DailyRecordsScreenState extends State<DailyRecordsScreen> {
     List<DailyRecordData> records = [];
     grouped.forEach((date, students) {
       double totalCollected = students.fold(0.0, (total, s) => total + s.feeSubmitted);
+      double totalRegistrationAmount = students.fold(0.0, (total, s) => total + s.totalFee);
       records.add(DailyRecordData(
         date: date,
         studentCount: students.length,
         totalCollected: totalCollected,
+        totalRegistrationAmount: totalRegistrationAmount,
         students: students,
       ));
     });
