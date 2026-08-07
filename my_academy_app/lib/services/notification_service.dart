@@ -615,13 +615,15 @@ class NotificationService {
     if (!_initialized) await init();
     final exists = _notificationBox.values.any((value) => value['id'] == notification.id);
     if (!exists) {
-      try {
-        await _firestore.collection(_collection).doc(notification.id).set(notification.toMap());
-      } catch (_) {}
       await _notificationBox.put(notification.id, notification.toHiveMap());
       if (emitLocal) {
         _controller.add(_sortedNotifications([..._fromHive()]));
       }
+      unawaited(_firestore
+          .collection(_collection)
+          .doc(notification.id)
+          .set(notification.toMap())
+          .catchError((_) {}));
     }
   }
 

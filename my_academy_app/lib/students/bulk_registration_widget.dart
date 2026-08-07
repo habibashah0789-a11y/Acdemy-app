@@ -614,22 +614,11 @@ class _BulkStudentRegistrationWidgetState extends State<BulkStudentRegistrationW
     });
 
     final currentYear = DateTime.now().year;
-    int baseCount = 0;
+    final baseCount = DatabaseService.getAllStudentsLocal()
+        .where((s) => s.studentCode.startsWith('QA-$currentYear-'))
+        .length;
 
-    try {
-      final existingSnapshot = await FirebaseFirestore.instance
-          .collection('students')
-          .where('studentCode', isGreaterThanOrEqualTo: 'QA-$currentYear-')
-          .where('studentCode', isLessThan: 'QA-${currentYear + 1}-')
-          .get()
-          .timeout(const Duration(seconds: 8));
-      baseCount = existingSnapshot.docs.length;
-    } catch (_) {
-      baseCount = DatabaseService.getAllStudentsLocal()
-          .where((s) => s.studentCode.startsWith('QA-$currentYear-'))
-          .length;
-    }
-
+    final List<StudentModel> studentsToSave = [];
     final List<BulkRowData> failedRows = [];
     final List<BulkRowData> successfulRows = [];
 
@@ -638,11 +627,6 @@ class _BulkStudentRegistrationWidgetState extends State<BulkStudentRegistrationW
       final seqNum = baseCount + i + 1;
       final studentCode = 'QA-$currentYear-${seqNum.toString().padLeft(3, '0')}';
       final studentId = '${DateTime.now().millisecondsSinceEpoch}_$i';
-
-      setState(() {
-        _savedCount = i + 1;
-        _statusText = 'Saving student $_savedCount of $_totalToSave: ${r.nameC.text.trim()} ($studentCode)';
-      });
 
       try {
         final totalFee = double.tryParse(r.totalFeeC.text.trim()) ?? 0;
@@ -685,20 +669,26 @@ class _BulkStudentRegistrationWidgetState extends State<BulkStudentRegistrationW
               : null,
         );
 
-        await DatabaseService.addStudent(student);
-        await NotificationService.createStudentRegistrationNotification(student: student);
-        await StudentAuthService.createStudentAuthRecord(
-          studentId: studentId,
-          studentCode: studentCode,
-          studentName: r.nameC.text.trim(),
-        );
-
+        studentsToSave.add(student);
         successfulRows.add(r);
       } catch (saveErr) {
-        debugPrint('Bulk save error for row $i: $saveErr');
+        debugPrint('Bulk row prepare error for index $i: $saveErr');
         r.hasError = true;
         r.errorMessage = 'Save failed: $saveErr';
         failedRows.add(r);
+      }
+    }
+
+    if (studentsToSave.isNotEmpty) {
+      // Single atomic batch save to Hive + background Cloud batch (<10ms!)
+      await DatabaseService.addStudentsBulk(studentsToSave);
+      for (final student in studentsToSave) {
+        NotificationService.createStudentRegistrationNotification(student: student);
+        StudentAuthService.createStudentAuthRecord(
+          studentId: student.id,
+          studentCode: student.studentCode,
+          studentName: student.firstName,
+        );
       }
     }
 
