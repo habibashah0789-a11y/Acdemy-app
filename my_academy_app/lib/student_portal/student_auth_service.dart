@@ -1,13 +1,24 @@
 import 'dart:convert';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:crypto/crypto.dart';
+import 'package:device_info_plus/device_info_plus.dart';
 import 'package:flutter/foundation.dart';
 import 'package:hive/hive.dart';
 import 'package:uuid/uuid.dart';
 import '../models/student_model.dart';
 
 /// Handles all student-specific authentication logic using Firestore.
-/// Multi-tier lookup ensures students can log in reliably via QR code or Student ID.
+///
+/// Security model:
+///   • Login requires BOTH a valid Student Unique ID AND the official QR token
+///     issued by the academy.  Neither alone is sufficient.
+///   • A student account is bound to the first device that successfully logs in.
+///     Subsequent logins from different devices are blocked until an admin resets
+///     the binding via [resetDeviceBinding].
+///   • The Hive session persists across admin edits.  The student portal
+///     auto-refreshes data from Firestore without requiring a new login.
+///   • The following identity fields are NEVER modified by this service after
+///     creation: studentId, studentCode, qrToken, qrTokenHash, createdAt.
 class StudentAuthService {
   static final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   static const String _sessionBoxName = 'student_session';
@@ -23,9 +34,84 @@ class StudentAuthService {
     return sha256.convert(utf8.encode('QA-QR:$token')).toString();
   }
 
+  // ── Device ID Resolution ────────────────────────────────────────────────
+
+  /// Returns a stable, unique identifier for the current device.
+  ///
+  /// Priority order:
+  ///   1. Native device ID via [DeviceInfoPlugin] (Android/iOS/Windows).
+  ///   2. Persisted UUID stored in the session Hive box (all other platforms).
+  ///
+  /// This ID is written to `student_auth` on the first successful login and
+  /// checked on every subsequent login to enforce the one-device policy.
+  static Future<String> getDeviceId() async {
+    try {
+      final plugin = DeviceInfoPlugin();
+
+      if (!kIsWeb) {
+        if (defaultTargetPlatform == TargetPlatform.android) {
+          final info = await plugin.androidInfo;
+          final id = info.id; // Unique hardware ID (changes on factory reset)
+          if (id.isNotEmpty) return 'android_$id';
+        } else if (defaultTargetPlatform == TargetPlatform.iOS) {
+          final info = await plugin.iosInfo;
+          final id = info.identifierForVendor ?? '';
+          if (id.isNotEmpty) return 'ios_$id';
+        } else if (defaultTargetPlatform == TargetPlatform.windows) {
+          final info = await plugin.windowsInfo;
+          final id = info.deviceId;
+          if (id.isNotEmpty) return 'win_$id';
+        } else if (defaultTargetPlatform == TargetPlatform.linux) {
+          final info = await plugin.linuxInfo;
+          final id = info.machineId ?? '';
+          if (id.isNotEmpty) return 'linux_$id';
+        } else if (defaultTargetPlatform == TargetPlatform.macOS) {
+          final info = await plugin.macOsInfo;
+          final id = info.systemGUID ?? '';
+          if (id.isNotEmpty) return 'mac_$id';
+        }
+      }
+    } catch (e) {
+      debugPrint('[StudentAuthService] getDeviceId native lookup failed: $e');
+    }
+
+    // Fallback: generate a stable UUID persisted in Hive
+    return _getOrCreateFallbackDeviceId();
+  }
+
+  static Future<String> _getOrCreateFallbackDeviceId() async {
+    try {
+      Box box;
+      if (Hive.isBoxOpen(_sessionBoxName)) {
+        box = Hive.box(_sessionBoxName);
+      } else {
+        box = await Hive.openBox(_sessionBoxName);
+      }
+      String? stored = box.get('device_id') as String?;
+      if (stored != null && stored.isNotEmpty) return stored;
+      final newId = 'fallback_${const Uuid().v4()}';
+      await box.put('device_id', newId);
+      return newId;
+    } catch (e) {
+      // Last resort — return a runtime-only UUID (won't persist, but won't crash)
+      debugPrint('[StudentAuthService] Fallback device ID generation error: $e');
+      return 'temp_${const Uuid().v4()}';
+    }
+  }
+
   // ── Student Login Flow ──────────────────────────────────────────────────
 
-  /// Performs robust student login with multi-tier lookup and fallback repair.
+  /// Performs secure student login with strict two-factor verification.
+  ///
+  /// BOTH conditions must be met to log in:
+  ///   1. [studentCode] must match a known student in `student_auth`.
+  ///   2. [scannedQrToken] must match the QR token stored for that student.
+  ///
+  /// One-device policy:
+  ///   • If `linkedDeviceId` is empty in `student_auth`, the current device is
+  ///     bound on successful login.
+  ///   • If `linkedDeviceId` is set and differs from the current device, login
+  ///     is rejected.  The admin must call [resetDeviceBinding] first.
   static Future<String> loginStudent({
     required String studentCode,
     required String scannedQrToken,
@@ -34,8 +120,19 @@ class StudentAuthService {
     final cleanCode = rawCode.toUpperCase();
     final rawToken = scannedQrToken.trim();
 
-    if (rawCode.isEmpty) {
+    // ── Basic Input Validation ──
+    if (cleanCode.isEmpty) {
       throw Exception('Please enter your Student ID.');
+    }
+
+    // Strict requirement: a QR token must actually be provided.
+    // An empty token, or one that is simply the same string as the student code,
+    // is not accepted — the student must scan the official academy QR code.
+    if (rawToken.isEmpty || rawToken.toUpperCase() == cleanCode) {
+      throw Exception(
+        'QR Code is required.\n'
+        'Please scan your official academy QR code to log in.',
+      );
     }
 
     debugPrint('[StudentAuthService] Initiating login for Student Code: "$cleanCode"');
@@ -102,7 +199,6 @@ class StudentAuthService {
     // ── Tier 3: Search main students collection & auto-provision student_auth ──
     if (studentId == null) {
       try {
-        // Query students by studentCode
         final studentQuery = await _firestore
             .collection('students')
             .where('studentCode', isEqualTo: cleanCode)
@@ -115,7 +211,6 @@ class StudentAuthService {
         if (studentQuery.docs.isNotEmpty) {
           matchedStudentDoc = studentQuery.docs.first;
         } else {
-          // Direct doc ID check in students
           final directStudentDoc = await _firestore
               .collection('students')
               .doc(rawCode)
@@ -129,9 +224,12 @@ class StudentAuthService {
         if (matchedStudentDoc != null && matchedStudentDoc.exists) {
           studentId = matchedStudentDoc.id;
           final sData = matchedStudentDoc.data() ?? {};
-          final sName = '${sData['firstName'] ?? sData['name'] ?? ''} ${sData['lastName'] ?? ''}'.trim();
-          
-          debugPrint('[StudentAuthService] Found student in main collection. Provisioning student_auth...');
+          final sName =
+              '${sData['firstName'] ?? sData['name'] ?? ''} ${sData['lastName'] ?? ''}'
+                  .trim();
+
+          debugPrint(
+              '[StudentAuthService] Found student in main collection. Provisioning student_auth...');
           final createdAuth = await createStudentAuthRecord(
             studentId: studentId,
             studentCode: cleanCode,
@@ -151,40 +249,66 @@ class StudentAuthService {
     }
 
     if (studentId == null || authData == null) {
-      throw Exception('Student ID not found. Please verify your Student ID and try again.');
+      throw Exception(
+          'Student ID not found. Please verify your Student ID and try again.');
     }
 
     // ── Account Status Check ──
     final accountStatus = authData['accountStatus'] as String? ?? 'active';
     if (accountStatus.toLowerCase() != 'active') {
-      throw Exception('This student account is inactive. Please contact the academy administration.');
+      throw Exception(
+          'This student account is inactive. Please contact the academy administration.');
     }
 
-    // ── QR Token / Student ID Verification ──
+    // ── Strict QR Token Verification ──────────────────────────────────────
+    // BOTH the student code AND the QR token must be valid.
+    // There are NO fallbacks or shortcuts — this is intentional.
     final storedTokenHash = authData['qrTokenHash'] as String? ?? '';
     final storedPlainToken = authData['qrToken'] as String? ?? '';
     final providedTokenHash = hashQrToken(rawToken);
+
+    // If no token has ever been set for this student, block login until the
+    // admin generates one (this prevents uninitialized accounts from being used).
+    if (storedTokenHash.isEmpty && storedPlainToken.isEmpty) {
+      throw Exception(
+        'No QR code has been issued for this account yet.\n'
+        'Please contact the academy to receive your official QR code.',
+      );
+    }
 
     bool isTokenValid = false;
     if (storedTokenHash.isNotEmpty && storedTokenHash == providedTokenHash) {
       isTokenValid = true;
     } else if (storedPlainToken.isNotEmpty && storedPlainToken == rawToken) {
       isTokenValid = true;
-    } else if (rawToken.toUpperCase() == cleanCode) {
-      // Manual Student ID entry access
-      isTokenValid = true;
-    } else if (storedTokenHash.isEmpty && storedPlainToken.isEmpty) {
-      // Uninitialized token fallback
-      isTokenValid = true;
     }
 
     if (!isTokenValid) {
-      throw Exception('Invalid QR Code or Student ID. Please scan your official academy QR code.');
+      throw Exception(
+        'Invalid QR Code. Please scan the official QR code issued by the academy.\n'
+        'If you have lost your QR code, contact the administration.',
+      );
     }
 
-    // Ensure studentId matches document ID in main students collection
+    // ── One-Device Policy Enforcement ─────────────────────────────────────
+    // Resolve the current device ID before any further checks.
+    final currentDeviceId = await getDeviceId();
+
+    final storedDeviceId = authData['linkedDeviceId'] as String? ?? '';
+
+    if (storedDeviceId.isNotEmpty && storedDeviceId != currentDeviceId) {
+      // This account is already bound to a different device.
+      throw Exception(
+        'This account is linked to another device.\n'
+        'Only one device is allowed per student account.\n'
+        'If you need to use a new device, ask the academy admin to reset your device binding.',
+      );
+    }
+
+    // ── Ensure studentId Matches Main Students Collection ─────────────────
     try {
-      final sDoc = await _firestore.collection('students').doc(studentId).get();
+      final sDoc =
+          await _firestore.collection('students').doc(studentId).get();
       if (!sDoc.exists) {
         final queryS = await _firestore
             .collection('students')
@@ -196,20 +320,53 @@ class StudentAuthService {
         }
       }
     } catch (e) {
-      debugPrint('[StudentAuthService] Final studentId verification error: $e');
+      debugPrint(
+          '[StudentAuthService] Final studentId verification error: $e');
     }
 
-    // ── Save Session to Local Hive Storage ──
     final String validStudentId = studentId!;
-    await _saveSession(studentId: validStudentId, studentCode: cleanCode);
 
-    debugPrint('[StudentAuthService] Login successful for studentId: $validStudentId');
+    // ── Bind Device on First Login ────────────────────────────────────────
+    // Only write if the device is not yet bound (storedDeviceId is empty).
+    // This NEVER modifies studentCode, qrToken, qrTokenHash, or createdAt.
+    if (storedDeviceId.isEmpty) {
+      try {
+        await _firestore
+            .collection('student_auth')
+            .doc(validStudentId)
+            .update({
+          'linkedDeviceId': currentDeviceId,
+          'deviceLinkedAt': FieldValue.serverTimestamp(),
+        }).timeout(const Duration(seconds: 6));
+        debugPrint(
+            '[StudentAuthService] Device bound: ${_maskId(currentDeviceId)}');
+      } catch (e) {
+        // Non-fatal: device binding is best-effort on first login.
+        // The account will be bound on the next successful login.
+        debugPrint('[StudentAuthService] Device binding write failed: $e');
+      }
+    }
+
+    // ── Save Session to Local Hive Storage ────────────────────────────────
+    await _saveSession(
+      studentId: validStudentId,
+      studentCode: cleanCode,
+      deviceId: currentDeviceId,
+    );
+
+    debugPrint(
+        '[StudentAuthService] Login successful for studentId: $validStudentId');
     return validStudentId;
   }
 
   // ── Session Management ──────────────────────────────────────────────────
 
-  /// Fetches current [StudentModel] using local session info with fallback resolution logic.
+  /// Fetches current [StudentModel] using local session info with fallback
+  /// resolution logic.
+  ///
+  /// After a successful fetch this method does NOT overwrite the session's
+  /// `loginTime` or `deviceId` — only `studentId` is corrected if a mismatch
+  /// is detected (legacy data resolution).
   static Future<StudentModel?> fetchCurrentStudent({
     required String studentId,
     String? studentCode,
@@ -226,14 +383,14 @@ class StudentAuthService {
           return StudentModel.fromFirestore(doc);
         }
       } catch (e) {
-        debugPrint('[StudentAuthService] Direct fetch failed for $studentId: $e');
+        debugPrint(
+            '[StudentAuthService] Direct fetch failed for $studentId: $e');
       }
     }
 
-    // 2. Query by studentCode if available or fallback
-    final codeToQuery = (studentCode != null && studentCode.isNotEmpty)
-        ? studentCode
-        : studentId;
+    // 2. Query by studentCode if available
+    final codeToQuery =
+        (studentCode != null && studentCode.isNotEmpty) ? studentCode : studentId;
 
     if (codeToQuery.isNotEmpty) {
       try {
@@ -247,7 +404,10 @@ class StudentAuthService {
 
         if (queryUpper.docs.isNotEmpty) {
           final matchedDoc = queryUpper.docs.first;
-          await _saveSession(studentId: matchedDoc.id, studentCode: upperCode);
+          // Update only the studentId in the session if it has changed (legacy fix).
+          // Do NOT overwrite loginTime, deviceId, or studentCode.
+          await _updateSessionStudentId(
+              newStudentId: matchedDoc.id, studentCode: upperCode);
           return StudentModel.fromFirestore(matchedDoc);
         }
 
@@ -260,11 +420,13 @@ class StudentAuthService {
 
         if (queryRaw.docs.isNotEmpty) {
           final matchedDoc = queryRaw.docs.first;
-          await _saveSession(studentId: matchedDoc.id, studentCode: codeToQuery);
+          await _updateSessionStudentId(
+              newStudentId: matchedDoc.id, studentCode: codeToQuery);
           return StudentModel.fromFirestore(matchedDoc);
         }
       } catch (e) {
-        debugPrint('[StudentAuthService] Query student by code failed: $e');
+        debugPrint(
+            '[StudentAuthService] Query student by code failed: $e');
       }
     }
 
@@ -279,8 +441,13 @@ class StudentAuthService {
         final data = doc.data();
         final sCode = data['studentCode']?.toString().toUpperCase() ?? '';
         final sId = data['id']?.toString() ?? doc.id;
-        if (doc.id == studentId || sId == studentId || (studentCode != null && sCode == studentCode.toUpperCase())) {
-          await _saveSession(studentId: doc.id, studentCode: sCode.isNotEmpty ? sCode : codeToQuery);
+        if (doc.id == studentId ||
+            sId == studentId ||
+            (studentCode != null &&
+                sCode == studentCode.toUpperCase())) {
+          await _updateSessionStudentId(
+              newStudentId: doc.id,
+              studentCode: sCode.isNotEmpty ? sCode : codeToQuery);
           return StudentModel.fromFirestore(doc);
         }
       }
@@ -293,9 +460,11 @@ class StudentAuthService {
 
   // ── Session Management ──────────────────────────────────────────────────
 
+  /// Saves a full session (called only on login).
   static Future<void> _saveSession({
     required String studentId,
     required String studentCode,
+    required String deviceId,
   }) async {
     try {
       Box sessionBox;
@@ -307,10 +476,40 @@ class StudentAuthService {
       await sessionBox.put(_sessionKey, {
         'studentId': studentId,
         'studentCode': studentCode,
+        'deviceId': deviceId,
         'loginTime': DateTime.now().toIso8601String(),
       });
     } catch (e) {
       debugPrint('Failed to save student session: $e');
+    }
+  }
+
+  /// Updates only the `studentId` field in the existing session when a
+  /// legacy mismatch is detected.  All other session fields (loginTime,
+  /// studentCode, deviceId) remain untouched.
+  static Future<void> _updateSessionStudentId({
+    required String newStudentId,
+    required String studentCode,
+  }) async {
+    try {
+      Box sessionBox;
+      if (Hive.isBoxOpen(_sessionBoxName)) {
+        sessionBox = Hive.box(_sessionBoxName);
+      } else {
+        sessionBox = await Hive.openBox(_sessionBoxName);
+      }
+      final existing = sessionBox.get(_sessionKey);
+      if (existing != null) {
+        final existingMap = Map<String, dynamic>.from(existing);
+        if (existingMap['studentId'] != newStudentId) {
+          existingMap['studentId'] = newStudentId;
+          await sessionBox.put(_sessionKey, existingMap);
+          debugPrint(
+              '[StudentAuthService] Session studentId corrected to $newStudentId');
+        }
+      }
+    } catch (e) {
+      debugPrint('[StudentAuthService] Failed to update session studentId: $e');
     }
   }
 
@@ -338,7 +537,9 @@ class StudentAuthService {
       } else {
         sessionBox = await Hive.openBox(_sessionBoxName);
       }
-      await sessionBox.clear();
+      // Clear session key but preserve the persisted device_id so that the
+      // device binding check still works if the student re-logs in on this device.
+      await sessionBox.delete(_sessionKey);
     } catch (e) {
       debugPrint('Session clear error: $e');
     }
@@ -346,18 +547,25 @@ class StudentAuthService {
 
   // ── Admin Utilities ──────────────────────────────────────────────────────
 
-  static Future<Map<String, dynamic>?> getStudentAuthInfo(String studentId) async {
+  static Future<Map<String, dynamic>?> getStudentAuthInfo(
+      String studentId) async {
     try {
-      final doc = await _firestore.collection('student_auth').doc(studentId).get();
+      final doc =
+          await _firestore.collection('student_auth').doc(studentId).get();
       if (doc.exists) {
         return doc.data();
       }
     } catch (e) {
-      debugPrint('[StudentAuthService] Error fetching auth info for $studentId: $e');
+      debugPrint(
+          '[StudentAuthService] Error fetching auth info for $studentId: $e');
     }
     return null;
   }
 
+  /// Creates (or merges into) the `student_auth` document for a new student.
+  ///
+  /// Uses [SetOptions(merge: true)] so that if a document already exists,
+  /// existing identity fields are preserved and only provided fields are written.
   static Future<Map<String, String>> createStudentAuthRecord({
     required String studentId,
     required String studentCode,
@@ -389,27 +597,39 @@ class StudentAuthService {
     };
   }
 
+  /// Regenerates the QR token for an existing student.
+  ///
+  /// Only [qrToken], [qrTokenHash], and [qrTokenUpdatedAt] are written.
+  /// Identity fields (studentId, studentCode, createdAt) and device binding
+  /// (linkedDeviceId, deviceLinkedAt) are NEVER touched.
   static Future<String> generateAndStoreQrToken(String studentId) async {
     final plainToken = generateQrToken();
     final hash = hashQrToken(plainToken);
-    await _firestore.collection('student_auth').doc(studentId).set(
-      {
-        'qrToken': plainToken,
-        'qrTokenHash': hash,
-        'qrTokenUpdatedAt': FieldValue.serverTimestamp(),
-      },
-      SetOptions(merge: true),
-    );
+    await _firestore.collection('student_auth').doc(studentId).update({
+      'qrToken': plainToken,
+      'qrTokenHash': hash,
+      'qrTokenUpdatedAt': FieldValue.serverTimestamp(),
+    });
     return plainToken;
   }
 
+  /// Resets the device binding for a student so they can log in from a new device.
+  ///
+  /// This does NOT change studentCode, qrToken, or any other identity field.
   static Future<void> resetDeviceBinding(String studentId) async {
-    await _firestore.collection('student_auth').doc(studentId).set(
-      {
-        'linkedDeviceId': '',
-        'deviceLinkedAt': null,
-      },
-      SetOptions(merge: true),
-    );
+    await _firestore.collection('student_auth').doc(studentId).update({
+      'linkedDeviceId': '',
+      'deviceLinkedAt': null,
+    });
+    debugPrint(
+        '[StudentAuthService] Device binding reset for studentId: $studentId');
+  }
+
+  // ── Private Helpers ──────────────────────────────────────────────────────
+
+  /// Masks an ID for safe debug logging (e.g. `abcd****wxyz`).
+  static String _maskId(String id) {
+    if (id.length <= 8) return '****';
+    return '${id.substring(0, 4)}****${id.substring(id.length - 4)}';
   }
 }

@@ -43,8 +43,10 @@ class _StudentMainWrapperState extends State<StudentMainWrapper> {
     return Scaffold(
       body: PageView(
         controller: _pageController,
-        physics: const NeverScrollableScrollPhysics(),
-        onPageChanged: (index) => setState(() => _currentIndex = index),
+        physics: const ClampingScrollPhysics(),
+        onPageChanged: (index) {
+          setState(() => _currentIndex = index);
+        },
         children: _screens,
       ),
       bottomNavigationBar: Container(

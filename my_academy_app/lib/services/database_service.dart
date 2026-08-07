@@ -42,13 +42,17 @@ class DatabaseService {
   }
 
   static Future<bool> updateStudent(StudentModel student) async {
-    await _studentBox.put(student.id, student);
+    // Set updatedAt before saving locally
+    final updatedStudent = student.copyWith(updatedAt: DateTime.now());
+    await _studentBox.put(updatedStudent.id, updatedStudent);
     if (FirebaseAuth.instance.currentUser != null) {
       try {
+        // Use toUpdateMap() to ensure identity fields (id, studentCode, createdAt)
+        // are NEVER overwritten during an update.
         await _firestore
             .collection('students')
-            .doc(student.id)
-            .update(student.toMap())
+            .doc(updatedStudent.id)
+            .update(updatedStudent.toUpdateMap())
             .timeout(const Duration(seconds: 4));
       } catch (e) {
         debugPrint('Firestore update student failed: $e');

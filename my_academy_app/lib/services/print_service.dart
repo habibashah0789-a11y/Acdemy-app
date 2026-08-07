@@ -16,7 +16,15 @@ import '../student_portal/student_auth_service.dart';
 
 class PrintService {
   static Future<void> printStudentReport(StudentModel student) async {
-    final authInfo = await StudentAuthService.getStudentAuthInfo(student.id);
+    // Use a short timeout so a slow/offline Firestore call never hangs the print button.
+    Map<String, dynamic>? authInfo;
+    try {
+      authInfo = await StudentAuthService.getStudentAuthInfo(student.id)
+          .timeout(const Duration(seconds: 3));
+    } catch (_) {
+      // Firestore unavailable or timed-out — fall back to the QR data on the model.
+      authInfo = null;
+    }
     final qrCodeData = authInfo?['qrToken']?.toString() ?? student.qrData;
 
     final doc = pw.Document();
@@ -35,7 +43,9 @@ class PrintService {
       try {
         final url = student.profilePicUrl;
         if (url.startsWith('http://') || url.startsWith('https://')) {
-          profileImage = await networkImage(url);
+          // Limit network fetch to 5 s so a bad URL never hangs the print button.
+          profileImage = await networkImage(url)
+              .timeout(const Duration(seconds: 5));
         } else if (url.startsWith('data:image') ||
             (!url.contains('/') &&
                 !url.contains('\\') &&
@@ -55,6 +65,7 @@ class PrintService {
         }
       } catch (e) {
         debugPrint('Error loading profile image for PDF: $e');
+        profileImage = null; // Proceed without image rather than hanging.
       }
     }
 
@@ -329,11 +340,19 @@ class PrintService {
             '${student.name.replaceAll(' ', '_')}_record.pdf';
         final file = io.File('${tempDir.path}\\$fileName');
         await file.writeAsBytes(bytes);
+        // Open PDF — try launchUrl first, then cmd, never hang.
+        bool opened = false;
         try {
           final uri = Uri.file(file.path);
-          await launchUrl(uri);
-        } catch (e) {
-          await io.Process.start('cmd', ['/c', 'start', '', file.path]);
+          opened = await launchUrl(uri)
+              .timeout(const Duration(seconds: 6), onTimeout: () => false);
+        } catch (_) {}
+        if (!opened) {
+          try {
+            await io.Process.start('cmd', ['/c', 'start', '', file.path]);
+          } catch (e) {
+            debugPrint('Process.start fallback error: $e');
+          }
         }
       } catch (e) {
         debugPrint('Windows print fallback error: $e');

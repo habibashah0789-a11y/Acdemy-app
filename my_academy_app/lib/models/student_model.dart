@@ -282,7 +282,7 @@ class StudentModel extends HiveObject {
     }
   }
 
-  // Convert to Firestore map
+  // Convert to Firestore map (full — used for new document creation / sync)
   Map<String, dynamic> toMap() {
     return {
       'id': id,
@@ -307,6 +307,42 @@ class StudentModel extends HiveObject {
       'mathFee': mathFee,
       'createdAt': Timestamp.fromDate(createdAt),
       'updatedAt': updatedAt != null ? Timestamp.fromDate(updatedAt!) : null,
+      'isActive': isActive,
+      'subjectPaymentsJson': subjectPaymentsJson,
+      'paymentHistoryJson': paymentHistoryJson,
+      'subjectSchedulesJson': subjectSchedulesJson,
+    };
+  }
+
+  /// Safe update map — excludes permanent identity fields that must NEVER be
+  /// overwritten once a student document is created.
+  /// Use this in [DatabaseService.updateStudent()] instead of [toMap()].
+  ///
+  /// Fields intentionally omitted:
+  ///   • `id`           — Firestore document ID (immutable)
+  ///   • `studentCode`  — Student unique login code (immutable)
+  ///   • `createdAt`    — Original registration timestamp (immutable)
+  Map<String, dynamic> toUpdateMap() {
+    return {
+      'firstName': firstName,
+      'lastName': lastName,
+      'fatherName': fatherName,
+      'phone': phone,
+      'email': email,
+      'schedule': schedule,
+      'feeSubmitted': feeSubmitted,
+      'feeRemaining': feeRemaining,
+      'biologyFee': biologyFee,
+      'physicsFee': physicsFee,
+      'chemistryFee': chemistryFee,
+      'englishFee': englishFee,
+      'profilePicUrl': profilePicUrl,
+      'enrollmentStatus': enrollmentStatus,
+      'classType': classType,
+      'grade': grade,
+      'subject': subject,
+      'mathFee': mathFee,
+      'updatedAt': updatedAt != null ? Timestamp.fromDate(updatedAt!) : FieldValue.serverTimestamp(),
       'isActive': isActive,
       'subjectPaymentsJson': subjectPaymentsJson,
       'paymentHistoryJson': paymentHistoryJson,

@@ -26,14 +26,16 @@ class FeeDefaultersPrintService {
     final academyAddress = profile['address']?.toString() ?? '';
     final academyPhone = profile['phone']?.toString() ?? '';
 
-    // ── Load academy logo ──────────────────────────────────────────────────
+    // ── Load academy logo ───────────────────────────────────────────────
     pw.MemoryImage? logoImage;
     try {
-      final logoBytes =
-          await rootBundle.load('assets/images/Quaid Academy logo.png');
+      final logoBytes = await rootBundle
+          .load('assets/images/Quaid Academy logo.png')
+          .timeout(const Duration(seconds: 3));
       logoImage = pw.MemoryImage(logoBytes.buffer.asUint8List());
     } catch (e) {
       debugPrint('Error loading print logo: $e');
+      logoImage = null; // Continue without logo rather than hanging.
     }
 
     // ── Pagination: ~18 students per page ─────────────────────────────────
@@ -190,11 +192,19 @@ class FeeDefaultersPrintService {
             'fee_defaulters_${DateFormat('yyyyMMdd').format(now)}.pdf';
         final file = io.File('${tempDir.path}\\$fileName');
         await file.writeAsBytes(bytes);
+        // Open PDF — try launchUrl first, then cmd, never hang.
+        bool opened = false;
         try {
           final uri = Uri.file(file.path);
-          await launchUrl(uri);
-        } catch (e) {
-          await io.Process.start('cmd', ['/c', 'start', '', file.path]);
+          opened = await launchUrl(uri)
+              .timeout(const Duration(seconds: 6), onTimeout: () => false);
+        } catch (_) {}
+        if (!opened) {
+          try {
+            await io.Process.start('cmd', ['/c', 'start', '', file.path]);
+          } catch (e) {
+            debugPrint('Process.start fallback error: $e');
+          }
         }
       } catch (e) {
         debugPrint('Windows print fallback error: $e');
