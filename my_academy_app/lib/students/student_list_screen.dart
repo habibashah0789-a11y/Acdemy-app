@@ -1,10 +1,8 @@
+import 'dart:async';
+import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
-import 'package:cached_network_image/cached_network_image.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'dart:convert';
-import 'dart:io' as io;
-import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:hive_flutter/hive_flutter.dart';
 
 import 'student_detail_screen.dart';
@@ -14,6 +12,7 @@ import '../services/database_service.dart';
 import '../theme/app_theme.dart';
 import '../widgets/custom_card.dart';
 import '../widgets/empty_state_widget.dart';
+import '../widgets/student_avatar.dart';
 import '../utils/whatsapp_helper.dart';
 
 class StudentListScreen extends StatefulWidget {
@@ -26,6 +25,7 @@ class StudentListScreen extends StatefulWidget {
 class _StudentListScreenState extends State<StudentListScreen> {
   String _searchQuery = '';
   String _selectedGradeFilter = 'All';
+  Timer? _debounce;
 
   final TextEditingController _searchController = TextEditingController();
 
@@ -64,6 +64,7 @@ class _StudentListScreenState extends State<StudentListScreen> {
 
   @override
   void dispose() {
+    _debounce?.cancel();
     _searchController.dispose();
     super.dispose();
   }
@@ -91,8 +92,13 @@ class _StudentListScreenState extends State<StudentListScreen> {
                 TextField(
                   controller: _searchController,
                   onChanged: (value) {
-                    setState(() {
-                      _searchQuery = value;
+                    _debounce?.cancel();
+                    _debounce = Timer(const Duration(milliseconds: 200), () {
+                      if (mounted) {
+                        setState(() {
+                          _searchQuery = value;
+                        });
+                      }
                     });
                   },
                   decoration: InputDecoration(
@@ -218,69 +224,6 @@ class _StudentListScreenState extends State<StudentListScreen> {
     );
   }
 
-  Widget _buildAvatarImage(String url, String initials) {
-    if (url.isEmpty) {
-      return Center(
-        child: Text(
-          initials.isNotEmpty ? initials : 'S',
-          style: const TextStyle(
-            fontWeight: FontWeight.bold,
-            fontSize: 22,
-            color: AppTheme.primaryBlue,
-          ),
-        ),
-      );
-    }
-
-    if (url.startsWith('http://') || url.startsWith('https://')) {
-      return CachedNetworkImage(
-        imageUrl: url,
-        fit: BoxFit.cover,
-        placeholder: (_, __) => const Center(
-          child: SizedBox(
-            width: 24,
-            height: 24,
-            child: CircularProgressIndicator(strokeWidth: 2),
-          ),
-        ),
-        errorWidget: (_, __, ___) => const Center(
-          child: Icon(Icons.person_rounded, color: AppTheme.primaryBlue, size: 28),
-        ),
-      );
-    }
-
-    if (url.startsWith('data:image') ||
-        (!url.contains('/') && !url.contains('\\') && url.length > 100)) {
-      try {
-        final base64Str = url.contains(',') ? url.split(',').last : url;
-        final bytes = base64Decode(base64Str.trim());
-        return Image.memory(bytes, fit: BoxFit.cover);
-      } catch (_) {}
-    }
-
-    if (url.startsWith('blob:')) {
-      return Image.network(url, fit: BoxFit.cover);
-    }
-
-    if (!kIsWeb) {
-      try {
-        return Image.file(
-          io.File(url),
-          fit: BoxFit.cover,
-          errorBuilder: (context, error, stackTrace) {
-            return const Center(
-              child: Icon(Icons.person_rounded, color: AppTheme.primaryBlue, size: 28),
-            );
-          },
-        );
-      } catch (_) {}
-    }
-
-    return const Center(
-      child: Icon(Icons.person_rounded, color: AppTheme.primaryBlue, size: 28),
-    );
-  }
-
   Widget _buildStudentCard(
     StudentModel student,
     int index,
@@ -306,20 +249,10 @@ class _StudentListScreenState extends State<StudentListScreen> {
           children: [
             Hero(
               tag: 'student_${student.id}',
-              child: Container(
-                width: 56,
-                height: 56,
-                decoration: BoxDecoration(
-                  color: AppTheme.primaryBlue.withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(16),
-                ),
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(16),
-                  child: _buildAvatarImage(
-                    student.profilePicUrl,
-                    student.initials,
-                  ),
-                ),
+              child: StudentAvatar(
+                student: student,
+                size: 56,
+                isCircle: false,
               ),
             ),
             const SizedBox(width: 14),
@@ -413,7 +346,7 @@ class _StudentListScreenState extends State<StudentListScreen> {
             ),
           ],
         ),
-      ).animate().fadeIn(delay: (index * 40).ms).slideX(begin: 0.05),
+      ).animate().fadeIn(delay: (math.min(index, 5) * 40).ms).slideX(begin: 0.05),
     );
   }
 

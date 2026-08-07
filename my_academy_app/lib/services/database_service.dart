@@ -6,6 +6,7 @@ import 'package:firebase_storage/firebase_storage.dart';
 import 'package:hive/hive.dart';
 import '../models/student_model.dart';
 import '../models/recycled_student.dart';
+import '../utils/image_utils.dart';
 
 class DatabaseService {
   static final FirebaseFirestore _firestore = FirebaseFirestore.instance;
@@ -122,12 +123,22 @@ class DatabaseService {
   static Future<String?> uploadImage(Uint8List imageBytes, String folder) async {
     if (FirebaseAuth.instance.currentUser == null) return null;
     try {
+      // Compress & downsample image before uploading
+      final compressedBytes = await ImageUtils.compressAndResizeImage(
+        imageBytes,
+        targetWidth: 512,
+        targetHeight: 512,
+      );
+
       String fileName = '${DateTime.now().millisecondsSinceEpoch}.jpg';
       Reference ref = _storage.ref().child('$folder/$fileName');
-      await ref.putData(imageBytes, SettableMetadata(contentType: 'image/jpeg'))
-          .timeout(const Duration(seconds: 5));
-      return await ref.getDownloadURL().timeout(const Duration(seconds: 5));
-    } catch (e) { return null; }
+      await ref.putData(compressedBytes, SettableMetadata(contentType: 'image/jpeg'))
+          .timeout(const Duration(seconds: 15));
+      return await ref.getDownloadURL().timeout(const Duration(seconds: 10));
+    } catch (e) {
+      debugPrint('Error in uploadImage: $e');
+      return null;
+    }
   }
 
   // ── Image Delete ──
@@ -138,15 +149,16 @@ class DatabaseService {
     }
   }
 
-  // ── Sync ──
+  // ── Sync (Optimized with Batching & putAll) ──
   static Future<void> syncFromFirestore() async {
     if (FirebaseAuth.instance.currentUser == null) return;
     try {
       var s = await _firestore.collection('students').get();
+      final Map<String, StudentModel> map = {
+        for (var doc in s.docs) doc.id: StudentModel.fromFirestore(doc)
+      };
       await _studentBox.clear();
-      for (var doc in s.docs) {
-        await _studentBox.put(doc.id, StudentModel.fromFirestore(doc));
-      }
+      await _studentBox.putAll(map);
     } catch (e) {
       debugPrint('Sync from Firestore failed: $e');
     }
@@ -155,8 +167,16 @@ class DatabaseService {
   static Future<void> syncToFirestore() async {
     if (FirebaseAuth.instance.currentUser == null) return;
     try {
-      for (var s in _studentBox.values) {
-        await _firestore.collection('students').doc(s.id).set(s.toMap());
+      final docs = _studentBox.values.toList();
+      if (docs.isEmpty) return;
+      for (var i = 0; i < docs.length; i += 450) {
+        final batch = _firestore.batch();
+        final end = (i + 450 < docs.length) ? i + 450 : docs.length;
+        for (var j = i; j < end; j++) {
+          final s = docs[j];
+          batch.set(_firestore.collection('students').doc(s.id), s.toMap());
+        }
+        await batch.commit();
       }
     } catch (e) {
       debugPrint('Sync to Firestore failed: $e');
@@ -320,9 +340,12 @@ class DatabaseService {
     if (FirebaseAuth.instance.currentUser != null) {
       try {
         final querySnapshot = await _firestore.collection('recycled_students').get();
+        if (querySnapshot.docs.isEmpty) return;
+        final batch = _firestore.batch();
         for (var doc in querySnapshot.docs) {
-          await doc.reference.delete();
+          batch.delete(doc.reference);
         }
+        await batch.commit();
       } catch (e) {
         debugPrint('Error emptying recycle bin in cloud: $e');
       }

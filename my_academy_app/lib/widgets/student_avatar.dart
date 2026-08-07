@@ -83,12 +83,15 @@ class _StudentAvatarState extends State<StudentAvatar> {
       );
     }
 
+    final int cacheDimension = (widget.size * 2).toInt().clamp(64, 512);
     Widget imageWidget;
 
     if (_localPath != null) {
       imageWidget = Image.file(
         io.File(_localPath!),
         fit: widget.fit,
+        cacheWidth: cacheDimension,
+        cacheHeight: cacheDimension,
         errorBuilder: (context, error, stackTrace) => _buildFallback(),
       );
     } else if (widget.student.profilePicUrl.isNotEmpty) {
@@ -97,8 +100,17 @@ class _StudentAvatarState extends State<StudentAvatar> {
         imageWidget = CachedNetworkImage(
           imageUrl: url,
           fit: widget.fit,
-          placeholder: (context, url) => const Center(
-            child: CircularProgressIndicator(strokeWidth: 2),
+          memCacheWidth: cacheDimension,
+          memCacheHeight: cacheDimension,
+          placeholder: (context, url) => Container(
+            color: AppTheme.primaryBlue.withValues(alpha: 0.08),
+            child: const Center(
+              child: SizedBox(
+                width: 16,
+                height: 16,
+                child: CircularProgressIndicator(strokeWidth: 1.5),
+              ),
+            ),
           ),
           errorWidget: (context, url, error) => _buildFallback(),
         );
@@ -109,6 +121,8 @@ class _StudentAvatarState extends State<StudentAvatar> {
           imageWidget = Image.memory(
             bytes,
             fit: widget.fit,
+            cacheWidth: cacheDimension,
+            cacheHeight: cacheDimension,
             errorBuilder: (_, __, ___) => _buildFallback(),
           );
         } catch (_) {
@@ -118,6 +132,8 @@ class _StudentAvatarState extends State<StudentAvatar> {
         imageWidget = Image.file(
           io.File(url),
           fit: widget.fit,
+          cacheWidth: cacheDimension,
+          cacheHeight: cacheDimension,
           errorBuilder: (_, __, ___) => _buildFallback(),
         );
       } else {

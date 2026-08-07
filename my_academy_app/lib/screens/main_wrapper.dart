@@ -43,27 +43,19 @@ class _MainWrapperState extends State<MainWrapper> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: PageView(
-        controller: _pageController,
-        onPageChanged: (index) {
-          setState(() {
-            _currentIndex = index;
-          });
-        },
+      body: IndexedStack(
+        index: _currentIndex,
         children: _screens,
       ),
       bottomNavigationBar: BottomNavigationBar(
         type: BottomNavigationBarType.fixed,
         currentIndex: _currentIndex,
         onTap: (index) {
-          setState(() {
-            _currentIndex = index;
-          });
-          _pageController.animateToPage(
-            index,
-            duration: const Duration(milliseconds: 300),
-            curve: Curves.easeInOut,
-          );
+          if (_currentIndex != index) {
+            setState(() {
+              _currentIndex = index;
+            });
+          }
         },
         items: const [
           BottomNavigationBarItem(

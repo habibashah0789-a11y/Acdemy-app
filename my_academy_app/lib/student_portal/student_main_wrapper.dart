@@ -41,12 +41,8 @@ class _StudentMainWrapperState extends State<StudentMainWrapper> {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Scaffold(
-      body: PageView(
-        controller: _pageController,
-        physics: const ClampingScrollPhysics(),
-        onPageChanged: (index) {
-          setState(() => _currentIndex = index);
-        },
+      body: IndexedStack(
+        index: _currentIndex,
         children: _screens,
       ),
       bottomNavigationBar: Container(
