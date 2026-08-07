@@ -17,6 +17,7 @@ import '../screens/notifications_screen.dart';
 import '../settings/class_schedules_screen.dart';
 import '../student_portal/student_dashboard_screen.dart';
 import '../theme/app_theme.dart';
+import 'sound_service.dart';
 
 /// Top-level background message handler for FCM.
 @pragma('vm:entry-point')
@@ -42,6 +43,11 @@ class NotificationService {
 
   static bool _initialized = false;
   static GlobalKey<NavigatorState>? navigatorKey;
+
+  // Tracks IDs already seen by the Firestore stream so we only beep on
+  // genuinely new notifications, not on the initial snapshot load.
+  static final Set<String> _seenNotificationIds = {};
+  static bool _firstSnapshotReceived = false;
 
   // ── 1. Android Notification Channels ──────────────────────────────────
 
@@ -403,6 +409,13 @@ class NotificationService {
       platformDetails,
       payload: payload,
     );
+
+    // Play in-app sound to accompany the system notification.
+    if (channelId == 'academy_important_alerts') {
+      SoundService.playImportantAlert();
+    } else {
+      SoundService.playNotification();
+    }
   }
 
   // ── 6. Notification Payload Routing ──────────────────────────────────
@@ -462,13 +475,39 @@ class NotificationService {
 
   static void _listenToFirestore() {
     _firestoreSubscription?.cancel();
-    _firestoreSubscription = _firestore.collection(_collection).orderBy('timestamp', descending: true).snapshots().listen(
+    _firestoreSubscription = _firestore
+        .collection(_collection)
+        .orderBy('timestamp', descending: true)
+        .snapshots()
+        .listen(
       (snapshot) {
         final notifications = snapshot.docs.map((doc) {
           final rawData = doc.data();
           final map = {...rawData, 'id': doc.id};
           return NotificationModel.fromMap(map, doc.id);
         }).toList();
+
+        // On the very first snapshot, just record what exists — don’t beep.
+        if (!_firstSnapshotReceived) {
+          _firstSnapshotReceived = true;
+          for (final n in notifications) {
+            _seenNotificationIds.add(n.id);
+          }
+        } else {
+          // Find any notification IDs we haven’t seen before.
+          final newUnread = notifications.where(
+            (n) => !_seenNotificationIds.contains(n.id) && !n.isRead,
+          ).toList();
+
+          if (newUnread.isNotEmpty) {
+            // Beep once regardless of how many new notifications arrived.
+            SoundService.playNotification();
+          }
+
+          for (final n in notifications) {
+            _seenNotificationIds.add(n.id);
+          }
+        }
 
         _persistHiveBatch(notifications);
         _controller.add(_sortedNotifications(notifications));
