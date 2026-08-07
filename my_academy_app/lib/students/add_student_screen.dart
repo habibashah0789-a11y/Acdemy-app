@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:typed_data';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:google_fonts/google_fonts.dart';
 import 'package:image_picker/image_picker.dart';
@@ -15,6 +16,7 @@ import '../widgets/crop_image_dialog.dart';
 import '../theme/app_theme.dart';
 import '../utils/image_utils.dart';
 import '../student_portal/student_auth_service.dart';
+import 'bulk_registration_widget.dart';
 
 class AddStudentScreen extends StatefulWidget {
   final String? presetClassType;
@@ -35,6 +37,8 @@ class AddStudentScreen extends StatefulWidget {
 }
 
 class _AddStudentScreenState extends State<AddStudentScreen> {
+  int _currentModeIndex = 0; // 0 = Single Admission, 1 = Bulk Registration
+
   final _formKey = GlobalKey<FormState>();
   final _nameC = TextEditingController();
   final _fatherC = TextEditingController();
@@ -45,8 +49,6 @@ class _AddStudentScreenState extends State<AddStudentScreen> {
   final _bioC = TextEditingController();
   final _phyC = TextEditingController();
   final _chemC = TextEditingController();
-
-
   final _engC = TextEditingController();
   final _mathC = TextEditingController();
 
@@ -55,6 +57,27 @@ class _AddStudentScreenState extends State<AddStudentScreen> {
   final _chemPaidC = TextEditingController();
   final _engPaidC = TextEditingController();
   final _mathPaidC = TextEditingController();
+
+  // FocusNodes for fast keyboard navigation
+  final _nameFocusNode = FocusNode();
+  final _fatherFocusNode = FocusNode();
+  final _phoneFocusNode = FocusNode();
+  final _emailFocusNode = FocusNode();
+  final _classTypeFocusNode = FocusNode();
+  final _gradeFocusNode = FocusNode();
+  final _feeSubFocusNode = FocusNode();
+  final _feeRemFocusNode = FocusNode();
+
+  final _bioFocusNode = FocusNode();
+  final _bioPaidFocusNode = FocusNode();
+  final _phyFocusNode = FocusNode();
+  final _phyPaidFocusNode = FocusNode();
+  final _chemFocusNode = FocusNode();
+  final _chemPaidFocusNode = FocusNode();
+  final _engFocusNode = FocusNode();
+  final _engPaidFocusNode = FocusNode();
+  final _mathFocusNode = FocusNode();
+  final _mathPaidFocusNode = FocusNode();
 
   Uint8List? _imageBytes;
   bool _isSaving = false;
@@ -142,6 +165,28 @@ class _AddStudentScreenState extends State<AddStudentScreen> {
     }
   }
 
+  FocusNode _getFeeFocusForSubject(String sub) {
+    switch (sub) {
+      case 'Biology': return _bioFocusNode;
+      case 'Physics': return _phyFocusNode;
+      case 'Chemistry': return _chemFocusNode;
+      case 'English': return _engFocusNode;
+      case 'Math': return _mathFocusNode;
+      default: return _feeSubFocusNode;
+    }
+  }
+
+  FocusNode _getPaidFocusForSubject(String sub) {
+    switch (sub) {
+      case 'Biology': return _bioPaidFocusNode;
+      case 'Physics': return _phyPaidFocusNode;
+      case 'Chemistry': return _chemPaidFocusNode;
+      case 'English': return _engPaidFocusNode;
+      case 'Math': return _mathPaidFocusNode;
+      default: return _feeSubFocusNode;
+    }
+  }
+
   void _updateCalculatedFees() {
     double total = 0;
     double submitted = 0;
@@ -152,9 +197,6 @@ class _AddStudentScreenState extends State<AddStudentScreen> {
       }
     }
     
-    // We update _feeSubC ONLY if the focus is NOT on it, 
-    // or if we want it to be auto-summed.
-    // To match user request of "manual distribution", we sum the individual paid fields.
     _feeSubC.text = submitted.toStringAsFixed(0);
     
     double remaining = total - submitted;
@@ -171,6 +213,19 @@ class _AddStudentScreenState extends State<AddStudentScreen> {
       case 'Math': return const Color(0xFF00897B);
       default: return AppTheme.primaryBlue;
     }
+  }
+
+  void _resetFormForNextStudent() {
+    setState(() {
+      _nameC.clear();
+      _fatherC.clear();
+      _phoneC.clear();
+      _emailC.clear();
+      _imageBytes = null;
+    });
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _nameFocusNode.requestFocus();
+    });
   }
 
   Widget _buildSubjectSelection() {
@@ -256,7 +311,10 @@ class _AddStudentScreenState extends State<AddStudentScreen> {
     final List<Widget> fields = [];
     final activeSubs = _subjects.where((s) => _selectedSubjectSchedules.containsKey(s)).toList();
     
-    for (final sub in activeSubs) {
+    for (int i = 0; i < activeSubs.length; i++) {
+      final sub = activeSubs[i];
+      final nextSub = (i < activeSubs.length - 1) ? activeSubs[i + 1] : null;
+
       fields.add(
         Padding(
           padding: const EdgeInsets.only(bottom: 16.0),
@@ -270,9 +328,25 @@ class _AddStudentScreenState extends State<AddStudentScreen> {
               const SizedBox(height: 8),
               Row(
                 children: [
-                  Expanded(child: _feeField('Total Fee', _getFeeControllerForSubject(sub), _getSubjectColor(sub))),
+                  Expanded(
+                    child: _feeField(
+                      'Total Fee',
+                      _getFeeControllerForSubject(sub),
+                      _getFeeFocusForSubject(sub),
+                      _getPaidFocusForSubject(sub),
+                      _getSubjectColor(sub),
+                    ),
+                  ),
                   const SizedBox(width: 12),
-                  Expanded(child: _feeField('Paid amount', _getPaidControllerForSubject(sub), Colors.green)),
+                  Expanded(
+                    child: _feeField(
+                      'Paid amount',
+                      _getPaidControllerForSubject(sub),
+                      _getPaidFocusForSubject(sub),
+                      nextSub != null ? _getFeeFocusForSubject(nextSub) : _feeSubFocusNode,
+                      Colors.green,
+                    ),
+                  ),
                 ],
               ),
             ],
@@ -301,6 +375,27 @@ class _AddStudentScreenState extends State<AddStudentScreen> {
     _chemPaidC.dispose();
     _engPaidC.dispose();
     _mathPaidC.dispose();
+
+    _nameFocusNode.dispose();
+    _fatherFocusNode.dispose();
+    _phoneFocusNode.dispose();
+    _emailFocusNode.dispose();
+    _classTypeFocusNode.dispose();
+    _gradeFocusNode.dispose();
+    _feeSubFocusNode.dispose();
+    _feeRemFocusNode.dispose();
+
+    _bioFocusNode.dispose();
+    _bioPaidFocusNode.dispose();
+    _phyFocusNode.dispose();
+    _phyPaidFocusNode.dispose();
+    _chemFocusNode.dispose();
+    _chemPaidFocusNode.dispose();
+    _engFocusNode.dispose();
+    _engPaidFocusNode.dispose();
+    _mathFocusNode.dispose();
+    _mathPaidFocusNode.dispose();
+
     super.dispose();
   }
 
@@ -369,12 +464,9 @@ class _AddStudentScreenState extends State<AddStudentScreen> {
     }
   }
 
-  /// Generates a unique student code in format QA-YYYY-NNN by counting
-  /// existing students in Firestore for the current year.
   Future<String> _generateStudentCode() async {
     final year = DateTime.now().year;
     try {
-      // Count how many students already have a studentCode starting with QA-YYYY
       final snapshot = await FirebaseFirestore.instance
           .collection('students')
           .where('studentCode', isGreaterThanOrEqualTo: 'QA-$year-')
@@ -384,27 +476,39 @@ class _AddStudentScreenState extends State<AddStudentScreen> {
       final nextNum = snapshot.docs.length + 1;
       return 'QA-$year-${nextNum.toString().padLeft(3, '0')}';
     } catch (_) {
-      // Fallback: use timestamp suffix
       final ts = DateTime.now().millisecondsSinceEpoch % 100000;
       return 'QA-$year-${ts.toString().padLeft(5, '0')}';
     }
   }
 
-  Future<void> _save() async {
-    if (!_formKey.currentState!.validate()) return;
+  Future<void> _save({bool addAnother = false}) async {
+    // Validate form & focus first invalid field if validation fails
+    if (!_formKey.currentState!.validate()) {
+      if (_nameC.text.trim().isEmpty) {
+        _nameFocusNode.requestFocus();
+      } else if (_fatherC.text.trim().isEmpty) {
+        _fatherFocusNode.requestFocus();
+      } else if (_phoneC.text.trim().isEmpty) {
+        _phoneFocusNode.requestFocus();
+      }
+      return;
+    }
+
     if (_selectedSubjectSchedules.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Please select at least one subject and schedule.'), backgroundColor: Colors.orange)
       );
       return;
     }
+
+    final nameToSave = _nameC.text.trim();
     setState(() => _isSaving = true);
+
     try {
       final studentId = DateTime.now().millisecondsSinceEpoch.toString();
       final studentCode = await _generateStudentCode();
       String picUrl = '';
       
-      // Upload image to Firebase Storage and save locally if provided
       if (_imageBytes != null) {
         if (!kIsWeb) {
           try {
@@ -423,9 +527,7 @@ class _AddStudentScreenState extends State<AddStudentScreen> {
               .timeout(const Duration(seconds: 15));
           
           picUrl = await storageRef.getDownloadURL().timeout(const Duration(seconds: 8));
-          debugPrint('Image uploaded to Firebase Storage: $picUrl');
         } catch (uploadError) {
-          debugPrint('Firebase Storage upload failed: $uploadError. Falling back to base64 encoding.');
           final base64String = base64Encode(_imageBytes!);
           picUrl = 'data:image/jpeg;base64,$base64String';
         }
@@ -440,7 +542,7 @@ class _AddStudentScreenState extends State<AddStudentScreen> {
       final student = StudentModel(
         id: studentId,
         studentCode: studentCode,
-        firstName: _nameC.text.trim(),
+        firstName: nameToSave,
         fatherName: _fatherC.text.trim(),
         lastName: '',
         phone: _phoneC.text.trim(),
@@ -469,33 +571,40 @@ class _AddStudentScreenState extends State<AddStudentScreen> {
       );
       await DatabaseService.addStudent(student);
       
-      // Trigger Notification
       await NotificationService.createStudentRegistrationNotification(student: student);
 
-      // Create student portal auth record (QR token + Firebase Auth account)
       String? qrToken;
       try {
         final authResult = await StudentAuthService.createStudentAuthRecord(
           studentId: studentId,
           studentCode: studentCode,
-          studentName: _nameC.text.trim(),
+          studentName: nameToSave,
         );
         qrToken = authResult['qrToken'];
       } catch (authError) {
         debugPrint('Student auth setup failed (non-fatal): $authError');
-        // Non-fatal — student is still registered, portal setup can be retried
       }
 
       if (mounted) {
-        // Show QR card success dialog if we have a token
         if (qrToken != null) {
           await _showStudentQrDialog(
-            studentName: _nameC.text.trim(),
+            studentName: nameToSave,
             studentCode: studentCode,
             qrToken: qrToken,
           );
         }
-        Navigator.pop(context, true);
+
+        if (addAnother) {
+          _resetFormForNextStudent();
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Student "$nameToSave" saved! Focused on Name field for next student.'),
+              backgroundColor: AppTheme.secondaryGreen,
+            ),
+          );
+        } else {
+          Navigator.pop(context, true);
+        }
       }
     } catch (e) {
       if (mounted) {
@@ -507,7 +616,6 @@ class _AddStudentScreenState extends State<AddStudentScreen> {
     }
   }
 
-  /// Shows a premium dialog with the student QR code for printing/sharing.
   Future<void> _showStudentQrDialog({
     required String studentName,
     required String studentCode,
@@ -538,7 +646,6 @@ class _AddStudentScreenState extends State<AddStudentScreen> {
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    // Header
                     Container(
                       padding: const EdgeInsets.all(12),
                       decoration: BoxDecoration(
@@ -560,8 +667,6 @@ class _AddStudentScreenState extends State<AddStudentScreen> {
                       textAlign: TextAlign.center,
                     ),
                     const SizedBox(height: 20),
-
-                    // QR Code
                     Container(
                       padding: const EdgeInsets.all(16),
                       decoration: BoxDecoration(
@@ -590,8 +695,6 @@ class _AddStudentScreenState extends State<AddStudentScreen> {
                       ),
                     ),
                     const SizedBox(height: 16),
-
-                    // Student Code Badge
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
                       decoration: BoxDecoration(
@@ -618,8 +721,6 @@ class _AddStudentScreenState extends State<AddStudentScreen> {
                       ),
                     ),
                     const SizedBox(height: 12),
-
-                    // Instructions
                     Container(
                       padding: const EdgeInsets.all(12),
                       decoration: BoxDecoration(
@@ -648,7 +749,6 @@ class _AddStudentScreenState extends State<AddStudentScreen> {
                       ),
                     ),
                     const SizedBox(height: 20),
-
                     SizedBox(
                       width: double.infinity,
                       child: ElevatedButton(
@@ -686,11 +786,16 @@ class _AddStudentScreenState extends State<AddStudentScreen> {
     );
   }
 
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: const Text('Student Admission')),
-      body: Stack(children: [
+  Widget _buildSingleStudentForm() {
+    final activeSubs = _subjects.where((s) => _selectedSubjectSchedules.containsKey(s)).toList();
+    final firstFeeFocus = activeSubs.isNotEmpty ? _getFeeFocusForSubject(activeSubs.first) : _feeSubFocusNode;
+
+    return CallbackShortcuts(
+      bindings: <ShortcutActivator, VoidCallback>{
+        const SingleActivator(LogicalKeyboardKey.enter, control: true): () => _save(addAnother: true),
+        const SingleActivator(LogicalKeyboardKey.keyS, control: true): () => _save(addAnother: false),
+      },
+      child: Stack(children: [
         SingleChildScrollView(
           padding: const EdgeInsets.all(20),
           child: Form(
@@ -729,104 +834,149 @@ class _AddStudentScreenState extends State<AddStudentScreen> {
                 
                 _sectionTitle('Personal Information'),
                 TextFormField(
-                    controller: _nameC,
-                    textCapitalization: TextCapitalization.words,
-                    decoration: const InputDecoration(
-                        labelText: 'Full Name *',
-                        prefixIcon: Icon(Icons.person_outline_rounded)),
-                    validator: (v) => (v == null || v.trim().isEmpty) ? 'Required' : null),
+                  controller: _nameC,
+                  focusNode: _nameFocusNode,
+                  textInputAction: TextInputAction.next,
+                  textCapitalization: TextCapitalization.words,
+                  decoration: const InputDecoration(
+                    labelText: 'Full Name *',
+                    prefixIcon: Icon(Icons.person_outline_rounded),
+                  ),
+                  onFieldSubmitted: (_) => _fatherFocusNode.requestFocus(),
+                  validator: (v) => (v == null || v.trim().isEmpty) ? 'Required' : null,
+                ),
                 const SizedBox(height: 16),
                 TextFormField(
-                    controller: _fatherC,
-                    textCapitalization: TextCapitalization.words,
-                    decoration: const InputDecoration(
-                        labelText: 'Father Name *',
-                        prefixIcon: Icon(Icons.family_restroom_rounded)),
-                    validator: (v) => (v == null || v.trim().isEmpty) ? 'Required' : null),
+                  controller: _fatherC,
+                  focusNode: _fatherFocusNode,
+                  textInputAction: TextInputAction.next,
+                  textCapitalization: TextCapitalization.words,
+                  decoration: const InputDecoration(
+                    labelText: 'Father Name *',
+                    prefixIcon: Icon(Icons.family_restroom_rounded),
+                  ),
+                  onFieldSubmitted: (_) => _phoneFocusNode.requestFocus(),
+                  validator: (v) => (v == null || v.trim().isEmpty) ? 'Required' : null,
+                ),
                 const SizedBox(height: 16),
                 Row(
                   children: [
                     Expanded(
                       child: TextFormField(
                         controller: _phoneC,
+                        focusNode: _phoneFocusNode,
+                        textInputAction: TextInputAction.next,
                         keyboardType: TextInputType.phone,
                         decoration: const InputDecoration(
-                            labelText: 'Phone *',
-                            prefixIcon: Icon(Icons.phone_android_rounded)),
-                        validator: (v) => (v == null || v.trim().isEmpty) ? 'Required' : null),
+                          labelText: 'Phone *',
+                          prefixIcon: Icon(Icons.phone_android_rounded),
+                        ),
+                        onFieldSubmitted: (_) => _emailFocusNode.requestFocus(),
+                        validator: (v) => (v == null || v.trim().isEmpty) ? 'Required' : null,
+                      ),
                     ),
                     const SizedBox(width: 16),
                     Expanded(
                       child: TextFormField(
                         controller: _emailC,
+                        focusNode: _emailFocusNode,
+                        textInputAction: TextInputAction.next,
                         keyboardType: TextInputType.emailAddress,
                         decoration: const InputDecoration(
-                            labelText: 'Email (optional)',
-                            prefixIcon: Icon(Icons.email_outlined)),
+                          labelText: 'Email (optional)',
+                          prefixIcon: Icon(Icons.email_outlined),
+                        ),
+                        onFieldSubmitted: (_) => _classTypeFocusNode.requestFocus(),
                         validator: (v) {
                           if (v != null && v.isNotEmpty && !v.contains('@')) return 'Invalid';
                           return null;
-                        }),
+                        },
+                      ),
                     ),
                   ],
                 ),
 
                 _sectionTitle('Class Information'),
-                // Class Type dropdown
-                DropdownButtonFormField<String>(
-                  initialValue: _selectedClassType,
-                  decoration: const InputDecoration(
-                    labelText: 'Class Type *',
-                    prefixIcon: Icon(Icons.category_rounded),
+                Focus(
+                  focusNode: _classTypeFocusNode,
+                  child: DropdownButtonFormField<String>(
+                    value: _selectedClassType,
+                    decoration: const InputDecoration(
+                      labelText: 'Class Type *',
+                      prefixIcon: Icon(Icons.category_rounded),
+                    ),
+                    items: _classTypes.map((t) => DropdownMenuItem(value: t, child: Text(t))).toList(),
+                    onChanged: (v) {
+                      if (v != null) {
+                        setState(() {
+                          _selectedClassType = v;
+                          _selectedGrade = _gradeOptions[v]!.first;
+                        });
+                        _gradeFocusNode.requestFocus();
+                      }
+                    },
                   ),
-                  items: _classTypes.map((t) => DropdownMenuItem(value: t, child: Text(t))).toList(),
-                  onChanged: (v) {
-                    if (v != null) {
-                      setState(() {
-                        _selectedClassType = v;
-                        _selectedGrade = _gradeOptions[v]!.first;
-                      });
-                    }
-                  },
                 ),
                 const SizedBox(height: 16),
 
-                // Grade dropdown
-                DropdownButtonFormField<String>(
-                  initialValue: _selectedGrade,
-                  decoration: const InputDecoration(
-                    labelText: 'Grade / Year *',
-                    prefixIcon: Icon(Icons.school_rounded),
+                Focus(
+                  focusNode: _gradeFocusNode,
+                  child: DropdownButtonFormField<String>(
+                    value: _selectedGrade,
+                    decoration: const InputDecoration(
+                      labelText: 'Grade / Year *',
+                      prefixIcon: Icon(Icons.school_rounded),
+                    ),
+                    items: _gradeOptions[_selectedClassType]!
+                        .map((g) => DropdownMenuItem(value: g, child: Text(g)))
+                        .toList(),
+                    onChanged: (v) {
+                      if (v != null) {
+                        setState(() => _selectedGrade = v);
+                        firstFeeFocus.requestFocus();
+                      }
+                    },
                   ),
-                  items: _gradeOptions[_selectedClassType]!
-                      .map((g) => DropdownMenuItem(value: g, child: Text(g)))
-                      .toList(),
-                  onChanged: (v) {
-                    if (v != null) setState(() => _selectedGrade = v);
-                  },
                 ),
                 const SizedBox(height: 24),
 
-                // Multi-subject selection
                 _buildSubjectSelection(),
                 const SizedBox(height: 16),
 
                 _sectionTitle('Fee Structure (Rs)'),
                 ..._buildDynamicFeeFields(),
                 const SizedBox(height: 12),
-                _feeField('Total Fee Submitted', _feeSubC, AppTheme.primaryBlue),
+                _feeField('Total Fee Submitted', _feeSubC, _feeSubFocusNode, _feeRemFocusNode, AppTheme.primaryBlue),
                 const SizedBox(height: 12),
-                _feeField('Total Fee Remaining', _feeRemC, Colors.red),
+                _feeField('Total Fee Remaining', _feeRemC, _feeRemFocusNode, null, Colors.red, isFinalField: true),
 
-                const SizedBox(height: 40),
-                SizedBox(
-                    width: double.infinity,
-                    child: ElevatedButton(
-                      onPressed: _isSaving ? null : _save,
-                      child: _isSaving
-                          ? const SpinKitThreeBounce(color: Colors.white, size: 20)
-                          : const Text('REGISTER STUDENT'),
-                    )),
+                const SizedBox(height: 32),
+                Row(
+                  children: [
+                    Expanded(
+                      child: OutlinedButton.icon(
+                        onPressed: _isSaving ? null : () => _save(addAnother: true),
+                        icon: const Icon(Icons.library_add_rounded),
+                        label: const Text('SAVE & ADD ANOTHER (Ctrl+Enter)'),
+                        style: OutlinedButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(vertical: 16),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: ElevatedButton(
+                        onPressed: _isSaving ? null : () => _save(addAnother: false),
+                        style: ElevatedButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(vertical: 16),
+                        ),
+                        child: _isSaving
+                            ? const SpinKitThreeBounce(color: Colors.white, size: 20)
+                            : const Text('REGISTER STUDENT (Ctrl+S)'),
+                      ),
+                    ),
+                  ],
+                ),
                 const SizedBox(height: 40),
               ],
             ),
@@ -834,23 +984,158 @@ class _AddStudentScreenState extends State<AddStudentScreen> {
         ),
         if (_isSaving)
           Container(
-              color: Colors.black.withValues(alpha: 0.1),
-              child: const Center(
-                  child: SpinKitPulse(color: AppTheme.primaryBlue, size: 60))),
+            color: Colors.black.withValues(alpha: 0.1),
+            child: const Center(
+              child: SpinKitPulse(color: AppTheme.primaryBlue, size: 60),
+            ),
+          ),
       ]),
     );
   }
 
-  Widget _feeField(String label, TextEditingController c, Color color) {
+  Widget _feeField(
+    String label,
+    TextEditingController c,
+    FocusNode focusNode,
+    FocusNode? nextFocusNode,
+    Color color, {
+    bool isFinalField = false,
+  }) {
     return TextFormField(
       controller: c,
+      focusNode: focusNode,
+      textInputAction: isFinalField ? TextInputAction.done : TextInputAction.next,
       keyboardType: const TextInputType.numberWithOptions(decimal: true),
       decoration: InputDecoration(
-          labelText: label,
-          prefixText: 'Rs ',
-          prefixStyle: TextStyle(color: color, fontWeight: FontWeight.w600),
-          prefixIcon: Icon(Icons.payments_rounded, color: color, size: 18),
-          hintText: '0'),
+        labelText: label,
+        prefixText: 'Rs ',
+        prefixStyle: TextStyle(color: color, fontWeight: FontWeight.w600),
+        prefixIcon: Icon(Icons.payments_rounded, color: color, size: 18),
+        hintText: '0',
+      ),
+      onFieldSubmitted: (_) {
+        if (isFinalField) {
+          _save(addAnother: false);
+        } else if (nextFocusNode != null) {
+          nextFocusNode.requestFocus();
+        }
+      },
+    );
+  }
+
+  Widget _buildModeSwitcherHeader() {
+    return Container(
+      width: double.infinity,
+      color: Colors.white,
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+      child: Center(
+        child: Container(
+          constraints: const BoxConstraints(maxWidth: 480),
+          padding: const EdgeInsets.all(4),
+          decoration: BoxDecoration(
+            color: const Color(0xFFF1F5F9),
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(color: const Color(0xFFE2E8F0)),
+          ),
+          child: Row(
+            children: [
+              Expanded(
+                child: _buildModeTabItem(
+                  index: 0,
+                  icon: Icons.person_add_rounded,
+                  label: 'Single Admission',
+                ),
+              ),
+              Expanded(
+                child: _buildModeTabItem(
+                  index: 1,
+                  icon: Icons.grid_on_rounded,
+                  label: 'Bulk Excel Mode',
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildModeTabItem({
+    required int index,
+    required IconData icon,
+    required String label,
+  }) {
+    final isSelected = _currentModeIndex == index;
+    return GestureDetector(
+      onTap: () {
+        if (!isSelected) {
+          setState(() => _currentModeIndex = index);
+        }
+      },
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        curve: Curves.easeInOut,
+        padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 12),
+        decoration: BoxDecoration(
+          color: isSelected ? AppTheme.primaryBlue : Colors.transparent,
+          borderRadius: BorderRadius.circular(10),
+          boxShadow: isSelected
+              ? [
+                  BoxShadow(
+                    color: AppTheme.primaryBlue.withValues(alpha: 0.25),
+                    blurRadius: 8,
+                    offset: const Offset(0, 3),
+                  )
+                ]
+              : [],
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              icon,
+              size: 18,
+              color: isSelected ? Colors.white : const Color(0xFF64748B),
+            ),
+            const SizedBox(width: 8),
+            Flexible(
+              child: Text(
+                label,
+                style: GoogleFonts.poppins(
+                  fontSize: 13,
+                  fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
+                  color: isSelected ? Colors.white : const Color(0xFF64748B),
+                ),
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Student Admission'),
+        elevation: 0,
+      ),
+      body: Column(
+        children: [
+          _buildModeSwitcherHeader(),
+          const Divider(height: 1, thickness: 1, color: Color(0xFFE2E8F0)),
+          Expanded(
+            child: AnimatedSwitcher(
+              duration: const Duration(milliseconds: 250),
+              child: _currentModeIndex == 0
+                  ? _buildSingleStudentForm()
+                  : const BulkStudentRegistrationWidget(),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
