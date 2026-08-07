@@ -1,4 +1,3 @@
-import 'dart:math' show pi;
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:intl/intl.dart';
@@ -17,110 +16,180 @@ class PdfHelpers {
       'Railway Tract, University Road, Peshawar';
   static const String _systemName = 'Quaid Academy Management System';
 
+  // ─── Brand colours ────────────────────────────────────────────────────────
+  static final PdfColor _navyBlue  = PdfColor.fromHex('#1A2472');
+  static final PdfColor _gold      = PdfColor.fromHex('#E8A820');
+  static final PdfColor _goldLight = PdfColor.fromHex('#F5C842');
+
   // ─── Header ───────────────────────────────────────────────────────────────
 
-  /// Builds the branded page header:
-  ///   [Logo 65 px]   QUAID ACADEMY (bold, large)
-  ///                  "From Here It Is Possible" (italic)
-  ///                  [optional sub-text from academy profile]
+  /// Branded page header matching the academy's physical logo style:
+  ///   ┌─────────────────────────────────────────────────────────┐
+  ///   │  [Logo]  From here It's Possible  │  Quaid             │  ← navy blue
+  ///   │                                    │  Academy           │
+  ///   │          ─────────────────────────────────────────────  │
+  ///   │                  University Road Peshawar               │
+  ///   └─────────────────────────────────────────────────────────┘
   static pw.Widget buildPdfHeader({
     required pw.MemoryImage? logoImage,
     String? profileAcademyName,
     String? profileAddress,
     String? profilePhone,
   }) {
+    // Resolve display values
+    final displayName = (profileAcademyName?.isNotEmpty == true)
+        ? profileAcademyName!
+        : 'Quaid Academy';
+    // Split name into two parts if it contains a space (e.g. "Quaid Academy")
+    final nameParts  = displayName.split(' ');
+    final nameLine1  = nameParts.isNotEmpty ? nameParts.first : displayName;
+    final nameLine2  = nameParts.length > 1
+        ? nameParts.sublist(1).join(' ')
+        : '';
+
+    final displayAddress = (profileAddress?.isNotEmpty == true)
+        ? profileAddress!
+        : 'University Road Peshawar';
+    final displayPhone = profilePhone?.isNotEmpty == true
+        ? '  |  ${profilePhone!}'
+        : '';
+
     return pw.Column(
       crossAxisAlignment: pw.CrossAxisAlignment.start,
       children: [
-        pw.Row(
-          crossAxisAlignment: pw.CrossAxisAlignment.center,
-          children: [
-            // Logo — top-left, 65 px wide, aspect ratio preserved
-            if (logoImage != null) ...[
-              pw.Container(
-                width: 65,
-                height: 65,
-                child: pw.Image(logoImage, fit: pw.BoxFit.contain),
-              ),
-              pw.SizedBox(width: 14),
-            ],
-
-            // Academy name + motto
-            pw.Expanded(
-              child: pw.Column(
-                crossAxisAlignment: pw.CrossAxisAlignment.start,
+        // ── Main navy banner ─────────────────────────────────────────────────
+        pw.Container(
+          decoration: pw.BoxDecoration(color: _navyBlue),
+          padding: const pw.EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+          child: pw.Row(
+            crossAxisAlignment: pw.CrossAxisAlignment.center,
+            children: [
+              // ── Logo section ───────────────────────────────────────────────
+              pw.Column(
+                crossAxisAlignment: pw.CrossAxisAlignment.center,
+                mainAxisAlignment: pw.MainAxisAlignment.center,
                 children: [
-                  pw.Text(
-                    profileAcademyName?.isNotEmpty == true
-                        ? profileAcademyName!.toUpperCase()
-                        : _academyName,
-                    style: pw.TextStyle(
-                      fontSize: 22,
-                      fontWeight: pw.FontWeight.bold,
-                      color: PdfColors.blueGrey900,
+                  if (logoImage != null)
+                    pw.Container(
+                      width: 58,
+                      height: 58,
+                      child: pw.Image(logoImage, fit: pw.BoxFit.contain),
+                    )
+                  else
+                    pw.Container(
+                      width: 58,
+                      height: 58,
+                      alignment: pw.Alignment.center,
+                      child: pw.Text(
+                        'QA',
+                        style: pw.TextStyle(
+                          fontSize: 28,
+                          fontWeight: pw.FontWeight.bold,
+                          color: _gold,
+                        ),
+                      ),
                     ),
-                  ),
+                  pw.SizedBox(height: 5),
+                  // Motto below logo
                   pw.Text(
-                    '"$_motto"',
+                    'From here It\'s Possible',
                     style: pw.TextStyle(
-                      fontSize: 10,
+                      fontSize: 7,
                       fontStyle: pw.FontStyle.italic,
-                      color: PdfColors.blueGrey600,
+                      color: _goldLight,
                     ),
                   ),
-                  if (profileAddress != null && profileAddress.isNotEmpty)
-                    pw.Text(
-                      profileAddress,
-                      style: const pw.TextStyle(
-                          fontSize: 9, color: PdfColors.grey700),
-                    ),
-                  if (profilePhone != null && profilePhone.isNotEmpty)
-                    pw.Text(
-                      'Phone: $profilePhone',
-                      style: const pw.TextStyle(
-                          fontSize: 9, color: PdfColors.grey700),
-                    ),
                 ],
               ),
+
+              pw.SizedBox(width: 14),
+
+              // ── Vertical gold divider ──────────────────────────────────────
+              pw.Container(
+                width: 1.5,
+                height: 72,
+                color: _gold,
+              ),
+
+              pw.SizedBox(width: 14),
+
+              // ── Academy name ───────────────────────────────────────────────
+              pw.Expanded(
+                child: pw.Column(
+                  crossAxisAlignment: pw.CrossAxisAlignment.start,
+                  mainAxisAlignment: pw.MainAxisAlignment.center,
+                  children: [
+                    pw.Text(
+                      nameLine1,
+                      style: pw.TextStyle(
+                        fontSize: 30,
+                        fontWeight: pw.FontWeight.bold,
+                        color: _gold,
+                      ),
+                    ),
+                    if (nameLine2.isNotEmpty)
+                      pw.Text(
+                        nameLine2,
+                        style: pw.TextStyle(
+                          fontSize: 22,
+                          fontWeight: pw.FontWeight.bold,
+                          color: _goldLight,
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+
+        // ── Thin gold separator line ──────────────────────────────────────────
+        pw.Container(height: 1.5, color: _gold),
+
+        // ── Address strip ─────────────────────────────────────────────────────
+        pw.Container(
+          width: double.infinity,
+          color: _navyBlue,
+          padding: const pw.EdgeInsets.symmetric(vertical: 5, horizontal: 14),
+          child: pw.Center(
+            child: pw.Text(
+              '$displayAddress$displayPhone',
+              style: pw.TextStyle(
+                fontSize: 9,
+                fontWeight: pw.FontWeight.bold,
+                color: PdfColors.white,
+              ),
+              textAlign: pw.TextAlign.center,
             ),
-          ],
+          ),
         ),
-        pw.SizedBox(height: 8),
-        // Decorative double rule
-        pw.Container(
-          height: 2,
-          color: PdfColors.blueGrey800,
-        ),
-        pw.SizedBox(height: 2),
-        pw.Container(
-          height: 0.5,
-          color: PdfColors.blueGrey400,
-        ),
+
+        // ── Bottom gold rule ──────────────────────────────────────────────────
+        pw.Container(height: 2, color: _gold),
+        pw.SizedBox(height: 10),
       ],
     );
   }
 
+
   // ─── Watermark ────────────────────────────────────────────────────────────
 
-  /// Returns a 45°-rotated, semi-transparent watermark.
+  /// Returns a straight, semi-transparent watermark centred on the page.
   /// Uses the academy logo when available; falls back to text.
   static pw.Widget buildWatermark({pw.MemoryImage? logoImage}) {
     return pw.Center(
       child: pw.Opacity(
-        opacity: 0.07,
-        child: pw.Transform.rotate(
-          angle: -45 * pi / 180,
-          child: logoImage != null
-              ? pw.Image(logoImage, width: 340, height: 340)
-              : pw.Text(
-                  'QUAID ACADEMY',
-                  style: pw.TextStyle(
-                    fontSize: 60,
-                    fontWeight: pw.FontWeight.bold,
-                    color: PdfColors.blueGrey300,
-                  ),
+        opacity: 0.08,
+        child: logoImage != null
+            ? pw.Image(logoImage, width: 300, height: 300)
+            : pw.Text(
+                'QUAID ACADEMY',
+                style: pw.TextStyle(
+                  fontSize: 60,
+                  fontWeight: pw.FontWeight.bold,
+                  color: PdfColors.blueGrey300,
                 ),
-        ),
+              ),
       ),
     );
   }
