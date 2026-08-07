@@ -241,20 +241,26 @@ class _FeeRemindersScreenState extends State<FeeRemindersScreen> {
   Future<void> _printDefaulters() async {
     final filtered = _filteredDefaulters;
     if (filtered.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('No defaulters to print.')),
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('No defaulters to print.')),
+        );
+      }
       return;
     }
     setState(() => _isPrinting = true);
     try {
-      await FeeDefaultersPrintService.printDefaultersList(filtered);
+      // 30-second overall guard — PDF generation + file I/O + URL launch
+      // should never take longer than this. If it does, release the button.
+      await FeeDefaultersPrintService.printDefaultersList(filtered)
+          .timeout(const Duration(seconds: 30));
     } catch (e) {
       if (mounted) {
+        final msg = e.toString().contains('TimeoutException')
+            ? 'Print timed out. Please try again.'
+            : 'Print failed: $e';
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-              content: Text('Print failed: $e'),
-              backgroundColor: Colors.red),
+          SnackBar(content: Text(msg), backgroundColor: Colors.red),
         );
       }
     } finally {

@@ -587,11 +587,16 @@ class _StudentDetailScreenState extends State<StudentDetailScreen> {
                 onPressed: () async {
                   setState(() => _isPrinting = true);
                   try {
-                    await PrintService.printStudentReport(student);
+                    // 30-second guard so the spinner always releases.
+                    await PrintService.printStudentReport(student)
+                        .timeout(const Duration(seconds: 30));
                   } catch (e) {
                     if (context.mounted) {
+                      final msg = e.toString().contains('TimeoutException')
+                          ? 'Print timed out. Please try again.'
+                          : 'Print failed: $e';
                       ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(content: Text('Print failed: $e'), backgroundColor: Colors.red),
+                        SnackBar(content: Text(msg), backgroundColor: Colors.red),
                       );
                     }
                   } finally {
