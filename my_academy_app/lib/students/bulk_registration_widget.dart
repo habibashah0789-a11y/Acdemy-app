@@ -12,6 +12,8 @@ import '../services/database_service.dart';
 import '../services/notification_service.dart';
 import '../student_portal/student_auth_service.dart';
 import '../theme/app_theme.dart';
+import '../widgets/celebration_overlay.dart';
+import '../services/sound_service.dart';
 
 /// Data model for each row in the spreadsheet table.
 class BulkRowData {
@@ -1003,6 +1005,7 @@ class _BulkStudentRegistrationWidgetState extends State<BulkStudentRegistrationW
     if (studentsToSave.isNotEmpty) {
       // Single atomic batch save to Hive + background Cloud batch (<10ms!)
       await DatabaseService.addStudentsBulk(studentsToSave);
+      SoundService.playSuccess();
       for (final student in studentsToSave) {
         NotificationService.createStudentRegistrationNotification(student: student);
         StudentAuthService.createStudentAuthRecord(
@@ -1028,7 +1031,8 @@ class _BulkStudentRegistrationWidgetState extends State<BulkStudentRegistrationW
       if (failedRows.isEmpty) {
         showDialog(
           context: context,
-          builder: (ctx) => AlertDialog(
+          builder: (ctx) => CelebrationOverlay(
+            child: AlertDialog(
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
             title: Row(
               children: const [
@@ -1052,7 +1056,8 @@ class _BulkStudentRegistrationWidgetState extends State<BulkStudentRegistrationW
               ),
             ],
           ),
-        );
+        ),
+      );
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(

@@ -199,6 +199,7 @@ class _StudentListScreenState extends State<StudentListScreen> {
         ],
       ),
       floatingActionButton: FloatingActionButton.extended(
+        heroTag: null,
         onPressed: () async {
           final result = await Navigator.push(
             context,

@@ -147,6 +147,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
         },
       ),
       floatingActionButton: FloatingActionButton(
+        heroTag: null,
         onPressed: _showCreateNotificationDialog,
         backgroundColor: Colors.blue,
         foregroundColor: Colors.white,

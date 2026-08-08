@@ -315,6 +315,7 @@ class _FscClassRoomScreenState extends State<FscClassRoomScreen> {
         ],
       ),
       floatingActionButton: FloatingActionButton.extended(
+        heroTag: null,
         onPressed: _addStudent,
         icon: const Icon(Icons.person_add_rounded),
         label: const Text('Add Student'),

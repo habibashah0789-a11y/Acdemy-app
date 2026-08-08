@@ -16,6 +16,8 @@ import '../theme/app_theme.dart';
 import '../utils/image_utils.dart';
 import '../student_portal/student_auth_service.dart';
 import 'bulk_registration_widget.dart';
+import '../widgets/celebration_overlay.dart';
+import '../services/sound_service.dart';
 
 class AddStudentScreen extends StatefulWidget {
   final String? presetClassType;
@@ -576,6 +578,7 @@ class _AddStudentScreenState extends State<AddStudentScreen> {
             : null,
       );
       await DatabaseService.addStudent(student);
+      SoundService.playSuccess();
       
       await NotificationService.createStudentRegistrationNotification(student: student);
 
@@ -630,8 +633,9 @@ class _AddStudentScreenState extends State<AddStudentScreen> {
     await showDialog(
       context: context,
       barrierDismissible: false,
-      builder: (ctx) => Dialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+      builder: (ctx) => CelebrationOverlay(
+        child: Dialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
         child: ConstrainedBox(
           constraints: BoxConstraints(
             maxHeight: MediaQuery.of(ctx).size.height * 0.85,
@@ -775,6 +779,7 @@ class _AddStudentScreenState extends State<AddStudentScreen> {
           ),
         ),
       ),
+    ),
     );
   }
 

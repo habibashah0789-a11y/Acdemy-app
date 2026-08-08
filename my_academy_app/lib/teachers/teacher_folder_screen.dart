@@ -204,6 +204,7 @@ class _TeacherFolderScreenState extends State<TeacherFolderScreen> {
           ),
         ),
         floatingActionButton: FloatingActionButton(
+          heroTag: null,
           onPressed: () {
             Navigator.push(
               context,

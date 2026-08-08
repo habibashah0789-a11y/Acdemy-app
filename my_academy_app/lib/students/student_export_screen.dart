@@ -281,6 +281,7 @@ class _StudentExportScreenState extends State<StudentExportScreen> {
         ),
       ),
       floatingActionButton: SpeedDial(
+        heroTag: null,
         animatedIcon: AnimatedIcons.menu_close,
         backgroundColor: AppTheme.secondaryGreen,
         children: [
