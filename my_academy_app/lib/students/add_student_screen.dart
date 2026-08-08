@@ -1151,7 +1151,12 @@ class _AddStudentScreenState extends State<AddStudentScreen> {
               duration: const Duration(milliseconds: 250),
               child: _currentModeIndex == 0
                   ? _buildSingleStudentForm()
-                  : const BulkStudentRegistrationWidget(),
+                  : BulkStudentRegistrationWidget(
+                      presetClassType: widget.presetClassType,
+                      presetSubject: widget.presetSubject,
+                      presetGrade: widget.presetGrade,
+                      presetSchedule: widget.presetSchedule,
+                    ),
             ),
           ),
         ],

@@ -23,6 +23,8 @@ class BulkRowData {
   String classType;
   String grade;
   Map<String, String> selectedSubjectSchedules;
+  final TextEditingController subjectsC;
+  final TextEditingController schedulesC;
   final TextEditingController totalFeeC;
   final TextEditingController paidFeeC;
 
@@ -32,6 +34,8 @@ class BulkRowData {
   final FocusNode emailFocus = FocusNode();
   final FocusNode classFocus = FocusNode();
   final FocusNode gradeFocus = FocusNode();
+  final FocusNode subjectsFocus = FocusNode();
+  final FocusNode schedulesFocus = FocusNode();
   final FocusNode totalFeeFocus = FocusNode();
   final FocusNode paidFeeFocus = FocusNode();
 
@@ -55,6 +59,8 @@ class BulkRowData {
         phoneC = TextEditingController(text: phone),
         emailC = TextEditingController(text: email),
         selectedSubjectSchedules = Map<String, String>.from(subjectSchedules ?? {'Biology': '7:00 AM'}),
+        subjectsC = TextEditingController(text: (subjectSchedules ?? {'Biology': '7:00 AM'}).keys.join(', ')),
+        schedulesC = TextEditingController(text: (subjectSchedules ?? {'Biology': '7:00 AM'}).values.join(', ')),
         totalFeeC = TextEditingController(text: totalFee),
         paidFeeC = TextEditingController(text: paidFee);
 
@@ -63,6 +69,8 @@ class BulkRowData {
     fatherC.dispose();
     phoneC.dispose();
     emailC.dispose();
+    subjectsC.dispose();
+    schedulesC.dispose();
     totalFeeC.dispose();
     paidFeeC.dispose();
 
@@ -72,13 +80,26 @@ class BulkRowData {
     emailFocus.dispose();
     classFocus.dispose();
     gradeFocus.dispose();
+    subjectsFocus.dispose();
+    schedulesFocus.dispose();
     totalFeeFocus.dispose();
     paidFeeFocus.dispose();
   }
 }
 
 class BulkStudentRegistrationWidget extends StatefulWidget {
-  const BulkStudentRegistrationWidget({super.key});
+  final String? presetClassType;
+  final String? presetSubject;
+  final String? presetGrade;
+  final String? presetSchedule;
+
+  const BulkStudentRegistrationWidget({
+    super.key,
+    this.presetClassType,
+    this.presetSubject,
+    this.presetGrade,
+    this.presetSchedule,
+  });
 
   @override
   State<BulkStudentRegistrationWidget> createState() => _BulkStudentRegistrationWidgetState();
@@ -93,7 +114,7 @@ class _BulkStudentRegistrationWidgetState extends State<BulkStudentRegistrationW
   // Registration Defaults
   String _defaultClassType = 'FSc';
   String _defaultGrade = 'First Year';
-  final Map<String, String> _defaultSubjectSchedules = {'Biology': '7:00 AM'};
+  Map<String, String> _defaultSubjectSchedules = {'Biology': '7:00 AM'};
   String _defaultTotalFee = '4000';
   String _defaultPaidFee = '4000';
 
@@ -107,10 +128,28 @@ class _BulkStudentRegistrationWidgetState extends State<BulkStudentRegistrationW
     'FSc': ['First Year', 'Second Year'],
     'Matric': ['Ninth', 'Tenth'],
   };
+  static const List<String> _subjects = ['Biology', 'Physics', 'Chemistry', 'English', 'Math'];
+  static const List<String> _scheduleSlots = [
+    '7:00 AM', '8:00 AM', '9:00 AM', '10:00 AM', '11:00 AM',
+    '12:00 PM', '1:00 PM', '2:00 PM', '3:00 PM', '4:00 PM',
+    '5:00 PM', '6:00 PM', '7:00 PM', '8:00 PM', '9:00 PM', '10:00 PM',
+  ];
 
   @override
   void initState() {
     super.initState();
+    if (widget.presetClassType != null) {
+      _defaultClassType = widget.presetClassType!;
+    }
+    if (widget.presetGrade != null) {
+      _defaultGrade = widget.presetGrade!;
+    } else if (widget.presetClassType != null) {
+      _defaultGrade = _gradeOptions[_defaultClassType]!.first;
+    }
+    if (widget.presetSubject != null) {
+      _defaultSubjectSchedules = {widget.presetSubject!: widget.presetSchedule ?? '7:00 AM'};
+    }
+
     // Add initial 5 blank rows for data entry
     for (int i = 0; i < 5; i++) {
       _addRow(initial: true);
@@ -171,11 +210,63 @@ class _BulkStudentRegistrationWidgetState extends State<BulkStudentRegistrationW
         r.totalFeeC.text = _defaultTotalFee;
         r.paidFeeC.text = _defaultPaidFee;
         r.selectedSubjectSchedules = Map<String, String>.from(_defaultSubjectSchedules);
+        r.subjectsC.text = _defaultSubjectSchedules.keys.join(', ');
+        r.schedulesC.text = _defaultSubjectSchedules.values.join(', ');
       }
     });
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(content: Text('Applied default values to all rows!'), backgroundColor: AppTheme.primaryBlue),
     );
+  }
+
+  String? _normalizeSubject(String raw) {
+    final s = raw.toLowerCase().trim();
+    if (s == 'bio' || s == 'biology') return 'Biology';
+    if (s == 'phy' || s == 'physics') return 'Physics';
+    if (s == 'chem' || s == 'chemistry') return 'Chemistry';
+    if (s == 'eng' || s == 'english') return 'English';
+    if (s == 'math' || s == 'maths' || s == 'mathematics') return 'Math';
+    
+    for (final standard in _subjects) {
+      if (standard.toLowerCase() == s) return standard;
+    }
+    return null;
+  }
+
+  String _normalizeSchedule(String raw) {
+    final s = raw.toUpperCase().trim();
+    for (final slot in _scheduleSlots) {
+      if (slot.toUpperCase() == s) return slot;
+    }
+    if (RegExp(r'^\d+$').hasMatch(s)) {
+      final hour = int.parse(s);
+      if (hour >= 1 && hour <= 12) {
+        return '$hour:00 ${hour >= 7 && hour < 12 ? 'AM' : 'PM'}';
+      }
+    }
+    return raw.isEmpty ? '7:00 AM' : raw;
+  }
+
+  void _syncSubjectSchedulesFromText(BulkRowData r) {
+    r.selectedSubjectSchedules.clear();
+    final subjectList = r.subjectsC.text.split(RegExp(r'[,;]')).map((s) => s.trim()).toList();
+    final scheduleList = r.schedulesC.text.split(RegExp(r'[,;]')).map((s) => s.trim()).toList();
+
+    for (int i = 0; i < subjectList.length; i++) {
+      final rawSub = subjectList[i];
+      if (rawSub.isEmpty) continue;
+      
+      final normalizedSub = _normalizeSubject(rawSub);
+      if (normalizedSub == null) continue;
+
+      String sched = '7:00 AM';
+      if (i < scheduleList.length && scheduleList[i].isNotEmpty) {
+        sched = _normalizeSchedule(scheduleList[i]);
+      } else if (scheduleList.isNotEmpty && scheduleList.first.isNotEmpty) {
+        sched = _normalizeSchedule(scheduleList.first);
+      }
+      r.selectedSubjectSchedules[normalizedSub] = sched;
+    }
   }
 
   void _copyPreviousRow(int index) {
@@ -187,11 +278,169 @@ class _BulkStudentRegistrationWidgetState extends State<BulkStudentRegistrationW
       curr.classType = prev.classType;
       curr.grade = prev.grade;
       curr.selectedSubjectSchedules = Map<String, String>.from(prev.selectedSubjectSchedules);
+      curr.subjectsC.text = prev.subjectsC.text;
+      curr.schedulesC.text = prev.schedulesC.text;
       curr.totalFeeC.text = prev.totalFeeC.text;
       curr.paidFeeC.text = prev.paidFeeC.text;
     });
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text('Copied values from Row #$index to Row #${index + 1}')),
+    );
+  }
+
+  void _showSubjectSchedulesDialog(BulkRowData row) {
+    showDialog(
+      context: context,
+      builder: (ctx) {
+        Map<String, String> tempSchedules = Map<String, String>.from(row.selectedSubjectSchedules);
+        
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            return AlertDialog(
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+              title: const Text('Select Subjects & Schedules', style: TextStyle(fontWeight: FontWeight.bold, color: AppTheme.primaryBlue)),
+              content: SizedBox(
+                width: 320,
+                child: SingleChildScrollView(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: _subjects.map((sub) {
+                      final isChecked = tempSchedules.containsKey(sub);
+                      final currentSchedule = tempSchedules[sub] ?? '7:00 AM';
+                      
+                      return CheckboxListTile(
+                        title: Text(sub, style: TextStyle(fontWeight: isChecked ? FontWeight.bold : FontWeight.normal)),
+                        value: isChecked,
+                        activeColor: AppTheme.primaryBlue,
+                        controlAffinity: ListTileControlAffinity.leading,
+                        subtitle: isChecked
+                            ? DropdownButton<String>(
+                                value: currentSchedule,
+                                isDense: true,
+                                underline: const SizedBox(),
+                                items: _scheduleSlots.map((s) => DropdownMenuItem(value: s, child: Text(s))).toList(),
+                                onChanged: (sVal) {
+                                  if (sVal != null) {
+                                    setDialogState(() {
+                                      tempSchedules[sub] = sVal;
+                                    });
+                                  }
+                                },
+                              )
+                            : null,
+                        onChanged: (val) {
+                          setDialogState(() {
+                            if (val == true) {
+                              tempSchedules[sub] = '7:00 AM';
+                            } else {
+                              tempSchedules.remove(sub);
+                            }
+                          });
+                        },
+                      );
+                    }).toList(),
+                  ),
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(ctx),
+                  child: const Text('Cancel'),
+                ),
+                ElevatedButton(
+                  onPressed: () {
+                    setState(() {
+                      row.selectedSubjectSchedules = tempSchedules;
+                      row.subjectsC.text = tempSchedules.keys.join(', ');
+                      row.schedulesC.text = tempSchedules.values.join(', ');
+                    });
+                    Navigator.pop(ctx);
+                  },
+                  style: ElevatedButton.styleFrom(backgroundColor: AppTheme.primaryBlue),
+                  child: const Text('Save'),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
+
+  void _showDefaultSubjectSchedulesDialog() {
+    showDialog(
+      context: context,
+      builder: (ctx) {
+        Map<String, String> tempSchedules = Map<String, String>.from(_defaultSubjectSchedules);
+        
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            return AlertDialog(
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+              title: const Text('Select Default Subjects & Schedules', style: TextStyle(fontWeight: FontWeight.bold, color: AppTheme.primaryBlue)),
+              content: SizedBox(
+                width: 320,
+                child: SingleChildScrollView(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: _subjects.map((sub) {
+                      final isChecked = tempSchedules.containsKey(sub);
+                      final currentSchedule = tempSchedules[sub] ?? '7:00 AM';
+                      
+                      return CheckboxListTile(
+                        title: Text(sub, style: TextStyle(fontWeight: isChecked ? FontWeight.bold : FontWeight.normal)),
+                        value: isChecked,
+                        activeColor: AppTheme.primaryBlue,
+                        controlAffinity: ListTileControlAffinity.leading,
+                        subtitle: isChecked
+                            ? DropdownButton<String>(
+                                value: currentSchedule,
+                                isDense: true,
+                                underline: const SizedBox(),
+                                items: _scheduleSlots.map((s) => DropdownMenuItem(value: s, child: Text(s))).toList(),
+                                onChanged: (sVal) {
+                                  if (sVal != null) {
+                                    setDialogState(() {
+                                      tempSchedules[sub] = sVal;
+                                    });
+                                  }
+                                },
+                              )
+                            : null,
+                        onChanged: (val) {
+                          setDialogState(() {
+                            if (val == true) {
+                              tempSchedules[sub] = '7:00 AM';
+                            } else {
+                              tempSchedules.remove(sub);
+                            }
+                          });
+                        },
+                      );
+                    }).toList(),
+                  ),
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(ctx),
+                  child: const Text('Cancel'),
+                ),
+                ElevatedButton(
+                  onPressed: () {
+                    setState(() {
+                      _defaultSubjectSchedules = tempSchedules;
+                    });
+                    Navigator.pop(ctx);
+                  },
+                  style: ElevatedButton.styleFrom(backgroundColor: AppTheme.primaryBlue),
+                  child: const Text('Save'),
+                ),
+              ],
+            );
+          },
+        );
+      },
     );
   }
 
@@ -207,14 +456,16 @@ class _BulkStudentRegistrationWidgetState extends State<BulkStudentRegistrationW
       case 3: return r.emailFocus;
       case 4: return r.classFocus;
       case 5: return r.gradeFocus;
-      case 6: return r.totalFeeFocus;
-      case 7: return r.paidFeeFocus;
+      case 6: return r.subjectsFocus;
+      case 7: return r.schedulesFocus;
+      case 8: return r.totalFeeFocus;
+      case 9: return r.paidFeeFocus;
       default: return r.nameFocus;
     }
   }
 
   void _moveNextCell(int rowIdx, int colIdx) {
-    if (colIdx < 7) {
+    if (colIdx < 9) {
       _getFocusNode(rowIdx, colIdx + 1).requestFocus();
     } else {
       // Last column in row (Paid Fee) -> move to next row column 0 (Name)
@@ -246,7 +497,7 @@ class _BulkStudentRegistrationWidgetState extends State<BulkStudentRegistrationW
         if (colIdx > 0) {
           _getFocusNode(rowIdx, colIdx - 1).requestFocus();
         } else if (rowIdx > 0) {
-          _getFocusNode(rowIdx - 1, 7).requestFocus();
+          _getFocusNode(rowIdx - 1, 9).requestFocus();
         }
       } else {
         _moveNextCell(rowIdx, colIdx);
@@ -295,10 +546,39 @@ class _BulkStudentRegistrationWidgetState extends State<BulkStudentRegistrationW
         final father = cells.length > 1 ? cells[1] : '';
         final phone = cells.length > 2 ? cells[2] : '';
         final email = cells.length > 3 ? cells[3] : '';
-        final classType = cells.length > 4 && _classTypes.contains(cells[4]) ? cells[4] : _defaultClassType;
-        final grade = cells.length > 5 && (_gradeOptions[classType]?.contains(cells[5]) ?? false) ? cells[5] : _defaultGrade;
-        final totalFee = cells.length > 6 ? cells[6] : _defaultTotalFee;
-        final paidFee = cells.length > 7 ? cells[7] : _defaultPaidFee;
+        
+        String classType = _defaultClassType;
+        if (cells.length > 4) {
+          classType = _classTypes.contains(cells[4]) ? cells[4] : _defaultClassType;
+        }
+        
+        String grade = _defaultGrade;
+        if (cells.length > 5) {
+          grade = (_gradeOptions[classType]?.contains(cells[5]) ?? false) ? cells[5] : _defaultGrade;
+        }
+
+        String subjectsText = '';
+        String schedulesText = '';
+        String totalFee = _defaultTotalFee;
+        String paidFee = _defaultPaidFee;
+
+        if (cells.length >= 10) {
+          // New format: contains Subjects and Schedules
+          subjectsText = cells[6];
+          schedulesText = cells[7];
+          totalFee = cells[8];
+          paidFee = cells[9];
+        } else {
+          // Old format: fallback to defaults for subjects and schedules
+          subjectsText = _defaultSubjectSchedules.keys.join(', ');
+          schedulesText = _defaultSubjectSchedules.values.join(', ');
+          if (cells.length > 6) {
+            totalFee = cells[6];
+          }
+          if (cells.length > 7) {
+            paidFee = cells[7];
+          }
+        }
 
         if (name.isEmpty && father.isEmpty && phone.isEmpty) continue;
 
@@ -329,10 +609,14 @@ class _BulkStudentRegistrationWidgetState extends State<BulkStudentRegistrationW
         targetRow.emailC.text = email;
         targetRow.classType = classType;
         targetRow.grade = grade;
+        targetRow.subjectsC.text = subjectsText;
+        targetRow.schedulesC.text = schedulesText;
         targetRow.totalFeeC.text = totalFee;
         targetRow.paidFeeC.text = paidFee;
         targetRow.hasError = false;
         targetRow.errorFields.clear();
+
+        _syncSubjectSchedulesFromText(targetRow);
 
         insertedCount++;
       }
@@ -410,6 +694,9 @@ class _BulkStudentRegistrationWidgetState extends State<BulkStudentRegistrationW
           continue;
         }
 
+        // Sync inputs from TextFields to the map
+        _syncSubjectSchedulesFromText(r);
+
         if (name.isEmpty) {
           r.hasError = true;
           r.errorFields.add('name');
@@ -425,6 +712,31 @@ class _BulkStudentRegistrationWidgetState extends State<BulkStudentRegistrationW
           r.errorFields.add('phone');
           r.errorMessage = r.errorMessage != null ? '${r.errorMessage!}, Phone Number is required' : 'Phone Number is required';
         }
+
+        // Subject Validation
+        final subjectList = r.subjectsC.text.split(RegExp(r'[,;]')).map((s) => s.trim()).toList();
+        bool hasInvalidSubject = false;
+        for (final rawSub in subjectList) {
+          if (rawSub.isNotEmpty && _normalizeSubject(rawSub) == null) {
+            hasInvalidSubject = true;
+            break;
+          }
+        }
+
+        if (r.selectedSubjectSchedules.isEmpty) {
+          r.hasError = true;
+          r.errorFields.add('subjects');
+          r.errorMessage = r.errorMessage != null 
+              ? '${r.errorMessage!}, At least one valid subject is required' 
+              : 'At least one valid subject is required';
+        } else if (hasInvalidSubject) {
+          r.hasError = true;
+          r.errorFields.add('subjects');
+          r.errorMessage = r.errorMessage != null
+              ? '${r.errorMessage!}, One or more subjects are invalid'
+              : 'One or more subjects are invalid';
+        }
+
         if (totalFee == null || totalFee < 0) {
           r.hasError = true;
           r.errorFields.add('totalFee');
@@ -465,10 +777,14 @@ class _BulkStudentRegistrationWidgetState extends State<BulkStudentRegistrationW
           colToFocus = 2;
         } else if (firstErrorField == 'email') {
           colToFocus = 3;
-        } else if (firstErrorField == 'totalFee') {
+        } else if (firstErrorField == 'subjects') {
           colToFocus = 6;
-        } else if (firstErrorField == 'paidFee') {
+        } else if (firstErrorField == 'schedules') {
           colToFocus = 7;
+        } else if (firstErrorField == 'totalFee') {
+          colToFocus = 8;
+        } else if (firstErrorField == 'paidFee') {
+          colToFocus = 9;
         }
 
         _getFocusNode(firstErrorRowIndex, colToFocus).requestFocus();
@@ -633,6 +949,11 @@ class _BulkStudentRegistrationWidgetState extends State<BulkStudentRegistrationW
         final paidFee = double.tryParse(r.paidFeeC.text.trim()) ?? 0;
         final remFee = (totalFee - paidFee) < 0 ? 0.0 : (totalFee - paidFee);
 
+        final numSubjects = r.selectedSubjectSchedules.keys.length;
+        final divisor = numSubjects > 0 ? numSubjects : 1;
+        final feePerSubject = totalFee / divisor;
+        final paidPerSubject = paidFee / divisor;
+
         final student = StudentModel(
           id: studentId,
           studentCode: studentCode,
@@ -647,15 +968,15 @@ class _BulkStudentRegistrationWidgetState extends State<BulkStudentRegistrationW
           subject: r.selectedSubjectSchedules.keys.join(', '),
           feeSubmitted: paidFee,
           feeRemaining: remFee,
-          biologyFee: r.selectedSubjectSchedules.containsKey('Biology') ? totalFee : 0,
-          physicsFee: r.selectedSubjectSchedules.containsKey('Physics') ? totalFee : 0,
-          chemistryFee: r.selectedSubjectSchedules.containsKey('Chemistry') ? totalFee : 0,
-          englishFee: r.selectedSubjectSchedules.containsKey('English') ? totalFee : 0,
-          mathFee: r.selectedSubjectSchedules.containsKey('Math') ? totalFee : 0,
+          biologyFee: r.selectedSubjectSchedules.containsKey('Biology') ? feePerSubject : 0,
+          physicsFee: r.selectedSubjectSchedules.containsKey('Physics') ? feePerSubject : 0,
+          chemistryFee: r.selectedSubjectSchedules.containsKey('Chemistry') ? feePerSubject : 0,
+          englishFee: r.selectedSubjectSchedules.containsKey('English') ? feePerSubject : 0,
+          mathFee: r.selectedSubjectSchedules.containsKey('Math') ? feePerSubject : 0,
           profilePicUrl: '',
           subjectPaymentsJson: jsonEncode({
             for (var sub in r.selectedSubjectSchedules.keys)
-              sub: paidFee / (r.selectedSubjectSchedules.isNotEmpty ? r.selectedSubjectSchedules.length : 1),
+              sub: paidPerSubject,
           }),
           subjectSchedulesJson: jsonEncode(r.selectedSubjectSchedules),
           paymentHistoryJson: paidFee > 0
@@ -840,6 +1161,29 @@ class _BulkStudentRegistrationWidgetState extends State<BulkStudentRegistrationW
               ),
             ],
           ),
+          const SizedBox(height: 16),
+          Row(
+            children: [
+              const Icon(Icons.menu_book_rounded, color: Colors.grey, size: 18),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  'Default Subjects: ${_defaultSubjectSchedules.keys.join(", ")} (${_defaultSubjectSchedules.values.toSet().join(", ")})',
+                  style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500, color: Colors.black87),
+                ),
+              ),
+              const SizedBox(width: 12),
+              OutlinedButton.icon(
+                onPressed: _showDefaultSubjectSchedulesDialog,
+                icon: const Icon(Icons.edit_note, size: 16),
+                label: const Text('Change Default Subjects'),
+                style: OutlinedButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                  visualDensity: VisualDensity.compact,
+                ),
+              ),
+            ],
+          ),
         ],
       ),
     );
@@ -920,7 +1264,7 @@ class _BulkStudentRegistrationWidgetState extends State<BulkStudentRegistrationW
           controller: _horizontalScroll,
           scrollDirection: Axis.horizontal,
           child: ConstrainedBox(
-            constraints: const BoxConstraints(minWidth: 1050),
+            constraints: const BoxConstraints(minWidth: 1350),
             child: DataTable(
               columnSpacing: 16,
               headingRowHeight: 48,
@@ -935,6 +1279,8 @@ class _BulkStudentRegistrationWidgetState extends State<BulkStudentRegistrationW
                 DataColumn(label: Text('Email', style: TextStyle(fontWeight: FontWeight.bold))),
                 DataColumn(label: Text('Class', style: TextStyle(fontWeight: FontWeight.bold))),
                 DataColumn(label: Text('Grade', style: TextStyle(fontWeight: FontWeight.bold))),
+                DataColumn(label: Text('Subjects', style: TextStyle(fontWeight: FontWeight.bold))),
+                DataColumn(label: Text('Class Times', style: TextStyle(fontWeight: FontWeight.bold))),
                 DataColumn(label: Text('Total Fee', style: TextStyle(fontWeight: FontWeight.bold))),
                 DataColumn(label: Text('Paid Fee', style: TextStyle(fontWeight: FontWeight.bold))),
                 DataColumn(label: Text('Actions', style: TextStyle(fontWeight: FontWeight.bold))),
@@ -1066,23 +1412,49 @@ class _BulkStudentRegistrationWidgetState extends State<BulkStudentRegistrationW
                         ),
                       ),
                     ),
-                    // Total Fee (Col 6)
+                    // Subjects (Col 6)
+                    DataCell(_buildCellTextField(
+                      controller: r.subjectsC,
+                      focusNode: r.subjectsFocus,
+                      hint: 'Biology, Physics',
+                      rowIdx: index,
+                      colIdx: 6,
+                      width: 170,
+                      isError: r.errorFields.contains('subjects'),
+                      suffix: IconButton(
+                        padding: EdgeInsets.zero,
+                        constraints: const BoxConstraints(),
+                        icon: const Icon(Icons.edit_note, size: 20, color: AppTheme.primaryBlue),
+                        onPressed: () => _showSubjectSchedulesDialog(r),
+                      ),
+                    )),
+                    // Class Times (Col 7)
+                    DataCell(_buildCellTextField(
+                      controller: r.schedulesC,
+                      focusNode: r.schedulesFocus,
+                      hint: '7:00 AM, 9:00 AM',
+                      rowIdx: index,
+                      colIdx: 7,
+                      width: 170,
+                      isError: r.errorFields.contains('schedules'),
+                    )),
+                    // Total Fee (Col 8)
                     DataCell(_buildCellTextField(
                       controller: r.totalFeeC,
                       focusNode: r.totalFeeFocus,
                       hint: '4000',
                       rowIdx: index,
-                      colIdx: 6,
+                      colIdx: 8,
                       keyboardType: TextInputType.number,
                       isError: r.errorFields.contains('totalFee'),
                     )),
-                    // Paid Fee (Col 7)
+                    // Paid Fee (Col 9)
                     DataCell(_buildCellTextField(
                       controller: r.paidFeeC,
                       focusNode: r.paidFeeFocus,
                       hint: '4000',
                       rowIdx: index,
-                      colIdx: 7,
+                      colIdx: 9,
                       keyboardType: TextInputType.number,
                       isError: r.errorFields.contains('paidFee'),
                     )),
@@ -1123,9 +1495,11 @@ class _BulkStudentRegistrationWidgetState extends State<BulkStudentRegistrationW
     required int colIdx,
     TextInputType keyboardType = TextInputType.text,
     bool isError = false,
+    Widget? suffix,
+    double width = 140,
   }) {
     return SizedBox(
-      width: 140,
+      width: width,
       child: KeyboardListener(
         focusNode: FocusNode(),
         onKeyEvent: (evt) => _handleCellKeyEvent(event: evt, rowIdx: rowIdx, colIdx: colIdx),
@@ -1146,9 +1520,15 @@ class _BulkStudentRegistrationWidgetState extends State<BulkStudentRegistrationW
           decoration: InputDecoration(
             hintText: hint,
             isDense: true,
-            contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+            contentPadding: suffix != null
+                ? const EdgeInsets.only(left: 10, right: 2, top: 8, bottom: 8)
+                : const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
             filled: isError,
             fillColor: isError ? Colors.red.shade100 : Colors.transparent,
+            suffixIcon: suffix,
+            suffixIconConstraints: suffix != null
+                ? const BoxConstraints(maxHeight: 30, maxWidth: 30)
+                : null,
             focusedBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(6),
               borderSide: BorderSide(color: isError ? Colors.red : AppTheme.primaryBlue, width: 2),
