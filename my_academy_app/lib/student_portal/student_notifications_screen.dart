@@ -24,7 +24,6 @@ class _StudentNotificationsScreenState extends State<StudentNotificationsScreen>
   bool _isLoading = true;
   String? _errorMessage;
   List<NotificationModel> _notices = [];
-  bool _isInitialLoad = true;
   StreamSubscription<QuerySnapshot>? _noticesSubscription;
 
   @override
@@ -67,24 +66,10 @@ class _StudentNotificationsScreenState extends State<StudentNotificationsScreen>
           return n.studentId.isEmpty || n.studentId == _studentId;
         }).toList();
 
-        // Sound trigger logic for new notifications
-        if (!_isInitialLoad) {
-          for (final item in filteredNotices) {
-            final alreadyExists = _notices.any((n) => n.id == item.id);
-            if (!alreadyExists) {
-              NotificationService.showLocalNotification(
-                title: item.title,
-                body: item.message,
-              );
-            }
-          }
-        }
-
         if (mounted) {
           setState(() {
             _notices = filteredNotices;
             _isLoading = false;
-            _isInitialLoad = false;
           });
         }
       }, onError: (e) {

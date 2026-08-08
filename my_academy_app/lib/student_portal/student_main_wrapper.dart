@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../theme/app_theme.dart';
+import '../services/notification_service.dart';
+import 'student_auth_service.dart';
 import 'student_dashboard_screen.dart';
 import 'student_fee_screen.dart';
 import 'student_notifications_screen.dart';
@@ -28,6 +30,27 @@ class _StudentMainWrapperState extends State<StudentMainWrapper> {
   void initState() {
     super.initState();
     _pageController = PageController(initialPage: _currentIndex);
+    _initializeStudentNotifications();
+  }
+
+  Future<void> _initializeStudentNotifications() async {
+    try {
+      final session = await StudentAuthService.getLocalSession();
+      if (session != null) {
+        final studentId = session['studentId'] as String? ?? '';
+        if (studentId.isNotEmpty) {
+          await NotificationService.init();
+          await NotificationService.registerFcmToken(
+            userId: studentId,
+            role: 'student',
+            studentId: studentId,
+          );
+          NotificationService.listenForStudent(studentId);
+        }
+      }
+    } catch (e) {
+      debugPrint('[StudentMainWrapper] Failed to initialize notifications: $e');
+    }
   }
 
   @override

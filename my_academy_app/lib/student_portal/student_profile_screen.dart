@@ -9,6 +9,7 @@ import '../widgets/shimmer_loading_widget.dart';
 import '../widgets/student_avatar.dart';
 import 'student_auth_service.dart';
 import 'student_login_screen.dart';
+import '../services/notification_service.dart';
 
 class StudentProfileScreen extends StatefulWidget {
   const StudentProfileScreen({super.key});
@@ -107,6 +108,14 @@ class _StudentProfileScreenState extends State<StudentProfileScreen> {
     );
 
     if (confirm == true) {
+      final session = await StudentAuthService.getLocalSession();
+      if (session != null) {
+        final studentId = session['studentId'] as String? ?? '';
+        if (studentId.isNotEmpty) {
+          await NotificationService.unregisterFcmToken(userId: studentId);
+          NotificationService.cancelStudentSubscription();
+        }
+      }
       await StudentAuthService.logout();
       if (mounted) {
         Navigator.of(context).pushAndRemoveUntil(

@@ -49,6 +49,11 @@ class NotificationService {
   static final Set<String> _seenNotificationIds = {};
   static bool _firstSnapshotReceived = false;
 
+  // Student specific notification stream elements
+  static StreamSubscription<QuerySnapshot>? _studentFirestoreSubscription;
+  static bool _studentFirstSnapshotReceived = false;
+  static final Set<String> _studentSeenNotificationIds = {};
+
   // ── 1. Android Notification Channels ──────────────────────────────────
 
   static const AndroidNotificationChannel _importantAlertsChannel =
@@ -322,9 +327,9 @@ class NotificationService {
     }
   }
 
-  static Future<void> unregisterFcmToken() async {
+  static Future<void> unregisterFcmToken({String? userId}) async {
     try {
-      final currentUid = FirebaseAuth.instance.currentUser?.uid;
+      final currentUid = userId ?? FirebaseAuth.instance.currentUser?.uid;
       if (currentUid == null) return;
       final snapshot = await _firestore.collection('devices').where('userId', isEqualTo: currentUid).get();
       for (final doc in snapshot.docs) {
@@ -722,9 +727,83 @@ class NotificationService {
     _controller.add([]);
   }
 
+  // ── 9. Student Real-time Notifications Listener ────────────────────────────
+
+  static void listenForStudent(String studentId) {
+    if (!_initialized) {
+      init();
+    }
+    _studentFirestoreSubscription?.cancel();
+    _studentFirstSnapshotReceived = false;
+    _studentSeenNotificationIds.clear();
+
+    _studentFirestoreSubscription = _firestore
+        .collection(_collection)
+        .orderBy('timestamp', descending: true)
+        .snapshots()
+        .listen(
+      (snapshot) {
+        final notifications = snapshot.docs.map((doc) {
+          final rawData = doc.data();
+          final map = {...rawData, 'id': doc.id};
+          return NotificationModel.fromMap(map, doc.id);
+        }).toList();
+
+        // Filter notices for this student (broadcast or targeted)
+        final filteredNotices = notifications.where((n) {
+          return n.studentId.isEmpty || n.studentId == studentId;
+        }).toList();
+
+        // On the very first snapshot, just record what exists — don’t beep.
+        if (!_studentFirstSnapshotReceived) {
+          _studentFirstSnapshotReceived = true;
+          for (final n in filteredNotices) {
+            _studentSeenNotificationIds.add(n.id);
+          }
+        } else {
+          // Find any notification IDs we haven’t seen before.
+          final newUnread = filteredNotices.where(
+            (n) => !_studentSeenNotificationIds.contains(n.id) && !n.isRead,
+          ).toList();
+
+          if (newUnread.isNotEmpty) {
+            // Play notification sound
+            SoundService.playNotification();
+            
+            // Show a local notification for each new unread message
+            for (final n in newUnread) {
+              String targetChannel = 'general_notifications';
+              if (n.notificationType.startsWith('attendance')) {
+                targetChannel = 'attendance_updates';
+              } else if (n.notificationType.contains('fee') || n.notificationType.contains('installment')) {
+                targetChannel = 'fee_reminders';
+              }
+              showLocalNotification(
+                channelId: targetChannel,
+                title: n.title,
+                body: n.message,
+              );
+            }
+          }
+
+          for (final n in filteredNotices) {
+            _studentSeenNotificationIds.add(n.id);
+          }
+        }
+      },
+      onError: (e) => debugPrint("Student Notification Firestore Error: $e"),
+    );
+  }
+
+  static void cancelStudentSubscription() {
+    _studentFirestoreSubscription?.cancel();
+    _studentFirestoreSubscription = null;
+  }
+
   static Future<void> dispose() async {
     await _authSubscription?.cancel();
     await _firestoreSubscription?.cancel();
+    await _studentFirestoreSubscription?.cancel();
     await _controller.close();
     _initialized = false;
   }

@@ -13,23 +13,23 @@ class SoundService {
 
   // ── Standard notification ─────────────────────────────────────────────────
 
-  /// Plays the platform's built-in alert click sound plus a light haptic tap.
+  /// Plays the platform's built-in alert sound plus a light haptic tap.
   /// Use for everyday notifications (new student, fee update, attendance…).
   static Future<void> playNotification() async {
     await Future.wait([
-      SystemSound.play(SystemSoundType.click),
+      SystemSound.play(SystemSoundType.alert),
       HapticFeedback.lightImpact(),
     ]);
   }
 
   // ── Important / urgent alert ──────────────────────────────────────────────
 
-  /// Plays the alert sound twice with a medium haptic for high-priority events.
+  /// Plays the alert sound with a medium haptic for high-priority events.
   static Future<void> playImportantAlert() async {
-    await HapticFeedback.mediumImpact();
-    await SystemSound.play(SystemSoundType.click);
-    await Future.delayed(const Duration(milliseconds: 180));
-    await SystemSound.play(SystemSoundType.click);
+    await Future.wait([
+      SystemSound.play(SystemSoundType.alert),
+      HapticFeedback.mediumImpact(),
+    ]);
   }
 
   // ── Success confirmation ──────────────────────────────────────────────────

@@ -8,6 +8,7 @@ import '../widgets/custom_card.dart';
 import 'student_auth_service.dart';
 import 'student_main_wrapper.dart';
 import 'student_qr_scanner_screen.dart';
+import '../services/notification_service.dart';
 
 
 class StudentLoginScreen extends StatefulWidget {
@@ -45,10 +46,18 @@ class _StudentLoginScreenState extends State<StudentLoginScreen> {
     });
 
     try {
-      await StudentAuthService.loginStudent(
+      final studentId = await StudentAuthService.loginStudent(
         studentCode: enteredCode,
         scannedQrToken: tokenToUse,
       );
+
+      await NotificationService.init();
+      await NotificationService.registerFcmToken(
+        userId: studentId,
+        role: 'student',
+        studentId: studentId,
+      );
+      NotificationService.listenForStudent(studentId);
 
       if (mounted) {
         Navigator.of(context).pushAndRemoveUntil(
