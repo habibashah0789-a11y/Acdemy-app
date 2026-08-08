@@ -2,40 +2,40 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 class AppTheme {
-  // Brand Colors - Modern Material 3 Blue & Indigo Palette
-  static const Color primaryBlue = Color(0xFF1E56A0);
-  static const Color primaryDarkBlue = Color(0xFF163172);
-  static const Color primaryLightBlue = Color(0xFFD6E4F0);
-  static const Color accentIndigo = Color(0xFF4F46E5);
-  static const Color secondaryGreen = Color(0xFF059669);
-  static const Color accentOrange = Color(0xFFD97706);
-  static const Color warningRed = Color(0xFFDC2626);
+  // Brand Colors - Executive Slate & Sapphire Navy Palette
+  static const Color primaryBlue = Color(0xFF1E3A8A); // Deep Royal Navy
+  static const Color primaryDarkBlue = Color(0xFF0F172A); // Slate Midnight Charcoal
+  static const Color primaryLightBlue = Color(0xFFE2E8F0); // Subtle Slate Ice
+  static const Color accentIndigo = Color(0xFF3B82F6); // Soft Royal Blue
+  static const Color secondaryGreen = Color(0xFF10B981); // Refined Emerald Accent
+  static const Color accentOrange = Color(0xFFF59E0B); // Warm Amber Gold
+  static const Color warningRed = Color(0xFFEF4444); // Premium Crimson
   
   // Light Theme Colors
   static const Color lightBackground = Color(0xFFF8FAFC);
   static const Color lightSurface = Colors.white;
   static const Color lightCard = Colors.white;
   static const Color lightTextPrimary = Color(0xFF0F172A);
-  static const Color lightTextSecondary = Color(0xFF475569);
+  static const Color lightTextSecondary = Color(0xFF64748B);
   static const Color lightBorder = Color(0xFFE2E8F0);
   
-  // Dark Theme Colors
-  static const Color darkBackground = Color(0xFF0F172A);
-  static const Color darkSurface = Color(0xFF1E293B);
-  static const Color darkCard = Color(0xFF1E293B);
+  // Dark Theme Colors - Deep Slate & Charcoal Navy
+  static const Color darkBackground = Color(0xFF0B0F17); // Deepest Charcoal Slate
+  static const Color darkSurface = Color(0xFF161F30); // Refined Dark Card Surface
+  static const Color darkCard = Color(0xFF161F30);
   static const Color darkTextPrimary = Color(0xFFF8FAFC);
   static const Color darkTextSecondary = Color(0xFF94A3B8);
-  static const Color darkBorder = Color(0xFF334155);
+  static const Color darkBorder = Color(0xFF243044); // Subtle Border Lighting
 
-  // Gradient Presets
+  // Gradient Presets - Luxury & Sophisticated
   static const LinearGradient primaryGradient = LinearGradient(
-    colors: [Color(0xFF1E56A0), Color(0xFF163172)],
+    colors: [Color(0xFF0F172A), Color(0xFF1E3A8A), Color(0xFF1E293B)],
     begin: Alignment.topLeft,
     end: Alignment.bottomRight,
   );
 
   static const LinearGradient accentGradient = LinearGradient(
-    colors: [Color(0xFF4F46E5), Color(0xFF2563EB)],
+    colors: [Color(0xFF2563EB), Color(0xFF1D4ED8)],
     begin: Alignment.topLeft,
     end: Alignment.bottomRight,
   );
@@ -47,7 +47,7 @@ class AppTheme {
   );
 
   static const LinearGradient warningGradient = LinearGradient(
-    colors: [Color(0xFFD97706), Color(0xFFA16207)],
+    colors: [Color(0xFFD97706), Color(0xFFF59E0B)],
     begin: Alignment.topLeft,
     end: Alignment.bottomRight,
   );

@@ -108,76 +108,147 @@ class _DashboardScreenState extends State<DashboardScreen> {
       width: double.infinity,
       padding: const EdgeInsets.all(22),
       decoration: BoxDecoration(
-        gradient: AppTheme.primaryGradient,
+        gradient: isDark
+            ? const LinearGradient(
+                colors: [Color(0xFF161F30), Color(0xFF0F172A), Color(0xFF1A263B)],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              )
+            : const LinearGradient(
+                colors: [Color(0xFF0F172A), Color(0xFF1E3A8A), Color(0xFF1E293B)],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
         borderRadius: BorderRadius.circular(24),
+        border: Border.all(
+          color: isDark ? const Color(0xFF2E3D56) : Colors.white.withValues(alpha: 0.15),
+          width: 1.2,
+        ),
         boxShadow: [
           BoxShadow(
-            color: AppTheme.primaryBlue.withValues(alpha: 0.25),
-            blurRadius: 16,
-            offset: const Offset(0, 6),
+            color: Colors.black.withValues(alpha: isDark ? 0.35 : 0.15),
+            blurRadius: 20,
+            offset: const Offset(0, 8),
           )
         ],
       ),
-      child: Column(
+      child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                'Welcome Back, 👋',
-                style: GoogleFonts.poppins(
-                  fontSize: 14,
-                  color: Colors.white.withValues(alpha: 0.85),
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.2),
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                child: Row(
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
                   children: [
-                    Container(
-                      width: 8,
-                      height: 8,
-                      decoration: const BoxDecoration(
-                        color: Colors.greenAccent,
-                        shape: BoxShape.circle,
+                    Text(
+                      'Welcome Back, 👋',
+                      style: GoogleFonts.poppins(
+                        fontSize: 13,
+                        color: Colors.white.withValues(alpha: 0.85),
+                        fontWeight: FontWeight.w500,
+                        letterSpacing: 0.3,
                       ),
                     ),
-                    const SizedBox(width: 6),
-                    const Text(
-                      'Admin Online',
-                      style: TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold),
+                    const SizedBox(width: 10),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 3),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF10B981).withValues(alpha: 0.2),
+                        borderRadius: BorderRadius.circular(20),
+                        border: Border.all(color: const Color(0xFF10B981).withValues(alpha: 0.4), width: 1),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Container(
+                            width: 6,
+                            height: 6,
+                            decoration: const BoxDecoration(
+                              color: Color(0xFF10B981),
+                              shape: BoxShape.circle,
+                            ),
+                          ),
+                          const SizedBox(width: 5),
+                          const Text(
+                            'Admin Online',
+                            style: TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold),
+                          ),
+                        ],
+                      ),
                     ),
                   ],
                 ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 6),
-          Text(
-            'Administrator',
-            style: GoogleFonts.poppins(
-              fontSize: 26,
-              fontWeight: FontWeight.bold,
-              color: Colors.white,
+                const SizedBox(height: 8),
+                Text(
+                  'Administrator',
+                  style: GoogleFonts.poppins(
+                    fontSize: 25,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
+                    height: 1.1,
+                  ),
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  'Quaid Academy Management Dashboard',
+                  style: GoogleFonts.poppins(
+                    fontSize: 12,
+                    color: Colors.white.withValues(alpha: 0.75),
+                    fontWeight: FontWeight.w400,
+                  ),
+                ),
+              ],
             ),
           ),
-          const SizedBox(height: 4),
-          Text(
-            'Quaid Academy Management Dashboard',
-            style: GoogleFonts.poppins(
-              fontSize: 12,
-              color: Colors.white.withValues(alpha: 0.8),
+          const SizedBox(width: 14),
+          // Quaid Academy Logo Badge Frame
+          Container(
+            padding: const EdgeInsets.all(3),
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              gradient: const LinearGradient(
+                colors: [Color(0xFFF59E0B), Color(0xFF3B82F6)],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: const Color(0xFF3B82F6).withValues(alpha: 0.4),
+                  blurRadius: 12,
+                  spreadRadius: 1,
+                ),
+              ],
+            ),
+            child: Container(
+              padding: const EdgeInsets.all(2),
+              decoration: const BoxDecoration(
+                color: Colors.white,
+                shape: BoxShape.circle,
+              ),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(30),
+                child: Image.asset(
+                  'assets/images/Quaid Academy logo.png',
+                  width: 54,
+                  height: 54,
+                  fit: BoxFit.cover,
+                  errorBuilder: (_, __, ___) => Container(
+                    width: 54,
+                    height: 54,
+                    decoration: const BoxDecoration(
+                      color: AppTheme.primaryBlue,
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(Icons.school_rounded, color: Colors.white, size: 28),
+                  ),
+                ),
+              ),
             ),
           ),
         ],
       ),
-    ).animate().fadeIn(duration: 500.ms).slideY(begin: -0.05);
+    ).animate().fadeIn(duration: 450.ms).slideY(begin: -0.04);
   }
 
   Widget _buildSectionTitle(String title) {
@@ -343,8 +414,15 @@ class _DashboardScreenState extends State<DashboardScreen> {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Card(
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-      elevation: 2,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(24),
+        side: BorderSide(
+          color: isDark ? const Color(0xFF243044) : const Color(0xFFE2E8F0),
+          width: 1,
+        ),
+      ),
+      elevation: isDark ? 0 : 2,
+      color: isDark ? AppTheme.darkCard : Colors.white,
       child: Padding(
         padding: const EdgeInsets.all(20),
         child: Column(
@@ -360,13 +438,18 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       Text(
                         'Student Strength Breakdown',
                         style: GoogleFonts.poppins(
-                            fontSize: 16, fontWeight: FontWeight.bold),
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                          color: isDark ? Colors.white : const Color(0xFF0F172A),
+                        ),
                       ),
                       const SizedBox(height: 2),
                       Text(
                         'Active enrollments by class level',
                         style: TextStyle(
-                            fontSize: 11, color: Colors.grey.shade500),
+                          fontSize: 11,
+                          color: isDark ? Colors.grey.shade400 : Colors.grey.shade600,
+                        ),
                       ),
                     ],
                   ),
@@ -378,7 +461,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       padding: const EdgeInsets.symmetric(
                           horizontal: 10, vertical: 6),
                       decoration: BoxDecoration(
-                        color: AppTheme.primaryBlue.withValues(alpha: 0.1),
+                        color: (isDark ? const Color(0xFF3B82F6) : AppTheme.primaryBlue)
+                            .withValues(alpha: 0.12),
                         borderRadius: BorderRadius.circular(12),
                       ),
                       child: Text(
@@ -386,7 +470,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                         style: GoogleFonts.poppins(
                           fontSize: 13,
                           fontWeight: FontWeight.bold,
-                          color: AppTheme.primaryBlue,
+                          color: isDark ? const Color(0xFF60A5FA) : AppTheme.primaryBlue,
                         ),
                       ),
                     ),
@@ -456,7 +540,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     },
                     touchTooltipData: BarTouchTooltipData(
                       getTooltipColor: (group) =>
-                          isDark ? Colors.grey.shade800 : Colors.white,
+                          isDark ? const Color(0xFF1E293B) : Colors.white,
                       getTooltipItem: (group, groupIndex, rod, rodIndex) {
                         return BarTooltipItem(
                           '${rod.toY.toInt()} Students',
@@ -476,8 +560,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
                         showTitles: true,
                         reservedSize: 28,
                         getTitlesWidget: (double value, TitleMeta meta) {
-                          const style = TextStyle(
-                              fontWeight: FontWeight.bold, fontSize: 10);
+                          final style = TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 10,
+                              color: isDark ? Colors.grey.shade400 : Colors.grey.shade700);
                           final labels = [
                             '1st Year',
                             '2nd Year',
@@ -502,7 +588,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                           return Text(
                             value.toInt().toString(),
                             style: TextStyle(
-                                color: Colors.grey.shade600, fontSize: 9),
+                                color: isDark ? Colors.grey.shade400 : Colors.grey.shade600, fontSize: 9),
                           );
                         },
                       ),
@@ -516,16 +602,16 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     show: true,
                     drawVerticalLine: false,
                     getDrawingHorizontalLine: (value) => FlLine(
-                      color: Colors.grey.withValues(alpha: 0.1),
+                      color: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.grey.withValues(alpha: 0.1),
                       strokeWidth: 1,
                     ),
                   ),
                   borderData: FlBorderData(show: false),
                   barGroups: [
-                    _barGroup(0, fsc1st, maxY, Colors.blue),
-                    _barGroup(1, fsc2nd, maxY, Colors.cyan),
-                    _barGroup(2, matric9th, maxY, Colors.indigo),
-                    _barGroup(3, matric10th, maxY, Colors.teal),
+                    _barGroup(0, fsc1st, maxY, const Color(0xFF3B82F6)),
+                    _barGroup(1, fsc2nd, maxY, const Color(0xFF06B6D4)),
+                    _barGroup(2, matric9th, maxY, const Color(0xFF8B5CF6)),
+                    _barGroup(3, matric10th, maxY, const Color(0xFF10B981)),
                   ],
                 ),
               ),
@@ -535,10 +621,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceAround,
               children: [
-                _buildLegendItem('FSC 1st Yr', Colors.blue),
-                _buildLegendItem('FSC 2nd Yr', Colors.cyan),
-                _buildLegendItem('Matric 9th', Colors.indigo),
-                _buildLegendItem('Matric 10th', Colors.teal),
+                _buildLegendItem('FSC 1st Yr', const Color(0xFF3B82F6)),
+                _buildLegendItem('FSC 2nd Yr', const Color(0xFF06B6D4)),
+                _buildLegendItem('Matric 9th', const Color(0xFF8B5CF6)),
+                _buildLegendItem('Matric 10th', const Color(0xFF10B981)),
               ],
             ),
           ],
@@ -570,6 +656,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 
   Widget _buildLegendItem(String label, Color color) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Row(
       children: [
         Container(
@@ -580,8 +667,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
         const SizedBox(width: 4),
         Text(
           label,
-          style: const TextStyle(
-              fontSize: 9, fontWeight: FontWeight.w600, color: Colors.grey),
+          style: TextStyle(
+            fontSize: 10,
+            fontWeight: FontWeight.w600,
+            color: isDark ? Colors.grey.shade400 : Colors.grey.shade700,
+          ),
         ),
       ],
     );
@@ -632,7 +722,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
     final isFsc = title.contains('FSC');
     final iconData = isFsc ? Icons.bar_chart_rounded : Icons.school_rounded;
-    final iconBgColor = isFsc ? const Color(0xFF4C8DFF) : const Color(0xFFA573FF);
 
     return InkWell(
       onTap: () => onMetricTap('Total'),
@@ -640,12 +729,15 @@ class _DashboardScreenState extends State<DashboardScreen> {
       child: Container(
         padding: const EdgeInsets.all(20),
         decoration: BoxDecoration(
-          color: Theme.of(context).cardTheme.color ??
-              (isDark ? AppTheme.darkCard : Colors.white),
+          color: isDark ? AppTheme.darkCard : Colors.white,
           borderRadius: BorderRadius.circular(24),
+          border: Border.all(
+            color: isDark ? const Color(0xFF243044) : const Color(0xFFE2E8F0),
+            width: 1,
+          ),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withValues(alpha: 0.04),
+              color: Colors.black.withValues(alpha: isDark ? 0.25 : 0.04),
               blurRadius: 16,
               offset: const Offset(0, 4),
             ),
@@ -661,8 +753,22 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   width: 48,
                   height: 48,
                   decoration: BoxDecoration(
-                    color: iconBgColor,
+                    gradient: isFsc
+                        ? const LinearGradient(
+                            colors: [Color(0xFF2563EB), Color(0xFF1D4ED8)],
+                          )
+                        : const LinearGradient(
+                            colors: [Color(0xFF8B5CF6), Color(0xFF6D28D9)],
+                          ),
                     borderRadius: BorderRadius.circular(16),
+                    boxShadow: [
+                      BoxShadow(
+                        color: (isFsc ? const Color(0xFF2563EB) : const Color(0xFF8B5CF6))
+                            .withValues(alpha: 0.3),
+                        blurRadius: 8,
+                        offset: const Offset(0, 3),
+                      ),
+                    ],
                   ),
                   child: Icon(iconData, color: Colors.white, size: 24),
                 ),
@@ -942,9 +1048,13 @@ class _DashboardScreenState extends State<DashboardScreen> {
       decoration: BoxDecoration(
         color: isDark ? AppTheme.darkCard : Colors.white,
         borderRadius: BorderRadius.circular(20),
+        border: Border.all(
+          color: isDark ? const Color(0xFF243044) : const Color(0xFFF1F5F9),
+          width: 1,
+        ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.03),
+            color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.03),
             blurRadius: 10,
             offset: const Offset(0, 2),
           ),
@@ -956,7 +1066,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
             width: 44,
             height: 44,
             decoration: BoxDecoration(
-              color: item.color.withValues(alpha: 0.12),
+              color: item.color.withValues(alpha: isDark ? 0.2 : 0.12),
               borderRadius: BorderRadius.circular(14),
             ),
             child: Icon(item.icon, color: item.color, size: 22),
@@ -971,7 +1081,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   style: GoogleFonts.poppins(
                     fontSize: 14,
                     fontWeight: FontWeight.bold,
-                    color: isDark ? Colors.white : const Color(0xFF1D1D1F),
+                    color: isDark ? Colors.white : const Color(0xFF0F172A),
                   ),
                 ),
                 const SizedBox(height: 2),
@@ -989,8 +1099,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
             _relativeTime(item.time),
             style: GoogleFonts.poppins(
               fontSize: 11,
-              fontWeight: FontWeight.w500,
-              color: const Color(0xFF22C55E),
+              fontWeight: FontWeight.w600,
+              color: isDark ? const Color(0xFF10B981) : const Color(0xFF059669),
             ),
           ),
         ],
@@ -1024,7 +1134,37 @@ class _DashboardScreenState extends State<DashboardScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Academy Dashboard'),
+        centerTitle: false,
+        title: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(2),
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha: 0.15),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(8),
+                child: Image.asset(
+                  'assets/images/Quaid Academy logo.png',
+                  width: 28,
+                  height: 28,
+                  fit: BoxFit.cover,
+                  errorBuilder: (_, __, ___) => const Icon(Icons.school_rounded, size: 22, color: Colors.white),
+                ),
+              ),
+            ),
+            const SizedBox(width: 10),
+            Text(
+              'Quaid Academy',
+              style: GoogleFonts.poppins(
+                fontWeight: FontWeight.bold,
+                fontSize: 18,
+                color: Colors.white,
+              ),
+            ),
+          ],
+        ),
         actions: [
           StreamBuilder<List<NotificationModel>>(
             stream: NotificationService.notificationsStream(),
@@ -1108,29 +1248,56 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 
   Widget _buildHeaderWithAction(String title, String actionText) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final accentColor = isDark ? const Color(0xFF3B82F6) : AppTheme.primaryBlue;
+
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        Text(
-          title,
-          style: GoogleFonts.poppins(
-            fontSize: 18,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
         Row(
           children: [
-            Text(
-              actionText,
-              style: GoogleFonts.poppins(
-                fontSize: 13,
-                fontWeight: FontWeight.w600,
-                color: AppTheme.primaryBlue,
+            Container(
+              width: 4,
+              height: 18,
+              decoration: BoxDecoration(
+                color: accentColor,
+                borderRadius: BorderRadius.circular(4),
               ),
             ),
-            if (actionText.contains('Month'))
-              const Icon(Icons.keyboard_arrow_down_rounded, size: 18, color: AppTheme.primaryBlue),
+            const SizedBox(width: 10),
+            Text(
+              title,
+              style: GoogleFonts.poppins(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+                color: isDark ? Colors.white : const Color(0xFF0F172A),
+              ),
+            ),
           ],
+        ),
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+          decoration: BoxDecoration(
+            color: accentColor.withValues(alpha: isDark ? 0.15 : 0.08),
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                actionText,
+                style: GoogleFonts.poppins(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                  color: accentColor,
+                ),
+              ),
+              if (actionText.contains('Month')) ...[
+                const SizedBox(width: 2),
+                Icon(Icons.keyboard_arrow_down_rounded, size: 16, color: accentColor),
+              ],
+            ],
+          ),
         ),
       ],
     );

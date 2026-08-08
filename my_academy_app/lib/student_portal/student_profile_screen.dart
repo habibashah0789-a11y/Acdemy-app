@@ -3,6 +3,7 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../models/student_model.dart';
 import '../theme/app_theme.dart';
+import '../widgets/about_developers_widget.dart';
 import '../widgets/custom_card.dart';
 import '../widgets/empty_state_widget.dart';
 import '../widgets/shimmer_loading_widget.dart';
@@ -288,6 +289,11 @@ class _StudentProfileScreenState extends State<StudentProfileScreen> {
                 ],
               ),
             ).animate().fadeIn(delay: 200.ms),
+
+            const SizedBox(height: 20),
+
+            // About Developers Card
+            const AboutDevelopersCard().animate().fadeIn(delay: 250.ms),
 
             const SizedBox(height: 28),
 

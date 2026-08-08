@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:my_academy_app/settings/logout_screen.dart';
 import '../models/student_model.dart';
 import '../services/database_service.dart';
+import '../theme/app_theme.dart';
+import '../widgets/about_developers_widget.dart';
 import 'appearance_screen.dart';
 import 'recycle_bin_screen.dart';
 
@@ -36,21 +38,23 @@ class SettingsScreen extends StatelessWidget {
             "Recycle Bin",
             const RecycleBinScreen(),
           ),
-
-          /* _tile(
-            context,
-            Icons.backup,
-            "Backup & Restore",
-            const BackupRestoreScreen(),
-          ),*/
-         
+          ListTile(
+            leading: const Icon(Icons.code_rounded, color: AppTheme.primaryBlue),
+            title: const Text(
+              "About Developers",
+              style: TextStyle(fontWeight: FontWeight.w600),
+            ),
+            subtitle: const Text("Habiba Shah & Hamza Taif"),
+            trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+            onTap: () => AboutDevelopersDialog.show(context),
+          ),
           ListTile(
             leading:
                 const Icon(Icons.delete_forever_rounded, color: Colors.red),
             title: const Text("Delete Students Data",
                 style:
                     TextStyle(color: Colors.red, fontWeight: FontWeight.bold)),
-            trailing: const Icon(Icons.arrow_forward_ios, color: Colors.red),
+            trailing: const Icon(Icons.arrow_forward_ios, color: Colors.red, size: 16),
             onTap: () => _showDeleteDialog(context),
           ),
           _tile(
