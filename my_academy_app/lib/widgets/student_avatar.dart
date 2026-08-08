@@ -23,6 +23,60 @@ class StudentAvatar extends StatefulWidget {
     this.fit = BoxFit.cover,
   });
 
+  static void showFullScreen(BuildContext context, StudentModel student) {
+    Navigator.push(
+      context,
+      PageRouteBuilder(
+        opaque: false,
+        barrierDismissible: true,
+        barrierColor: Colors.black.withValues(alpha: 0.9),
+        pageBuilder: (context, _, __) {
+          return Scaffold(
+            backgroundColor: Colors.transparent,
+            body: Stack(
+              children: [
+                GestureDetector(
+                  onTap: () => Navigator.pop(context),
+                  child: Container(
+                    color: Colors.transparent,
+                    width: double.infinity,
+                    height: double.infinity,
+                  ),
+                ),
+                Center(
+                  child: InteractiveViewer(
+                    minScale: 0.5,
+                    maxScale: 4.0,
+                    child: Hero(
+                      tag: 'student_avatar_zoom_${student.id}',
+                      child: StudentAvatar(
+                        student: student,
+                        size: MediaQuery.of(context).size.width * 0.95,
+                        isCircle: false,
+                        isLarge: true,
+                      ),
+                    ),
+                  ),
+                ),
+                Positioned(
+                  top: MediaQuery.of(context).padding.top + 16,
+                  right: 16,
+                  child: IconButton(
+                    icon: const Icon(Icons.close, color: Colors.white, size: 28),
+                    onPressed: () => Navigator.pop(context),
+                    style: IconButton.styleFrom(
+                      backgroundColor: Colors.black54,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          );
+        },
+      ),
+    );
+  }
+
   @override
   State<StudentAvatar> createState() => _StudentAvatarState();
 }

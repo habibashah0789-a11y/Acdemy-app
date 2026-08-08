@@ -203,10 +203,16 @@ class _StudentProfileScreenState extends State<StudentProfileScreen> {
                         )
                       ],
                     ),
-                    child: StudentAvatar(
-                      student: student,
-                      size: 96,
-                      isLarge: true,
+                    child: GestureDetector(
+                      onTap: () => StudentAvatar.showFullScreen(context, student),
+                      child: Hero(
+                        tag: 'student_avatar_zoom_${student.id}',
+                        child: StudentAvatar(
+                          student: student,
+                          size: 96,
+                          isLarge: true,
+                        ),
+                      ),
                     ),
                   ).animate().scale(duration: 400.ms),
                   const SizedBox(height: 16),

@@ -259,9 +259,15 @@ class _StudentDashboardScreenState extends State<StudentDashboardScreen> {
                                   )
                                 ],
                               ),
-                              child: StudentAvatar(
-                                student: student,
-                                size: 48,
+                              child: GestureDetector(
+                                onTap: () => StudentAvatar.showFullScreen(context, student),
+                                child: Hero(
+                                  tag: 'student_avatar_zoom_${student.id}',
+                                  child: StudentAvatar(
+                                    student: student,
+                                    size: 48,
+                                  ),
+                                ),
                               ),
                             ),
                             const SizedBox(width: 16),
@@ -841,6 +847,8 @@ class _StudentDashboardScreenState extends State<StudentDashboardScreen> {
         const SizedBox(height: 24),
       ],
     ).animate().fadeIn(delay: 100.ms);
+  }
+
   void _openNoticeDetail(NotificationModel item) {
     NotificationService.markNoticeAsRead(item.id);
 
