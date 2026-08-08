@@ -25,16 +25,21 @@ class _StudentNotificationsScreenState extends State<StudentNotificationsScreen>
   String? _errorMessage;
   List<NotificationModel> _notices = [];
   StreamSubscription<QuerySnapshot>? _noticesSubscription;
+  StreamSubscription<void>? _readStatusSubscription;
 
   @override
   void initState() {
     super.initState();
     _initRealTimeNotices();
+    _readStatusSubscription = NotificationService.readStatusStream.listen((_) {
+      if (mounted) setState(() {});
+    });
   }
 
   @override
   void dispose() {
     _noticesSubscription?.cancel();
+    _readStatusSubscription?.cancel();
     super.dispose();
   }
 
@@ -169,6 +174,8 @@ class _StudentNotificationsScreenState extends State<StudentNotificationsScreen>
                             bgActiveColor = AppTheme.accentOrange.withValues(alpha: 0.12);
                           }
 
+                          final bool isUnread = !NotificationService.isNoticeRead(item.id);
+
                           return Padding(
                             padding: const EdgeInsets.only(bottom: 14),
                             child: GestureDetector(
@@ -178,13 +185,31 @@ class _StudentNotificationsScreenState extends State<StudentNotificationsScreen>
                                 child: Row(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
-                                    Container(
-                                      padding: const EdgeInsets.all(12),
-                                      decoration: BoxDecoration(
-                                        color: bgActiveColor,
-                                        shape: BoxShape.circle,
-                                      ),
-                                      child: Icon(leadingIcon, color: themeColor, size: 22),
+                                    Stack(
+                                      clipBehavior: Clip.none,
+                                      children: [
+                                        Container(
+                                          padding: const EdgeInsets.all(12),
+                                          decoration: BoxDecoration(
+                                            color: bgActiveColor,
+                                            shape: BoxShape.circle,
+                                          ),
+                                          child: Icon(leadingIcon, color: themeColor, size: 22),
+                                        ),
+                                        if (isUnread)
+                                          Positioned(
+                                            right: -2,
+                                            top: -2,
+                                            child: Container(
+                                              width: 12,
+                                              height: 12,
+                                              decoration: const BoxDecoration(
+                                                color: Colors.redAccent,
+                                                shape: BoxShape.circle,
+                                              ),
+                                            ),
+                                          ),
+                                      ],
                                     ),
                                     const SizedBox(width: 14),
                                     Expanded(
@@ -195,14 +220,38 @@ class _StudentNotificationsScreenState extends State<StudentNotificationsScreen>
                                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                             children: [
                                               Expanded(
-                                                child: Text(
-                                                  item.title,
-                                                  style: GoogleFonts.poppins(
-                                                    fontWeight: FontWeight.bold,
-                                                    fontSize: 14,
-                                                  ),
-                                                  maxLines: 1,
-                                                  overflow: TextOverflow.ellipsis,
+                                                child: Row(
+                                                  children: [
+                                                    if (isUnread) ...[
+                                                      Container(
+                                                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                                        decoration: BoxDecoration(
+                                                          color: Colors.redAccent.withValues(alpha: 0.15),
+                                                          borderRadius: BorderRadius.circular(4),
+                                                        ),
+                                                        child: const Text(
+                                                          'NEW',
+                                                          style: TextStyle(
+                                                            color: Colors.redAccent,
+                                                            fontSize: 9,
+                                                            fontWeight: FontWeight.bold,
+                                                          ),
+                                                        ),
+                                                      ),
+                                                      const SizedBox(width: 6),
+                                                    ],
+                                                    Expanded(
+                                                      child: Text(
+                                                        item.title,
+                                                        style: GoogleFonts.poppins(
+                                                          fontWeight: FontWeight.bold,
+                                                          fontSize: 14,
+                                                        ),
+                                                        maxLines: 1,
+                                                        overflow: TextOverflow.ellipsis,
+                                                      ),
+                                                    ),
+                                                  ],
                                                 ),
                                               ),
                                               Text(
@@ -269,11 +318,8 @@ class _StudentNotificationsScreenState extends State<StudentNotificationsScreen>
     Color themeColor,
     IconData leadingIcon,
   ) {
-    // Mark notification as read in Firestore silently
-    FirebaseFirestore.instance
-        .collection('notifications')
-        .doc(item.id)
-        .update({'isRead': true}).catchError((_) {});
+    // Mark notice as read locally
+    NotificationService.markNoticeAsRead(item.id);
 
     final isDark = Theme.of(context).brightness == Brightness.dark;
     showModalBottomSheet(

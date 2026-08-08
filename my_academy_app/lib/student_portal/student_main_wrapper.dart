@@ -10,6 +10,7 @@ import 'student_fee_screen.dart';
 import 'student_notifications_screen.dart';
 import 'student_profile_screen.dart';
 import 'student_login_screen.dart';
+import 'package:hive_flutter/hive_flutter.dart';
 
 class StudentMainWrapper extends StatefulWidget {
   const StudentMainWrapper({super.key});
@@ -43,6 +44,7 @@ class _StudentMainWrapperState extends State<StudentMainWrapper> {
       if (session != null) {
         final studentId = session['studentId'] as String? ?? '';
         if (studentId.isNotEmpty) {
+          await Hive.openBox<bool>('read_notices');
           await NotificationService.init();
           await NotificationService.registerFcmToken(
             userId: studentId,
@@ -162,23 +164,41 @@ class _StudentMainWrapperState extends State<StudentMainWrapper> {
               setState(() => _currentIndex = index);
               _pageController.jumpToPage(index);
             },
-            destinations: const [
-              NavigationDestination(
+            destinations: [
+              const NavigationDestination(
                 icon: Icon(Icons.grid_view_outlined),
                 selectedIcon: Icon(Icons.grid_view_rounded),
                 label: 'Dashboard',
               ),
-              NavigationDestination(
+              const NavigationDestination(
                 icon: Icon(Icons.account_balance_wallet_outlined),
                 selectedIcon: Icon(Icons.account_balance_wallet_rounded),
                 label: 'Fees',
               ),
               NavigationDestination(
-                icon: Icon(Icons.notifications_none_rounded),
-                selectedIcon: Icon(Icons.notifications_rounded),
+                icon: ValueListenableBuilder<int>(
+                  valueListenable: NotificationService.studentUnreadNoticesCount,
+                  builder: (context, count, _) {
+                    return Badge(
+                      isLabelVisible: count > 0,
+                      label: Text('$count'),
+                      child: const Icon(Icons.notifications_none_rounded),
+                    );
+                  },
+                ),
+                selectedIcon: ValueListenableBuilder<int>(
+                  valueListenable: NotificationService.studentUnreadNoticesCount,
+                  builder: (context, count, _) {
+                    return Badge(
+                      isLabelVisible: count > 0,
+                      label: Text('$count'),
+                      child: const Icon(Icons.notifications_rounded),
+                    );
+                  },
+                ),
                 label: 'Notices',
               ),
-              NavigationDestination(
+              const NavigationDestination(
                 icon: Icon(Icons.person_outline_rounded),
                 selectedIcon: Icon(Icons.person_rounded),
                 label: 'Profile',

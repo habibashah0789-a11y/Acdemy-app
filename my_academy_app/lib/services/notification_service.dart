@@ -809,6 +809,9 @@ class NotificationService {
           return n.studentId.isEmpty || n.studentId == studentId;
         }).toList();
 
+        _lastFilteredNotices = filteredNotices;
+        _updateUnreadCount();
+
         // On the very first snapshot, just record what exists — don’t beep.
         if (!_studentFirstSnapshotReceived) {
           _studentFirstSnapshotReceived = true;
@@ -853,6 +856,30 @@ class NotificationService {
   static void cancelStudentSubscription() {
     _studentFirestoreSubscription?.cancel();
     _studentFirestoreSubscription = null;
+  }
+
+  static final ValueNotifier<int> studentUnreadNoticesCount = ValueNotifier<int>(0);
+  static List<NotificationModel> _lastFilteredNotices = [];
+  static final StreamController<void> _readStatusController = StreamController<void>.broadcast();
+  static Stream<void> get readStatusStream => _readStatusController.stream;
+
+  static Future<void> markNoticeAsRead(String noticeId) async {
+    final box = await Hive.openBox<bool>('read_notices');
+    await box.put(noticeId, true);
+    _readStatusController.add(null);
+    _updateUnreadCount();
+  }
+
+  static bool isNoticeRead(String noticeId) {
+    if (!Hive.isBoxOpen('read_notices')) {
+      return false;
+    }
+    final box = Hive.box<bool>('read_notices');
+    return box.get(noticeId, defaultValue: false) ?? false;
+  }
+
+  static void _updateUnreadCount() {
+    studentUnreadNoticesCount.value = _lastFilteredNotices.where((n) => !isNoticeRead(n.id)).length;
   }
 
   static Future<void> dispose() async {

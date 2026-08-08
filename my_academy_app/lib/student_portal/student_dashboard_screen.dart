@@ -12,6 +12,7 @@ import '../widgets/empty_state_widget.dart';
 import '../widgets/shimmer_loading_widget.dart';
 import '../widgets/student_avatar.dart';
 import 'student_auth_service.dart';
+import '../services/notification_service.dart';
 
 class StudentDashboardScreen extends StatefulWidget {
   const StudentDashboardScreen({super.key});
@@ -29,17 +30,22 @@ class _StudentDashboardScreenState extends State<StudentDashboardScreen> {
 
   StreamSubscription<DocumentSnapshot>? _studentSubscription;
   StreamSubscription<QuerySnapshot>? _noticesSubscription;
+  StreamSubscription<void>? _readStatusSubscription;
 
   @override
   void initState() {
     super.initState();
     _initRealTimeListeners();
+    _readStatusSubscription = NotificationService.readStatusStream.listen((_) {
+      if (mounted) setState(() {});
+    });
   }
 
   @override
   void dispose() {
     _studentSubscription?.cancel();
     _noticesSubscription?.cancel();
+    _readStatusSubscription?.cancel();
     super.dispose();
   }
 
@@ -746,56 +752,88 @@ class _StudentDashboardScreenState extends State<StudentDashboardScreen> {
           child: Column(
             children: _recentNotices.map((notice) {
               final isLast = notice == _recentNotices.last;
-              return Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
+              final bool isUnread = !NotificationService.isNoticeRead(notice.id);
+
+              return InkWell(
+                onTap: () => _openNoticeDetail(notice),
+                borderRadius: BorderRadius.circular(10),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 6.0, horizontal: 4.0),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Container(
-                        padding: const EdgeInsets.all(4),
-                        decoration: const BoxDecoration(
-                          color: AppTheme.accentOrange,
-                          shape: BoxShape.circle,
-                        ),
-                      ),
-                      const SizedBox(width: 10),
-                      Expanded(
-                        child: Text(
-                          notice.title,
-                          style: GoogleFonts.poppins(
-                            fontWeight: FontWeight.bold,
-                            fontSize: 14,
+                      Row(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.all(4),
+                            decoration: BoxDecoration(
+                              color: isUnread ? Colors.redAccent : AppTheme.accentOrange,
+                              shape: BoxShape.circle,
+                            ),
                           ),
-                          maxLines: 1,
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: Row(
+                              children: [
+                                if (isUnread) ...[
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
+                                    decoration: BoxDecoration(
+                                      color: Colors.redAccent.withValues(alpha: 0.15),
+                                      borderRadius: BorderRadius.circular(4),
+                                    ),
+                                    child: const Text(
+                                      'NEW',
+                                      style: TextStyle(
+                                        color: Colors.redAccent,
+                                        fontSize: 9,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 6),
+                                ],
+                                Expanded(
+                                  child: Text(
+                                    notice.title,
+                                    style: GoogleFonts.poppins(
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 14,
+                                    ),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          Text(
+                            DateFormat('MMM dd').format(notice.timestamp),
+                            style: const TextStyle(fontSize: 11, color: Colors.grey),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 6),
+                      Padding(
+                        padding: const EdgeInsets.only(left: 18),
+                        child: Text(
+                          notice.message,
+                          style: TextStyle(
+                            fontSize: 13,
+                            color: isDark ? AppTheme.darkTextSecondary : AppTheme.lightTextSecondary,
+                            height: 1.4,
+                          ),
+                          maxLines: 2,
                           overflow: TextOverflow.ellipsis,
                         ),
                       ),
-                      Text(
-                        DateFormat('MMM dd').format(notice.timestamp),
-                        style: const TextStyle(fontSize: 11, color: Colors.grey),
-                      ),
+                      if (!isLast) ...[
+                        const SizedBox(height: 12),
+                        const Divider(height: 1),
+                      ],
                     ],
                   ),
-                  const SizedBox(height: 6),
-                  Padding(
-                    padding: const EdgeInsets.only(left: 18),
-                    child: Text(
-                      notice.message,
-                      style: TextStyle(
-                        fontSize: 13,
-                        color: isDark ? AppTheme.darkTextSecondary : AppTheme.lightTextSecondary,
-                        height: 1.4,
-                      ),
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ),
-                  if (!isLast) ...[
-                    const SizedBox(height: 12),
-                    const Divider(height: 1),
-                    const SizedBox(height: 12),
-                  ],
-                ],
+                ),
               );
             }).toList(),
           ),
@@ -803,5 +841,153 @@ class _StudentDashboardScreenState extends State<StudentDashboardScreen> {
         const SizedBox(height: 24),
       ],
     ).animate().fadeIn(delay: 100.ms);
+  void _openNoticeDetail(NotificationModel item) {
+    NotificationService.markNoticeAsRead(item.id);
+
+    IconData leadingIcon = Icons.campaign_rounded;
+    Color themeColor = AppTheme.primaryBlue;
+    if (item.notificationType == 'student_registered') {
+      leadingIcon = Icons.school_rounded;
+      themeColor = AppTheme.accentIndigo;
+    } else if (item.notificationType == 'fee_payment' || item.notificationType == 'second_installment') {
+      leadingIcon = Icons.payments_rounded;
+      themeColor = AppTheme.secondaryGreen;
+    } else if (item.notificationType == 'fee_reminder') {
+      leadingIcon = Icons.credit_card_rounded;
+      themeColor = AppTheme.warningRed;
+    } else if (item.notificationType == 'broadcast') {
+      leadingIcon = Icons.campaign_rounded;
+      themeColor = AppTheme.accentOrange;
+    }
+
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => DraggableScrollableSheet(
+        initialChildSize: 0.75,
+        minChildSize: 0.4,
+        maxChildSize: 0.95,
+        builder: (_, scrollController) => Container(
+          decoration: BoxDecoration(
+            color: isDark ? AppTheme.darkSurface : Colors.white,
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+          ),
+          child: Column(
+            children: [
+              const SizedBox(height: 12),
+              Container(
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: Colors.grey.shade300,
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+              const SizedBox(height: 20),
+              Container(
+                padding: const EdgeInsets.all(20),
+                decoration: BoxDecoration(
+                  color: themeColor.withValues(alpha: 0.1),
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(leadingIcon, color: themeColor, size: 36),
+              ),
+              const SizedBox(height: 16),
+              Expanded(
+                child: SingleChildScrollView(
+                  controller: scrollController,
+                  padding: const EdgeInsets.symmetric(horizontal: 24),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        item.title,
+                        textAlign: TextAlign.center,
+                        style: GoogleFonts.poppins(
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
+                          color: isDark ? Colors.white : AppTheme.primaryDarkBlue,
+                        ),
+                      ),
+                      const SizedBox(height: 6),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                            decoration: BoxDecoration(
+                              color: themeColor.withValues(alpha: 0.12),
+                              borderRadius: BorderRadius.circular(20),
+                            ),
+                            child: Text(
+                              item.notificationType.replaceAll('_', ' ').toUpperCase(),
+                              style: TextStyle(
+                                color: themeColor,
+                                fontSize: 10,
+                                fontWeight: FontWeight.bold,
+                                letterSpacing: 0.5,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Text(
+                            DateFormat('MMM dd, yyyy • hh:mm a').format(item.timestamp),
+                            style: TextStyle(
+                              fontSize: 11,
+                              color: isDark ? AppTheme.darkTextSecondary : AppTheme.lightTextSecondary,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 24),
+                      Divider(color: isDark ? Colors.white12 : Colors.grey.shade200),
+                      const SizedBox(height: 16),
+                      Text(
+                        item.message,
+                        style: TextStyle(
+                          fontSize: 15,
+                          height: 1.7,
+                          color: isDark ? AppTheme.darkTextPrimary : AppTheme.lightTextPrimary,
+                        ),
+                      ),
+                      const SizedBox(height: 24),
+                      Container(
+                        padding: const EdgeInsets.all(14),
+                        decoration: BoxDecoration(
+                          color: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.grey.shade50,
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(
+                            color: isDark ? Colors.white12 : Colors.grey.shade200,
+                          ),
+                        ),
+                        child: Row(
+                          children: [
+                            Icon(Icons.admin_panel_settings_rounded, size: 16, color: themeColor),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                'Issued by: ${item.registeredBy.isNotEmpty ? item.registeredBy : "Administration"}',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: isDark ? AppTheme.darkTextSecondary : AppTheme.lightTextSecondary,
+                                  fontStyle: FontStyle.italic,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 32),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 }
