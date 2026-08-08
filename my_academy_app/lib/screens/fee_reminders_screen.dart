@@ -28,9 +28,7 @@ class _FeeRemindersScreenState extends State<FeeRemindersScreen> {
   bool _isSending = false;
   bool _isPrinting = false;
   int _sentCount = 0;
-  int _skippedCount = 0;
   String _filterGrade = 'All';
-  final ValueNotifier<WhatsAppProgress?> _progressNotifier = ValueNotifier(null);
 
   final List<String> _gradeFilters = [
     'All',
@@ -44,12 +42,6 @@ class _FeeRemindersScreenState extends State<FeeRemindersScreen> {
   void initState() {
     super.initState();
     _loadDefaulters();
-  }
-
-  @override
-  void dispose() {
-    _progressNotifier.dispose();
-    super.dispose();
   }
 
   Future<void> _loadDefaulters() async {
@@ -105,207 +97,7 @@ class _FeeRemindersScreenState extends State<FeeRemindersScreen> {
         'Thank you,\n$academyName';
   }
 
-  Future<void> _sendToAll() async {
-    final filtered = _filteredDefaulters;
-    if (filtered.isEmpty) return;
 
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: Row(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(8),
-              decoration: const BoxDecoration(color: Color(0xFF25D366), shape: BoxShape.circle),
-              child: const Icon(Icons.send_rounded, color: Colors.white, size: 18),
-            ),
-            const SizedBox(width: 10),
-            Text('Send WhatsApp Reminders', style: GoogleFonts.poppins(fontWeight: FontWeight.bold, fontSize: 15)),
-          ],
-        ),
-        content: Text(
-          'This will open WhatsApp for each of the ${filtered.length} defaulter student(s).\n\n'
-          '• Each chat opens pre-filled with the fee breakdown.\n'
-          '• Press Send in WhatsApp for each student.\n'
-          '• Students without a phone number will be skipped.\n\n'
-          'Ready to start?',
-        ),
-        actions: [
-          OutlinedButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
-          ElevatedButton(
-            onPressed: () => Navigator.pop(ctx, true),
-            style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF25D366), foregroundColor: Colors.white),
-            child: const Text('Start Sending'),
-          ),
-        ],
-      ),
-    );
-
-    if (confirmed != true || !mounted) return;
-
-    setState(() {
-      _isSending = true;
-      _sentCount = 0;
-      _skippedCount = 0;
-      _sendStatus.clear();
-    });
-
-    _progressNotifier.value = WhatsAppProgress(
-      currentStudentName: '',
-      sentCount: 0,
-      skippedCount: 0,
-      isSending: true,
-    );
-
-    // Show a live progress bottom sheet
-    showModalBottomSheet(
-      context: context,
-      isDismissible: false,
-      enableDrag: false,
-      backgroundColor: Colors.transparent,
-      builder: (sheetCtx) => ValueListenableBuilder<WhatsAppProgress?>(
-        valueListenable: _progressNotifier,
-        builder: (context, progress, _) {
-          if (progress == null) return const SizedBox.shrink();
-          final progressPercent = filtered.isNotEmpty
-              ? (progress.sentCount + progress.skippedCount) / filtered.length
-              : 0.0;
-          return Container(
-            padding: const EdgeInsets.all(24),
-            decoration: const BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-            ),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Container(width: 40, height: 4, decoration: BoxDecoration(color: Colors.grey.shade300, borderRadius: BorderRadius.circular(2))),
-                const SizedBox(height: 20),
-                Row(
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.all(10),
-                      decoration: const BoxDecoration(color: Color(0xFFE8F5E9), shape: BoxShape.circle),
-                      child: const Icon(Icons.send_rounded, color: Color(0xFF25D366), size: 24),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text('Sending WhatsApp Reminders', style: GoogleFonts.poppins(fontWeight: FontWeight.bold, fontSize: 15)),
-                          Text(
-                            progress.isSending
-                                ? 'Opening: ${progress.currentStudentName.isNotEmpty ? progress.currentStudentName : "..."}'
-                                : 'Done! Sent: ${progress.sentCount}, Skipped: ${progress.skippedCount}',
-                            style: const TextStyle(fontSize: 12, color: Colors.grey),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 16),
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(8),
-                  child: LinearProgressIndicator(
-                    value: progressPercent,
-                    minHeight: 8,
-                    backgroundColor: Colors.grey.shade200,
-                    valueColor: const AlwaysStoppedAnimation(Color(0xFF25D366)),
-                  ),
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  '${progress.sentCount + progress.skippedCount} of ${filtered.length} processed',
-                  style: const TextStyle(fontSize: 12, color: Colors.grey),
-                ),
-                if (!progress.isSending) ...[
-                  const SizedBox(height: 16),
-                  SizedBox(
-                    width: double.infinity,
-                    child: ElevatedButton(
-                      onPressed: () => Navigator.pop(sheetCtx),
-                      style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF25D366), foregroundColor: Colors.white),
-                      child: const Text('Done'),
-                    ),
-                  ),
-                ],
-                const SizedBox(height: 8),
-              ],
-            ),
-          );
-        },
-      ),
-    );
-
-    for (final student in filtered) {
-      if (!mounted) break;
-      _progressNotifier.value = WhatsAppProgress(
-        currentStudentName: student.name,
-        sentCount: _sentCount,
-        skippedCount: _skippedCount,
-        isSending: true,
-      );
-
-      final phone = student.phone.trim();
-      if (phone.isEmpty || phone.length < 7) {
-        setState(() {
-          _sendStatus[student.id] = 'skipped';
-          _skippedCount++;
-        });
-        _progressNotifier.value = WhatsAppProgress(
-          currentStudentName: student.name,
-          sentCount: _sentCount,
-          skippedCount: _skippedCount,
-          isSending: true,
-        );
-        continue;
-      }
-
-      try {
-        final message = _buildReminderMessage(student);
-        if (mounted) {
-          await WhatsAppHelper.openWhatsApp(context, phone, message);
-        }
-        await _logIndividualWhatsAppReminderNotification(student);
-        setState(() {
-          _sendStatus[student.id] = 'sent';
-          _sentCount++;
-        });
-        _progressNotifier.value = WhatsAppProgress(
-          currentStudentName: student.name,
-          sentCount: _sentCount,
-          skippedCount: _skippedCount,
-          isSending: true,
-        );
-        await Future.delayed(const Duration(milliseconds: 800));
-      } catch (e) {
-        setState(() {
-          _sendStatus[student.id] = 'error';
-          _skippedCount++;
-        });
-        _progressNotifier.value = WhatsAppProgress(
-          currentStudentName: student.name,
-          sentCount: _sentCount,
-          skippedCount: _skippedCount,
-          isSending: true,
-        );
-      }
-    }
-
-    if (mounted) {
-      setState(() => _isSending = false);
-      _logReminderNotification();
-      _progressNotifier.value = WhatsAppProgress(
-        currentStudentName: '',
-        sentCount: _sentCount,
-        skippedCount: _skippedCount,
-        isSending: false,
-      );
-    }
-  }
 
   Future<void> _sendPushToAll() async {
     final filtered = _filteredDefaulters;
@@ -351,6 +143,7 @@ class _FeeRemindersScreenState extends State<FeeRemindersScreen> {
       if (mounted) setState(() => _sentCount = sent);
     }
     if (mounted) {
+      await _logReminderNotification(sent);
       setState(() {
         _isSending = false;
         _sentCount = 0;
@@ -364,18 +157,17 @@ class _FeeRemindersScreenState extends State<FeeRemindersScreen> {
     }
   }
 
-  Future<void> _logReminderNotification() async {
+  Future<void> _logReminderNotification(int count) async {
     try {
       await NotificationService.init();
       final notification = NotificationModel(
         id: 'fee_reminder_${DateTime.now().millisecondsSinceEpoch}',
         title: 'Fee Reminders Sent',
-        message:
-            'Sent fee reminders to $_sentCount student(s). Skipped $_skippedCount.',
+        message: 'Sent fee push alerts to $count student(s) on their portals.',
         studentName: '',
         className: '',
         subject: '',
-        registeredBy: 'System',
+        registeredBy: FirebaseAuth.instance.currentUser?.email ?? 'Administrator',
         timestamp: DateTime.now(),
         notificationType: 'fee_reminder',
         isRead: false,
@@ -529,14 +321,14 @@ class _FeeRemindersScreenState extends State<FeeRemindersScreen> {
                           const SizedBox(height: 16),
                           LinearProgressIndicator(
                             value: filtered.isNotEmpty
-                                ? (_sentCount + _skippedCount) / filtered.length
+                                ? _sentCount / filtered.length
                                 : 0,
                             backgroundColor: Colors.white24,
                             valueColor: const AlwaysStoppedAnimation(Colors.greenAccent),
                           ),
                           const SizedBox(height: 8),
                           Text(
-                            'Sending... $_sentCount sent, $_skippedCount skipped',
+                            'Sending alerts... $_sentCount of ${filtered.length} sent',
                             style: const TextStyle(color: Colors.white70, fontSize: 12),
                           ),
                         ],
@@ -576,48 +368,30 @@ class _FeeRemindersScreenState extends State<FeeRemindersScreen> {
 
                 const SizedBox(height: 12),
 
-                // Send All WhatsApp & Push Reminders Buttons
+                // Send Push Reminders Button
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 16),
-                  child: Row(
-                    children: [
-                      Expanded(
-                        child: ElevatedButton.icon(
-                          onPressed: (_isSending || filtered.isEmpty) ? null : _sendToAll,
-                          icon: _isSending
-                              ? const SizedBox(
-                                  width: 16,
-                                  height: 16,
-                                  child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-                              : const Icon(Icons.send_rounded, color: Colors.white, size: 18),
-                          label: Text(
-                            'WhatsApp (${filtered.length})',
-                            style: GoogleFonts.poppins(fontWeight: FontWeight.bold, fontSize: 12),
-                          ),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: const Color(0xFF25D366),
-                            padding: const EdgeInsets.symmetric(vertical: 12),
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                          ),
-                        ),
+                  child: SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton.icon(
+                      onPressed: (_isSending || filtered.isEmpty) ? null : _sendPushToAll,
+                      icon: _isSending
+                          ? const SizedBox(
+                              width: 18,
+                              height: 18,
+                              child: CircularProgressIndicator(strokeWidth: 2.5, color: Colors.white),
+                            )
+                          : const Icon(Icons.notifications_active_rounded, color: Colors.white, size: 20),
+                      label: Text(
+                        'Send Push Fee Alerts (${filtered.length})',
+                        style: GoogleFonts.poppins(fontWeight: FontWeight.bold, fontSize: 13),
                       ),
-                      const SizedBox(width: 10),
-                      Expanded(
-                        child: ElevatedButton.icon(
-                          onPressed: (_isSending || filtered.isEmpty) ? null : _sendPushToAll,
-                          icon: const Icon(Icons.notifications_active_rounded, color: Colors.white, size: 18),
-                          label: Text(
-                            'Push Alerts (${filtered.length})',
-                            style: GoogleFonts.poppins(fontWeight: FontWeight.bold, fontSize: 12),
-                          ),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: AppTheme.primaryBlue,
-                            padding: const EdgeInsets.symmetric(vertical: 12),
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                          ),
-                        ),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppTheme.primaryBlue,
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
                       ),
-                    ],
+                    ),
                   ),
                 ),
 
@@ -750,18 +524,4 @@ class _FeeRemindersScreenState extends State<FeeRemindersScreen> {
       ],
     );
   }
-}
-
-class WhatsAppProgress {
-  final String currentStudentName;
-  final int sentCount;
-  final int skippedCount;
-  final bool isSending;
-
-  WhatsAppProgress({
-    required this.currentStudentName,
-    required this.sentCount,
-    required this.skippedCount,
-    required this.isSending,
-  });
 }
