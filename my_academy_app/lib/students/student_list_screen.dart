@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -38,28 +37,25 @@ class _StudentListScreenState extends State<StudentListScreen> {
   ];
 
   List<StudentModel> _filterStudents(List<StudentModel> allStudents) {
-    var filtered = allStudents;
-
-    if (_selectedGradeFilter != 'All') {
-      filtered = filtered
-          .where((student) => student.grade == _selectedGradeFilter)
-          .toList();
+    if (_selectedGradeFilter == 'All' && _searchQuery.isEmpty) {
+      return allStudents;
     }
 
-    if (_searchQuery.isNotEmpty) {
-      final query = _searchQuery.toLowerCase();
+    final query = _searchQuery.toLowerCase();
+    final hasGradeFilter = _selectedGradeFilter != 'All';
+    final hasSearchQuery = query.isNotEmpty;
 
-      filtered = filtered
-          .where(
-            (student) =>
-                student.name.toLowerCase().contains(query) ||
-                student.phone.toLowerCase().contains(query) ||
-                student.studentCode.toLowerCase().contains(query),
-          )
-          .toList();
-    }
-
-    return filtered;
+    return allStudents.where((student) {
+      if (hasGradeFilter && student.grade != _selectedGradeFilter) {
+        return false;
+      }
+      if (hasSearchQuery) {
+        return student.name.toLowerCase().contains(query) ||
+            student.phone.toLowerCase().contains(query) ||
+            student.studentCode.toLowerCase().contains(query);
+      }
+      return true;
+    }).toList();
   }
 
   @override
@@ -183,6 +179,8 @@ class _StudentListScreenState extends State<StudentListScreen> {
                 return ListView.builder(
                   padding: const EdgeInsets.all(16),
                   itemCount: filteredStudents.length,
+                  cacheExtent: 600,
+                  addAutomaticKeepAlives: true,
                   itemBuilder: (context, index) {
                     final student = filteredStudents[index];
 
@@ -347,7 +345,7 @@ class _StudentListScreenState extends State<StudentListScreen> {
             ),
           ],
         ),
-      ).animate().fadeIn(delay: (math.min(index, 5) * 40).ms).slideX(begin: 0.05),
+      ),
     );
   }
 

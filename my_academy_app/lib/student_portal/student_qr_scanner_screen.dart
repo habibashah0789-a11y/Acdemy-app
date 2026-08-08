@@ -197,10 +197,24 @@ class _StudentQrScannerScreenState extends State<StudentQrScannerScreen>
       _isProcessingScan = true;
     });
 
-    final masked = StudentQrParser.maskToken(rawValue);
-    debugPrint('[StudentQrScanner] Detected QR token: $masked');
-
     final scanResult = StudentQrParser.parseQrPayload(rawValue);
+
+    if (kDebugMode) {
+      final format = barcode.format.name;
+      final rawLength = rawValue.length;
+      final maskedToken = StudentQrParser.maskToken(scanResult?.token ?? rawValue);
+      final qrType = scanResult != null ? 'student_access' : 'invalid';
+      final studentCode = scanResult?.studentCode ?? 'N/A';
+
+      debugPrint(
+        '[QR Scanner]\n'
+        '  Format: $format\n'
+        '  Raw length: $rawLength\n'
+        '  Type: $qrType\n'
+        '  Student Code: $studentCode\n'
+        '  Token: $maskedToken',
+      );
+    }
 
     if (scanResult == null) {
       HapticFeedback.heavyImpact();

@@ -28,13 +28,14 @@ class StudentAvatar extends StatefulWidget {
 }
 
 class _StudentAvatarState extends State<StudentAvatar> {
+  static final Map<String, String?> _localPathCache = {};
   String? _localPath;
   bool _checkedLocal = false;
 
   @override
   void initState() {
     super.initState();
-    _checkLocalFile();
+    _initLocalCheck();
   }
 
   @override
@@ -42,34 +43,40 @@ class _StudentAvatarState extends State<StudentAvatar> {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.student.id != widget.student.id || 
         oldWidget.student.profilePicUrl != widget.student.profilePicUrl) {
-      _checkLocalFile();
+      _initLocalCheck();
     }
   }
 
-  Future<void> _checkLocalFile() async {
-    if (kIsWeb) {
-      setState(() {
-        _localPath = null;
-        _checkedLocal = true;
-      });
+  void _initLocalCheck() {
+    final url = widget.student.profilePicUrl;
+    // Fast path: if url is empty, HTTP, base64 data URI, or on Web, no disk I/O is needed.
+    if (url.isEmpty || url.startsWith('http') || url.startsWith('data:image') || url.length > 100 || kIsWeb) {
+      _localPath = null;
+      _checkedLocal = true;
       return;
     }
 
+    if (_localPathCache.containsKey(widget.student.id)) {
+      _localPath = _localPathCache[widget.student.id];
+      _checkedLocal = true;
+      return;
+    }
+
+    _checkedLocal = false;
+    _checkLocalFile();
+  }
+
+  Future<void> _checkLocalFile() async {
     final path = await ImageUtils.getLocalProfilePath(widget.student.id);
-    if (await io.File(path).exists()) {
-      if (mounted) {
-        setState(() {
-          _localPath = path;
-          _checkedLocal = true;
-        });
-      }
-    } else {
-      if (mounted) {
-        setState(() {
-          _localPath = null;
-          _checkedLocal = true;
-        });
-      }
+    final exists = await io.File(path).exists();
+    final resolved = exists ? path : null;
+    _localPathCache[widget.student.id] = resolved;
+
+    if (mounted) {
+      setState(() {
+        _localPath = resolved;
+        _checkedLocal = true;
+      });
     }
   }
 
