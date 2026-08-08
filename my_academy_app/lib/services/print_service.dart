@@ -25,7 +25,13 @@ class PrintService {
       // Firestore unavailable or timed-out — fall back to the QR data on the model.
       authInfo = null;
     }
-    final qrCodeData = authInfo?['qrToken']?.toString() ?? student.qrData;
+    final token = authInfo?['qrToken']?.toString() ?? student.id;
+    final qrCodeData = jsonEncode({
+      'type': 'student_access',
+      'version': 1,
+      'studentCode': student.studentCode,
+      'token': token,
+    });
 
     final doc = pw.Document();
     final now = DateTime.now();

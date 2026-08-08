@@ -687,9 +687,17 @@ class _AddStudentScreenState extends State<AddStudentScreen> {
                         ],
                       ),
                       child: QrImageView(
-                        data: qrToken,
+                        data: jsonEncode({
+                          'type': 'student_access',
+                          'version': 1,
+                          'studentCode': studentCode,
+                          'token': qrToken,
+                        }),
                         version: QrVersions.auto,
                         size: 180,
+                        gapless: true,
+                        errorCorrectionLevel: QrErrorCorrectLevel.M,
+                        backgroundColor: Colors.white,
                         eyeStyle: const QrEyeStyle(
                           eyeShape: QrEyeShape.square,
                           color: AppTheme.primaryDarkBlue,

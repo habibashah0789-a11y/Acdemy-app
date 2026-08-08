@@ -225,7 +225,17 @@ class StudentModel extends HiveObject {
     return 'QA-$suffix';
   }
 
-  String get qrData => 'QA-STUDENT:$studentCode:ID=$id:NAME=$name:CLASS=$classType-$grade';
+  String buildQrPayload([String? token]) {
+    final Map<String, dynamic> payload = {
+      'type': 'student_access',
+      'version': 1,
+      'studentCode': studentCode,
+      'token': token ?? id,
+    };
+    return jsonEncode(payload);
+  }
+
+  String get qrData => buildQrPayload();
 
   String get name => '$firstName $lastName'.trim();
   String get fullName => name;

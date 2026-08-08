@@ -1,69 +1,100 @@
-import 'dart:math' as math;
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:qr_flutter/qr_flutter.dart';
 import '../models/student_model.dart';
+import '../student_portal/student_auth_service.dart';
 import '../theme/app_theme.dart';
 
-/// A self-contained QR code painter that generates a QR-like pattern
-/// deterministically based on the student's unique data.
-/// Uses the student's unique [qrData] string to produce a consistent,
-/// visually distinct matrix for each student.
+/// Modern, scannable QR Code Widget powered by `qr_flutter`.
+/// Encodes structured JSON containing minimum necessary auth fields.
 class StudentQrWidget extends StatelessWidget {
   final StudentModel student;
   final double size;
   final bool showLabel;
   final String? customQrData;
+  final String? qrToken;
 
   const StudentQrWidget({
     super.key,
     required this.student,
-    this.size = 140,
+    this.size = 200,
     this.showLabel = true,
     this.customQrData,
+    this.qrToken,
   });
+
+  String _buildPayload() {
+    if (customQrData != null && customQrData!.trim().startsWith('{')) {
+      return customQrData!.trim();
+    }
+
+    final token = qrToken ?? customQrData;
+    final Map<String, dynamic> payload = {
+      'type': 'student_access',
+      'version': 1,
+      'studentCode': student.studentCode,
+      'token': token ?? student.id,
+    };
+    return jsonEncode(payload);
+  }
 
   @override
   Widget build(BuildContext context) {
+    final payloadString = _buildPayload();
+
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
         Container(
-          padding: const EdgeInsets.all(12),
+          padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
             color: Colors.white,
-            borderRadius: BorderRadius.circular(16),
+            borderRadius: BorderRadius.circular(20),
             boxShadow: [
               BoxShadow(
                 color: Colors.black.withValues(alpha: 0.08),
-                blurRadius: 10,
-                offset: const Offset(0, 4),
+                blurRadius: 16,
+                offset: const Offset(0, 6),
               ),
             ],
             border: Border.all(
               color: AppTheme.primaryBlue.withValues(alpha: 0.25),
-              width: 1.5,
+              width: 2,
             ),
           ),
-          child: CustomPaint(
-            size: Size(size, size),
-            painter: _StudentQrPainter(qrData: customQrData ?? student.qrData),
+          child: QrImageView(
+            data: payloadString,
+            version: QrVersions.auto,
+            size: size,
+            gapless: true,
+            errorCorrectionLevel: QrErrorCorrectLevel.M,
+            backgroundColor: Colors.white,
+            eyeStyle: const QrEyeStyle(
+              eyeShape: QrEyeShape.square,
+              color: Color(0xFF0F172A),
+            ),
+            dataModuleStyle: const QrDataModuleStyle(
+              dataModuleShape: QrDataModuleShape.square,
+              color: Color(0xFF0F172A),
+            ),
           ),
         ),
         if (showLabel) ...[
-          const SizedBox(height: 8),
+          const SizedBox(height: 12),
           Container(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
             decoration: BoxDecoration(
               color: AppTheme.primaryBlue.withValues(alpha: 0.1),
-              borderRadius: BorderRadius.circular(8),
+              borderRadius: BorderRadius.circular(10),
             ),
             child: Text(
               student.studentCode,
               style: GoogleFonts.poppins(
-                fontSize: 13,
+                fontSize: 14,
                 fontWeight: FontWeight.bold,
                 color: AppTheme.primaryBlue,
-                letterSpacing: 1.1,
+                letterSpacing: 1.2,
               ),
             ),
           ),
@@ -73,208 +104,171 @@ class StudentQrWidget extends StatelessWidget {
   }
 }
 
-/// Deterministic QR-style pattern painter using the student's unique qrData string.
-/// Each student gets a unique pattern guaranteed to differ because qrData
-/// encodes the student's unique ID.
-class _StudentQrPainter extends CustomPainter {
-  final String qrData;
-
-  _StudentQrPainter({required this.qrData});
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    const modules = 21; // 21x21 module grid (QR Version 1 style)
-    final cellSize = size.width / modules;
-
-    final paint = Paint()
-      ..color = Colors.black
-      ..style = PaintingStyle.fill;
-
-    final whitePaint = Paint()
-      ..color = Colors.white
-      ..style = PaintingStyle.fill;
-
-    // Fill white background
-    canvas.drawRect(Rect.fromLTWH(0, 0, size.width, size.height), whitePaint);
-
-    // Build bit matrix from qrData hash
-    final matrix = _buildMatrix(qrData, modules);
-
-    for (int row = 0; row < modules; row++) {
-      for (int col = 0; col < modules; col++) {
-        if (matrix[row][col]) {
-          canvas.drawRect(
-            Rect.fromLTWH(
-              col * cellSize,
-              row * cellSize,
-              cellSize,
-              cellSize,
-            ),
-            paint,
-          );
-        }
-      }
-    }
-
-    // Draw the three finder pattern squares (top-left, top-right, bottom-left)
-    _drawFinderPattern(canvas, 0, 0, cellSize, paint, whitePaint);
-    _drawFinderPattern(canvas, 0, modules - 7, cellSize, paint, whitePaint);
-    _drawFinderPattern(canvas, modules - 7, 0, cellSize, paint, whitePaint);
-  }
-
-  List<List<bool>> _buildMatrix(String data, int size) {
-    final matrix = List.generate(size, (_) => List<bool>.filled(size, false));
-
-    // Seed RNG from deterministic hash of data
-    int hash = 5381;
-    for (int i = 0; i < data.length; i++) {
-      hash = ((hash << 5) + hash) ^ data.codeUnitAt(i);
-    }
-    final rng = math.Random(hash.abs());
-
-    // Fill data area (avoiding finder pattern zones: corners 8x8)
-    for (int row = 0; row < size; row++) {
-      for (int col = 0; col < size; col++) {
-        final inTopLeft = row < 9 && col < 9;
-        final inTopRight = row < 9 && col >= size - 8;
-        final inBottomLeft = row >= size - 8 && col < 9;
-        if (!inTopLeft && !inTopRight && !inBottomLeft) {
-          matrix[row][col] = rng.nextBool();
-        }
-      }
-    }
-
-    // Add timing patterns
-    for (int i = 8; i < size - 8; i++) {
-      matrix[6][i] = i.isEven;
-      matrix[i][6] = i.isEven;
-    }
-
-    return matrix;
-  }
-
-  void _drawFinderPattern(Canvas canvas, int startRow, int startCol,
-      double cellSize, Paint darkPaint, Paint lightPaint) {
-    // Outer 7x7 dark border
-    for (int r = 0; r < 7; r++) {
-      for (int c = 0; c < 7; c++) {
-        final isOuter = r == 0 || r == 6 || c == 0 || c == 6;
-        final isInner = r >= 2 && r <= 4 && c >= 2 && c <= 4;
-        canvas.drawRect(
-          Rect.fromLTWH(
-            (startCol + c) * cellSize,
-            (startRow + r) * cellSize,
-            cellSize,
-            cellSize,
-          ),
-          (isOuter || isInner) ? darkPaint : lightPaint,
-        );
-      }
-    }
-  }
-
-  @override
-  bool shouldRepaint(covariant _StudentQrPainter oldDelegate) {
-    return oldDelegate.qrData != qrData;
-  }
-}
-
-void showStudentQrDialog(BuildContext context, StudentModel student, {String? customQrData}) {
+/// Displays the student's official QR Access Pass dialog.
+void showStudentQrDialog(
+  BuildContext context,
+  StudentModel student, {
+  String? customQrData,
+}) {
   showDialog(
     context: context,
     builder: (context) {
-      return Dialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 380),
-          child: Padding(
-            padding: const EdgeInsets.all(24),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'Student Pass & QR Code',
-                            style: GoogleFonts.poppins(
-                              fontSize: 18,
-                              fontWeight: FontWeight.bold,
-                            ),
+      return _StudentQrDialogContent(
+        student: student,
+        customQrData: customQrData,
+      );
+    },
+  );
+}
+
+class _StudentQrDialogContent extends StatefulWidget {
+  final StudentModel student;
+  final String? customQrData;
+
+  const _StudentQrDialogContent({
+    required this.student,
+    this.customQrData,
+  });
+
+  @override
+  State<_StudentQrDialogContent> createState() => _StudentQrDialogContentState();
+}
+
+class _StudentQrDialogContentState extends State<_StudentQrDialogContent> {
+  String? _token;
+  bool _isLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.customQrData != null) {
+      _token = widget.customQrData;
+      _isLoading = false;
+    } else {
+      _fetchToken();
+    }
+  }
+
+  Future<void> _fetchToken() async {
+    try {
+      final info = await StudentAuthService.getStudentAuthInfo(widget.student.id);
+      if (mounted) {
+        setState(() {
+          _token = info?['qrToken']?.toString();
+          _isLoading = false;
+        });
+      }
+    } catch (_) {
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final student = widget.student;
+
+    return Dialog(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 380),
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Official Student Pass',
+                          style: GoogleFonts.poppins(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
                           ),
-                          Text(
-                            student.name,
-                            style: TextStyle(
-                              fontSize: 13,
-                              color: Colors.grey.shade600,
-                            ),
+                        ),
+                        Text(
+                          student.name,
+                          style: TextStyle(
+                            fontSize: 13,
+                            color: Colors.grey.shade600,
                           ),
-                        ],
-                      ),
+                        ),
+                      ],
                     ),
-                    IconButton(
-                      onPressed: () => Navigator.pop(context),
-                      icon: const Icon(Icons.close_rounded),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 20),
+                  ),
+                  IconButton(
+                    onPressed: () => Navigator.pop(context),
+                    icon: const Icon(Icons.close_rounded),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 20),
+              if (_isLoading)
+                const SizedBox(
+                  height: 220,
+                  child: Center(
+                    child: CircularProgressIndicator(),
+                  ),
+                )
+              else
                 StudentQrWidget(
                   student: student,
                   size: 200,
                   showLabel: true,
-                  customQrData: customQrData,
+                  customQrData: widget.customQrData,
+                  qrToken: _token,
                 ),
-                const SizedBox(height: 20),
-                Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
-                  decoration: BoxDecoration(
-                    color: AppTheme.primaryBlue.withValues(alpha: 0.05),
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(
-                      color: AppTheme.primaryBlue.withValues(alpha: 0.15),
-                    ),
+              const SizedBox(height: 20),
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+                decoration: BoxDecoration(
+                  color: AppTheme.primaryBlue.withValues(alpha: 0.05),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                    color: AppTheme.primaryBlue.withValues(alpha: 0.15),
                   ),
-                  child: Column(
-                    children: [
-                      Text(
-                        '${student.classType} • ${student.grade}',
-                        style: const TextStyle(
-                          fontSize: 13,
-                          fontWeight: FontWeight.bold,
-                        ),
+                ),
+                child: Column(
+                  children: [
+                    Text(
+                      '${student.classType} • ${student.grade}',
+                      style: const TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.bold,
                       ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      student.subject,
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: Colors.grey.shade600,
+                      ),
+                    ),
+                    if (student.phone.isNotEmpty) ...[
                       const SizedBox(height: 4),
                       Text(
-                        student.subject,
+                        'Ph: ${student.phone}',
                         style: TextStyle(
-                          fontSize: 12,
-                          color: Colors.grey.shade600,
+                          fontSize: 11,
+                          color: Colors.grey.shade500,
                         ),
                       ),
-                      if (student.phone.isNotEmpty) ...[
-                        const SizedBox(height: 4),
-                        Text(
-                          'Ph: ${student.phone}',
-                          style: TextStyle(
-                            fontSize: 11,
-                            color: Colors.grey.shade500,
-                          ),
-                        ),
-                      ],
                     ],
-                  ),
+                  ],
                 ),
-              ],
-            ),
+              ),
+            ],
           ),
         ),
-      );
-    },
-  );
+      ),
+    );
+  }
 }

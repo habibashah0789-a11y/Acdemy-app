@@ -12,6 +12,7 @@ class CustomCard extends StatelessWidget {
   final double borderRadius;
   final List<BoxShadow>? shadows;
   final Gradient? gradient;
+  final bool enableAnimation;
 
   const CustomCard({
     super.key,
@@ -24,6 +25,7 @@ class CustomCard extends StatelessWidget {
     this.borderRadius = 18.0,
     this.shadows,
     this.gradient,
+    this.enableAnimation = false,
   });
 
   @override
@@ -51,7 +53,7 @@ class CustomCard extends StatelessWidget {
     );
 
     if (onTap != null) {
-      return Material(
+      final inkCard = Material(
         color: Colors.transparent,
         borderRadius: radius,
         child: InkWell(
@@ -59,7 +61,12 @@ class CustomCard extends StatelessWidget {
           borderRadius: radius,
           child: cardContent,
         ),
-      ).animate().fadeIn(duration: 250.ms).scale(begin: const Offset(0.98, 0.98), end: const Offset(1, 1));
+      );
+
+      if (enableAnimation) {
+        return inkCard.animate().fadeIn(duration: 250.ms).scale(begin: const Offset(0.98, 0.98), end: const Offset(1, 1));
+      }
+      return inkCard;
     }
 
     return cardContent;
