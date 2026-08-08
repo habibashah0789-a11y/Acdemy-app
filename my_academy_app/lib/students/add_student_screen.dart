@@ -476,12 +476,11 @@ class _AddStudentScreenState extends State<AddStudentScreen> {
   }
 
   Future<String> _generateStudentCode() async {
-    final year = DateTime.now().year;
-    final baseCount = DatabaseService.getAllStudentsLocal()
-        .where((s) => s.studentCode.startsWith('QA-$year-'))
-        .length;
-    final nextNum = baseCount + 1;
-    return 'QA-$year-${nextNum.toString().padLeft(3, '0')}';
+    return StudentModel.generateStudentCode(
+      classType: _selectedClassType,
+      grade: _selectedGrade,
+      existingStudents: DatabaseService.getAllStudentsLocal(),
+    );
   }
 
   Future<void> _save({bool addAnother = false}) async {

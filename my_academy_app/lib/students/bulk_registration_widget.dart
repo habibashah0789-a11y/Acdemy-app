@@ -1,6 +1,5 @@
 import 'dart:convert';
 import 'dart:io';
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
@@ -931,10 +930,8 @@ class _BulkStudentRegistrationWidgetState extends State<BulkStudentRegistrationW
       _statusText = 'Preparing student ID generation...';
     });
 
-    final currentYear = DateTime.now().year;
-    final baseCount = DatabaseService.getAllStudentsLocal()
-        .where((s) => s.studentCode.startsWith('QA-$currentYear-'))
-        .length;
+    final existingStudents = DatabaseService.getAllStudentsLocal();
+    final Map<String, int> levelOffsets = {};
 
     final List<StudentModel> studentsToSave = [];
     final List<BulkRowData> failedRows = [];
@@ -942,8 +939,15 @@ class _BulkStudentRegistrationWidgetState extends State<BulkStudentRegistrationW
 
     for (int i = 0; i < validRowsToSave.length; i++) {
       final r = validRowsToSave[i];
-      final seqNum = baseCount + i + 1;
-      final studentCode = 'QA-$currentYear-${seqNum.toString().padLeft(3, '0')}';
+      final levelCode = StudentModel.getClassLevelCode(r.classType, r.grade);
+      final offset = levelOffsets[levelCode] ?? 0;
+      final studentCode = StudentModel.generateStudentCode(
+        classType: r.classType,
+        grade: r.grade,
+        existingStudents: existingStudents,
+        offset: offset,
+      );
+      levelOffsets[levelCode] = offset + 1;
       final studentId = '${DateTime.now().millisecondsSinceEpoch}_$i';
 
       try {

@@ -1,6 +1,5 @@
 import 'dart:async';
 import 'dart:convert';
-import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
@@ -403,8 +402,20 @@ class _EditStudentScreenState extends State<EditStudentScreen> {
         subjectPayments[sub] = double.tryParse(_getPaidControllerForSubject(sub).text.trim()) ?? 0;
       }
 
+      String studentCodeToUse = widget.student.studentCode;
+      final oldLevel = StudentModel.getClassLevelCode(widget.student.classType, widget.student.grade);
+      final newLevel = StudentModel.getClassLevelCode(_selectedClassType, _selectedGrade);
+      if (oldLevel != newLevel || studentCodeToUse.isEmpty || studentCodeToUse.contains('000000')) {
+        studentCodeToUse = StudentModel.generateStudentCode(
+          classType: _selectedClassType,
+          grade: _selectedGrade,
+          existingStudents: DatabaseService.getAllStudentsLocal(),
+        );
+      }
+
       final updated = StudentModel(
         id: widget.student.id,
+        studentCode: studentCodeToUse,
         firstName: _nameC.text.trim(),
         fatherName: _fatherC.text.trim(),
         lastName: widget.student.lastName,

@@ -258,7 +258,7 @@ class _StudentLoginScreenState extends State<StudentLoginScreen> {
                           if (!_isLoading) _handleLogin();
                         },
                         decoration: InputDecoration(
-                          hintText: 'e.g. QA-2026-001',
+                          hintText: 'e.g. QA-9-2026-001 or QA-11-2026-001',
                           prefixIcon: const Icon(
                             Icons.badge_rounded,
                             color: AppTheme.primaryBlue,

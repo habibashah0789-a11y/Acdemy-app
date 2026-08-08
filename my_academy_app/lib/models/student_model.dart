@@ -216,13 +216,59 @@ class StudentModel extends HiveObject {
       return storedStudentCode!;
     }
     // Fallback: derive from ID for legacy records
-    if (id.isEmpty) return 'QA-000000';
+    if (id.isEmpty) return 'QA-9-000000';
     if (id.startsWith('QA-')) return id;
+    final levelCode = StudentModel.getClassLevelCode(classType, grade);
     final cleanId = id.replaceAll(RegExp(r'[^a-zA-Z0-9]'), '');
-    final suffix = cleanId.length >= 6 
-        ? cleanId.substring(cleanId.length - 6).toUpperCase() 
-        : cleanId.padLeft(6, '0').toUpperCase();
-    return 'QA-$suffix';
+    final suffix = cleanId.length >= 4 
+        ? cleanId.substring(cleanId.length - 4).toUpperCase() 
+        : cleanId.padLeft(4, '0').toUpperCase();
+    return 'QA-$levelCode-$suffix';
+  }
+
+  /// Returns the class level code string ('9', '10', '11', '12') based on classType and grade.
+  static String getClassLevelCode(String classType, String grade) {
+    final cType = classType.trim().toLowerCase();
+    final g = grade.trim().toLowerCase();
+
+    if (cType.contains('matric')) {
+      if (g.contains('9') || g.contains('ninth')) return '9';
+      if (g.contains('10') || g.contains('tenth')) return '10';
+      return '9';
+    } else {
+      if (g.contains('first') || g.contains('11') || g.contains('1st') || g.contains('part 1') || g.contains('part i')) return '11';
+      if (g.contains('second') || g.contains('12') || g.contains('2nd') || g.contains('part 2') || g.contains('part ii')) return '12';
+      return '11';
+    }
+  }
+
+  /// Generates a unique student code / roll number differentiated by class level (9, 10, 11, 12).
+  /// Format: QA-[LEVEL]-[YEAR]-[SEQ] e.g., QA-9-2026-001, QA-10-2026-001, QA-11-2026-001, QA-12-2026-001
+  static String generateStudentCode({
+    required String classType,
+    required String grade,
+    required List<StudentModel> existingStudents,
+    int? year,
+    int offset = 0,
+  }) {
+    final currentYear = year ?? DateTime.now().year;
+    final levelCode = getClassLevelCode(classType, grade);
+    final prefix = 'QA-$levelCode-$currentYear-';
+
+    int maxSeq = 0;
+    for (final s in existingStudents) {
+      final code = s.studentCode;
+      if (code.startsWith(prefix)) {
+        final seqStr = code.substring(prefix.length);
+        final num = int.tryParse(seqStr);
+        if (num != null && num > maxSeq) {
+          maxSeq = num;
+        }
+      }
+    }
+
+    final nextSeq = maxSeq + 1 + offset;
+    return 'QA-$levelCode-$currentYear-${nextSeq.toString().padLeft(3, '0')}';
   }
 
   String buildQrPayload([String? token]) {
