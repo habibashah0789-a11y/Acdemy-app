@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:my_academy_app/settings/logout_screen.dart';
 import '../models/student_model.dart';
+import '../screens/app_info_screens.dart';
 import '../services/database_service.dart';
 import '../theme/app_theme.dart';
 import '../widgets/about_developers_widget.dart';
@@ -37,6 +38,24 @@ class SettingsScreen extends StatelessWidget {
             Icons.delete_outline_rounded,
             "Recycle Bin",
             const RecycleBinScreen(),
+          ),
+          _tile(
+            context,
+            Icons.info_outline_rounded,
+            "About App",
+            const AboutAppScreen(),
+          ),
+          _tile(
+            context,
+            Icons.gavel_rounded,
+            "Terms & Conditions",
+            const TermsConditionsScreen(),
+          ),
+          _tile(
+            context,
+            Icons.help_outline_rounded,
+            "Help & User Manual",
+            const HelpSupportScreen(),
           ),
           ListTile(
             leading: const Icon(Icons.code_rounded, color: AppTheme.primaryBlue),

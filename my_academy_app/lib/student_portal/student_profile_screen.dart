@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../models/student_model.dart';
+import '../screens/app_info_screens.dart';
 import '../theme/app_theme.dart';
 import '../widgets/about_developers_widget.dart';
 import '../widgets/custom_card.dart';
@@ -292,8 +293,44 @@ class _StudentProfileScreenState extends State<StudentProfileScreen> {
 
             const SizedBox(height: 20),
 
+            // App Information & Support
+            _buildSectionHeader('App Information & Support', Icons.info_outline_rounded),
+            const SizedBox(height: 10),
+            CustomCard(
+              padding: const EdgeInsets.symmetric(vertical: 6),
+              child: Column(
+                children: [
+                  ListTile(
+                    leading: const Icon(Icons.info_outline_rounded, color: AppTheme.primaryBlue),
+                    title: Text('About Quaid Academy', style: GoogleFonts.poppins(fontSize: 14, fontWeight: FontWeight.w600)),
+                    subtitle: Text('Version 1.0.0 (Build 2026)', style: GoogleFonts.poppins(fontSize: 11, color: Colors.grey)),
+                    trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+                    onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const AboutAppScreen())),
+                  ),
+                  const Divider(height: 1),
+                  ListTile(
+                    leading: const Icon(Icons.gavel_rounded, color: AppTheme.primaryBlue),
+                    title: Text('Terms & Conditions', style: GoogleFonts.poppins(fontSize: 14, fontWeight: FontWeight.w600)),
+                    subtitle: Text('Academy Rules & Data Privacy', style: GoogleFonts.poppins(fontSize: 11, color: Colors.grey)),
+                    trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+                    onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const TermsConditionsScreen())),
+                  ),
+                  const Divider(height: 1),
+                  ListTile(
+                    leading: const Icon(Icons.help_outline_rounded, color: AppTheme.primaryBlue),
+                    title: Text('Help & User Manual', style: GoogleFonts.poppins(fontSize: 14, fontWeight: FontWeight.w600)),
+                    subtitle: Text('FAQs, Student Guide & Support Desk', style: GoogleFonts.poppins(fontSize: 11, color: Colors.grey)),
+                    trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+                    onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const HelpSupportScreen())),
+                  ),
+                ],
+              ),
+            ).animate().fadeIn(delay: 240.ms),
+
+            const SizedBox(height: 20),
+
             // About Developers Card
-            const AboutDevelopersCard().animate().fadeIn(delay: 250.ms),
+            const AboutDevelopersCard().animate().fadeIn(delay: 280.ms),
 
             const SizedBox(height: 28),
 
