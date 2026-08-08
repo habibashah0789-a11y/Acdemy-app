@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:image_picker/image_picker.dart';
 import 'package:cached_network_image/cached_network_image.dart';
@@ -94,7 +95,6 @@ class _EditStudentScreenState extends State<EditStudentScreen> {
     _engPaidC.addListener(_updateCalculatedFees);
     _mathPaidC.addListener(_updateCalculatedFees);
 
-    _feeSubC.addListener(_updateCalculatedFees);
   }
 
   TextEditingController _getFeeControllerForSubject(String sub) {
@@ -129,11 +129,17 @@ class _EditStudentScreenState extends State<EditStudentScreen> {
       }
     }
     
-    _feeSubC.text = submitted.toStringAsFixed(0);
+    final newSubText = submitted > 0 ? submitted.toStringAsFixed(0) : '';
+    if (_feeSubC.text != newSubText) {
+      _feeSubC.text = newSubText;
+    }
     
     double remaining = total - submitted;
     if (remaining < 0) remaining = 0;
-    _feeRemC.text = remaining.toStringAsFixed(0);
+    final newRemText = (total > 0 && remaining > 0) ? remaining.toStringAsFixed(0) : '';
+    if (_feeRemC.text != newRemText) {
+      _feeRemC.text = newRemText;
+    }
   }
 
   Color _getSubjectColor(String sub) {
@@ -575,6 +581,10 @@ class _EditStudentScreenState extends State<EditStudentScreen> {
     return TextFormField(
       controller: c,
       keyboardType: const TextInputType.numberWithOptions(decimal: true),
+      inputFormatters: [
+        FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d*')),
+        _StripLeadingZeroFormatter(),
+      ],
       decoration: InputDecoration(
         labelText: label,
         prefixText: 'Rs ',
@@ -583,5 +593,21 @@ class _EditStudentScreenState extends State<EditStudentScreen> {
         hintText: '0',
       ),
     );
+  }
+}
+
+class _StripLeadingZeroFormatter extends TextInputFormatter {
+  @override
+  TextEditingValue formatEditUpdate(TextEditingValue oldValue, TextEditingValue newValue) {
+    String text = newValue.text;
+    if (text.length > 1 && text.startsWith('0') && !text.startsWith('0.')) {
+      text = text.replaceFirst(RegExp(r'^0+'), '');
+      if (text.isEmpty) text = '0';
+      return TextEditingValue(
+        text: text,
+        selection: TextSelection.collapsed(offset: text.length),
+      );
+    }
+    return newValue;
   }
 }

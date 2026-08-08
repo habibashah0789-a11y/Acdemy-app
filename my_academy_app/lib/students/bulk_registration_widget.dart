@@ -48,8 +48,8 @@ class BulkRowData {
     this.classType = 'FSc',
     this.grade = 'First Year',
     Map<String, String>? subjectSchedules,
-    String totalFee = '0',
-    String paidFee = '0',
+    String totalFee = '',
+    String paidFee = '',
   })  : nameC = TextEditingController(text: name),
         fatherC = TextEditingController(text: father),
         phoneC = TextEditingController(text: phone),
@@ -1134,6 +1134,9 @@ class _BulkStudentRegistrationWidgetState extends State<BulkStudentRegistrationW
           focusNode: focusNode,
           keyboardType: keyboardType,
           textInputAction: TextInputAction.next,
+          inputFormatters: keyboardType == TextInputType.number
+              ? [FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d*')), _StripLeadingZeroFormatter()]
+              : null,
           onSubmitted: (_) => _moveNextCell(rowIdx, colIdx),
           style: TextStyle(
             fontSize: 13,
@@ -1252,5 +1255,21 @@ class _BulkStudentRegistrationWidgetState extends State<BulkStudentRegistrationW
         ),
       ),
     );
+  }
+}
+
+class _StripLeadingZeroFormatter extends TextInputFormatter {
+  @override
+  TextEditingValue formatEditUpdate(TextEditingValue oldValue, TextEditingValue newValue) {
+    String text = newValue.text;
+    if (text.length > 1 && text.startsWith('0') && !text.startsWith('0.')) {
+      text = text.replaceFirst(RegExp(r'^0+'), '');
+      if (text.isEmpty) text = '0';
+      return TextEditingValue(
+        text: text,
+        selection: TextSelection.collapsed(offset: text.length),
+      );
+    }
+    return newValue;
   }
 }

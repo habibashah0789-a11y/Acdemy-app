@@ -111,20 +111,20 @@ class _AddStudentScreenState extends State<AddStudentScreen> {
     final defaultSched = widget.presetSchedule ?? '7:00 AM';
     _selectedSubjectSchedules = {defaultSubj: defaultSched};
     
-    _bioC.text = '0';
-    _phyC.text = '0';
-    _chemC.text = '0';
-    _engC.text = '0';
-    _mathC.text = '0';
+    _bioC.text = '';
+    _phyC.text = '';
+    _chemC.text = '';
+    _engC.text = '';
+    _mathC.text = '';
 
-    _bioPaidC.text = '0';
-    _phyPaidC.text = '0';
-    _chemPaidC.text = '0';
-    _engPaidC.text = '0';
-    _mathPaidC.text = '0';
+    _bioPaidC.text = '';
+    _phyPaidC.text = '';
+    _chemPaidC.text = '';
+    _engPaidC.text = '';
+    _mathPaidC.text = '';
 
-    _feeSubC.text = '0';
-    _feeRemC.text = '0';
+    _feeSubC.text = '';
+    _feeRemC.text = '';
 
     // Add listeners to auto-calculate remaining fee
     _bioC.addListener(_updateCalculatedFees);
@@ -139,7 +139,6 @@ class _AddStudentScreenState extends State<AddStudentScreen> {
     _engPaidC.addListener(_updateCalculatedFees);
     _mathPaidC.addListener(_updateCalculatedFees);
     
-    _feeSubC.addListener(_updateCalculatedFees);
   }
 
   TextEditingController _getFeeControllerForSubject(String sub) {
@@ -196,11 +195,17 @@ class _AddStudentScreenState extends State<AddStudentScreen> {
       }
     }
     
-    _feeSubC.text = submitted.toStringAsFixed(0);
+    final newSubText = submitted > 0 ? submitted.toStringAsFixed(0) : '';
+    if (_feeSubC.text != newSubText) {
+      _feeSubC.text = newSubText;
+    }
     
     double remaining = total - submitted;
     if (remaining < 0) remaining = 0;
-    _feeRemC.text = remaining.toStringAsFixed(0);
+    final newRemText = (total > 0 && remaining > 0) ? remaining.toStringAsFixed(0) : '';
+    if (_feeRemC.text != newRemText) {
+      _feeRemC.text = newRemText;
+    }
   }
 
   Color _getSubjectColor(String sub) {
@@ -506,6 +511,7 @@ class _AddStudentScreenState extends State<AddStudentScreen> {
       String picUrl = '';
       
       if (_imageBytes != null) {
+        picUrl = 'data:image/jpeg;base64,${base64Encode(_imageBytes!)}';
         if (!kIsWeb) {
           try {
             await ImageUtils.saveImageLocally(studentId, _imageBytes!);
@@ -792,10 +798,19 @@ class _AddStudentScreenState extends State<AddStudentScreen> {
 
     return CallbackShortcuts(
       bindings: <ShortcutActivator, VoidCallback>{
-        const SingleActivator(LogicalKeyboardKey.enter, control: true): () => _save(addAnother: true),
-        const SingleActivator(LogicalKeyboardKey.keyS, control: true): () => _save(addAnother: false),
+        const SingleActivator(LogicalKeyboardKey.enter, control: true): () {
+          if (!_isSaving) _save(addAnother: true);
+        },
+        const SingleActivator(LogicalKeyboardKey.numpadEnter, control: true): () {
+          if (!_isSaving) _save(addAnother: true);
+        },
+        const SingleActivator(LogicalKeyboardKey.keyS, control: true): () {
+          if (!_isSaving) _save(addAnother: false);
+        },
       },
-      child: Stack(children: [
+      child: Focus(
+        autofocus: true,
+        child: Stack(children: [
         SingleChildScrollView(
           padding: const EdgeInsets.all(20),
           child: Form(
@@ -990,6 +1005,7 @@ class _AddStudentScreenState extends State<AddStudentScreen> {
             ),
           ),
       ]),
+    ),
     );
   }
 
@@ -1006,6 +1022,10 @@ class _AddStudentScreenState extends State<AddStudentScreen> {
       focusNode: focusNode,
       textInputAction: isFinalField ? TextInputAction.done : TextInputAction.next,
       keyboardType: const TextInputType.numberWithOptions(decimal: true),
+      inputFormatters: [
+        FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d*')),
+        _StripLeadingZeroFormatter(),
+      ],
       decoration: InputDecoration(
         labelText: label,
         prefixText: 'Rs ',
@@ -1137,5 +1157,21 @@ class _AddStudentScreenState extends State<AddStudentScreen> {
         ],
       ),
     );
+  }
+}
+
+class _StripLeadingZeroFormatter extends TextInputFormatter {
+  @override
+  TextEditingValue formatEditUpdate(TextEditingValue oldValue, TextEditingValue newValue) {
+    String text = newValue.text;
+    if (text.length > 1 && text.startsWith('0') && !text.startsWith('0.')) {
+      text = text.replaceFirst(RegExp(r'^0+'), '');
+      if (text.isEmpty) text = '0';
+      return TextEditingValue(
+        text: text,
+        selection: TextSelection.collapsed(offset: text.length),
+      );
+    }
+    return newValue;
   }
 }

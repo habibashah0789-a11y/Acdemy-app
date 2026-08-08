@@ -68,15 +68,6 @@ class SyncService extends ChangeNotifier {
         }
       }
 
-      // Prune local students not present in current Firestore collection
-      final firestoreIds = snapshot.docs.map((doc) => doc.id).toSet();
-      for (var key in studentBox.keys) {
-        if (!firestoreIds.contains(key)) {
-          await studentBox.delete(key);
-          changed = true;
-        }
-      }
-
       if (changed || _students.length != studentBox.length) {
         _students = studentBox.values.toList();
         notifyListeners();
