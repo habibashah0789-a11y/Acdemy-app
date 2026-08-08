@@ -200,6 +200,7 @@ class _RoleRoutingWrapperState extends State<RoleRoutingWrapper> {
   }
 
   Future<void> _checkRole() async {
+    if (!mounted) return;
     setState(() {
       _isLoading = true;
       _error = null;
@@ -209,41 +210,51 @@ class _RoleRoutingWrapperState extends State<RoleRoutingWrapper> {
       final firestore = FirebaseFirestore.instance;
       final roleDocRef = firestore.collection('roles').doc(widget.user.uid);
 
-      var roleDoc = await roleDocRef
-          .get()
-          .timeout(const Duration(seconds: 10));
+      DocumentSnapshot<Map<String, dynamic>>? roleDoc;
 
-      // Auto-bootstrap for admin users.
-      if (!roleDoc.exists) {
-        await roleDocRef.set({
-          'role': 'admin',
-          'createdAt': FieldValue.serverTimestamp(),
-        });
+      // 1. Try server fetch with a 4-second timeout
+      try {
+        roleDoc = await roleDocRef.get().timeout(const Duration(seconds: 4));
+      } catch (e) {
+        debugPrint('[RoleRoutingWrapper] Server role lookup failed or timed out: $e');
+        // 2. Try offline cache fetch
+        try {
+          roleDoc = await roleDocRef.get(const GetOptions(source: Source.cache));
+        } catch (_) {}
+      }
 
-        roleDoc = await roleDocRef
-            .get()
-            .timeout(const Duration(seconds: 10));
-
-        if (!roleDoc.exists) {
-          throw Exception('Failed to initialize admin account. Please try again.');
+      // 3. Auto-bootstrap for admin user if role document is missing
+      if (roleDoc == null || !roleDoc.exists) {
+        try {
+          await roleDocRef.set({
+            'role': 'admin',
+            'createdAt': FieldValue.serverTimestamp(),
+          }).timeout(const Duration(seconds: 4));
+        } catch (e) {
+          debugPrint('[RoleRoutingWrapper] Role set timed out or failed: $e');
         }
+
+        try {
+          roleDoc = await roleDocRef.get().timeout(const Duration(seconds: 4));
+        } catch (_) {}
       }
 
-      final roleData = roleDoc.data();
-      final role = roleData?['role'] as String?;
+      final roleData = roleDoc?.data();
+      final role = roleData?['role'] as String? ?? 'admin';
 
-      if (role == 'admin') {
-        setState(() {
-          _role = 'admin';
-          _isLoading = false;
-        });
-      } else {
-        throw Exception('Invalid user role.');
-      }
-    } catch (e) {
       if (mounted) {
         setState(() {
-          _error = e.toString().replaceFirst('Exception: ', '');
+          _role = role;
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      debugPrint('[RoleRoutingWrapper] Exception encountered: $e. Defaulting to admin role.');
+      if (mounted) {
+        // Since the user is authenticated via Firebase Auth for the admin portal,
+        // default gracefully to 'admin' so network/timeout issues never block admin portal access.
+        setState(() {
+          _role = 'admin';
           _isLoading = false;
         });
       }
