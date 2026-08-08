@@ -1373,6 +1373,7 @@ class _RevenueDrillDownDialogState extends State<RevenueDrillDownDialog> {
                     getTooltipColor: (group) =>
                         isDark ? Colors.grey.shade800 : Colors.white,
                     tooltipPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    tooltipMargin: 8,
                     getTooltipItem: (group, groupIndex, rod, rodIndex) {
                       return BarTooltipItem(
                         _fmt.format(rod.toY),
@@ -1468,6 +1469,7 @@ class _RevenueDrillDownDialogState extends State<RevenueDrillDownDialog> {
                     getTooltipColor: (group) =>
                         isDark ? Colors.grey.shade800 : Colors.white,
                     tooltipPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    tooltipMargin: 8,
                     getTooltipItem: (group, groupIndex, rod, rodIndex) {
                       return BarTooltipItem(
                         _fmt.format(rod.toY),
@@ -2337,6 +2339,7 @@ class _RevenueDrillDownDialogState extends State<RevenueDrillDownDialog> {
 
   BarChartGroupData _bar(int x, double y, Color color) => BarChartGroupData(
         x: x,
+        showingTooltipIndicators: [0],
         barRods: [
           BarChartRodData(
             toY: y,

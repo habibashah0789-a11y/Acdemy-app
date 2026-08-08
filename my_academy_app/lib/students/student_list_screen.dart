@@ -251,7 +251,7 @@ class _StudentListScreenState extends State<StudentListScreen> {
               child: StudentAvatar(
                 student: student,
                 size: 56,
-                isCircle: false,
+                isCircle: true,
               ),
             ),
             const SizedBox(width: 14),
