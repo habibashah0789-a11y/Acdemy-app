@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter_animate/flutter_animate.dart';
@@ -390,7 +391,7 @@ class _StudentDetailScreenState extends State<StudentDetailScreen> {
   Future<void> _uploadPhoto(Uint8List bytes) async {
     setState(() => _isUploadingPhoto = true);
     try {
-      String newUrl = '';
+      final instantBase64Url = 'data:image/jpeg;base64,${base64Encode(bytes)}';
 
       // 1. Save locally on device for immediate local access
       if (!kIsWeb) {
@@ -401,33 +402,15 @@ class _StudentDetailScreenState extends State<StudentDetailScreen> {
         }
       }
 
-      // 2. Try to upload to Firebase Storage
-      try {
-        if (student.profilePicUrl.isNotEmpty && student.profilePicUrl.startsWith('http')) {
-          await DatabaseService.deleteImage(student.profilePicUrl);
-        }
-
-        final fileName =
-            'students/profile_${student.id}_${DateTime.now().millisecondsSinceEpoch}.jpg';
-        final storageRef = FirebaseStorage.instance.ref().child(fileName);
-        await storageRef
-            .putData(bytes, SettableMetadata(contentType: 'image/jpeg'))
-            .timeout(const Duration(seconds: 10));
-        newUrl = await storageRef.getDownloadURL().timeout(const Duration(seconds: 5));
-      } catch (uploadError) {
-        debugPrint('Firebase Storage upload failed: $uploadError. Using base64 encoding.');
-        final base64String = base64Encode(bytes);
-        newUrl = 'data:image/jpeg;base64,$base64String';
-      }
-
-      // 3. Update the student record with new photo URL
-      final updatedStudent = student.copyWith(profilePicUrl: newUrl);
+      // 2. Immediately update the student record with instant photo URL (0ms UI latency)
+      final updatedStudent = student.copyWith(profilePicUrl: instantBase64Url);
       await DatabaseService.updateStudent(updatedStudent);
 
       if (mounted) {
         setState(() {
           student = updatedStudent;
           _pendingImageBytes = null;
+          _isUploadingPhoto = false;
         });
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
@@ -436,9 +419,45 @@ class _StudentDetailScreenState extends State<StudentDetailScreen> {
           ),
         );
       }
+
+      // 3. Background async upload to Firebase Storage
+      final oldUrlToDelete = student.profilePicUrl;
+      final studentIdToUpdate = student.id;
+
+      unawaited(() async {
+        try {
+          if (oldUrlToDelete.isNotEmpty && oldUrlToDelete.startsWith('http')) {
+            await DatabaseService.deleteImage(oldUrlToDelete);
+          }
+
+          final fileName =
+              'students/profile_${studentIdToUpdate}_${DateTime.now().millisecondsSinceEpoch}.jpg';
+          final storageRef = FirebaseStorage.instance.ref().child(fileName);
+          await storageRef
+              .putData(bytes, SettableMetadata(contentType: 'image/jpeg'))
+              .timeout(const Duration(seconds: 10));
+          final remoteUrl = await storageRef.getDownloadURL().timeout(const Duration(seconds: 5));
+
+          final currentStudent = DatabaseService.studentBox.get(studentIdToUpdate);
+          if (currentStudent != null) {
+            final finalStudent = currentStudent.copyWith(profilePicUrl: remoteUrl);
+            await DatabaseService.updateStudent(finalStudent);
+            if (mounted) {
+              setState(() {
+                student = finalStudent;
+              });
+            }
+          }
+        } catch (e) {
+          debugPrint('Background storage upload error: $e');
+        }
+      }());
     } catch (e) {
       if (mounted) {
-        setState(() => _pendingImageBytes = null);
+        setState(() {
+          _pendingImageBytes = null;
+          _isUploadingPhoto = false;
+        });
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Upload failed: $e'),
@@ -446,8 +465,6 @@ class _StudentDetailScreenState extends State<StudentDetailScreen> {
           ),
         );
       }
-    } finally {
-      if (mounted) setState(() => _isUploadingPhoto = false);
     }
   }
 

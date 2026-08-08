@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
@@ -323,8 +324,9 @@ class _EditStudentScreenState extends State<EditStudentScreen> {
     try {
       String picUrl = _existingUrl;
       
-      // Upload new image to Firebase Storage and save locally if provided
+      // Instant image update: base64 encoding & local disk save (0ms latency)
       if (_imageBytes != null) {
+        picUrl = 'data:image/jpeg;base64,${base64Encode(_imageBytes!)}';
         if (!kIsWeb) {
           try {
             await ImageUtils.saveImageLocally(widget.student.id, _imageBytes!);
@@ -333,25 +335,35 @@ class _EditStudentScreenState extends State<EditStudentScreen> {
           }
         }
         
-        try {
-          if (_existingUrl.isNotEmpty && _existingUrl.startsWith('http')) {
-            await DatabaseService.deleteImage(_existingUrl);
+        final imageBytesToUpload = _imageBytes!;
+        final studentIdToUpdate = widget.student.id;
+        final oldUrlToDelete = _existingUrl;
+        
+        unawaited(() async {
+          try {
+            if (oldUrlToDelete.isNotEmpty && oldUrlToDelete.startsWith('http')) {
+              await DatabaseService.deleteImage(oldUrlToDelete);
+            }
+            
+            final fileName = 'students/profile_${studentIdToUpdate}_${DateTime.now().millisecondsSinceEpoch}.jpg';
+            final storageRef = FirebaseStorage.instance.ref().child(fileName);
+            
+            await storageRef
+                .putData(imageBytesToUpload, SettableMetadata(contentType: 'image/jpeg'))
+                .timeout(const Duration(seconds: 10));
+            
+            final url = await storageRef.getDownloadURL().timeout(const Duration(seconds: 5));
+            debugPrint('Background image uploaded to Firebase Storage: $url');
+            
+            final currentStudent = DatabaseService.studentBox.get(studentIdToUpdate);
+            if (currentStudent != null) {
+              final updatedWithRemoteUrl = currentStudent.copyWith(profilePicUrl: url);
+              await DatabaseService.updateStudent(updatedWithRemoteUrl);
+            }
+          } catch (e) {
+            debugPrint('Background storage upload error: $e');
           }
-          
-          final fileName = 'students/profile_${widget.student.id}_${DateTime.now().millisecondsSinceEpoch}.jpg';
-          final storageRef = FirebaseStorage.instance.ref().child(fileName);
-          
-          await storageRef
-              .putData(_imageBytes!, SettableMetadata(contentType: 'image/jpeg'))
-              .timeout(const Duration(seconds: 15));
-          
-          picUrl = await storageRef.getDownloadURL().timeout(const Duration(seconds: 8));
-          debugPrint('Image uploaded to Firebase Storage: $picUrl');
-        } catch (uploadError) {
-          debugPrint('Firebase Storage upload failed: $uploadError. Falling back to base64 encoding.');
-          final base64String = base64Encode(_imageBytes!);
-          picUrl = 'data:image/jpeg;base64,$base64String';
-        }
+        }());
       }
       double oldPaid = widget.student.feeSubmitted;
       double newPaid = double.tryParse(_feeSubC.text.trim()) ?? 0;
