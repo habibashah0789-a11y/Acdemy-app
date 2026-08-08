@@ -1,5 +1,7 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import '../theme/app_theme.dart';
 import '../services/notification_service.dart';
 import 'student_auth_service.dart';
@@ -7,6 +9,7 @@ import 'student_dashboard_screen.dart';
 import 'student_fee_screen.dart';
 import 'student_notifications_screen.dart';
 import 'student_profile_screen.dart';
+import 'student_login_screen.dart';
 
 class StudentMainWrapper extends StatefulWidget {
   const StudentMainWrapper({super.key});
@@ -18,6 +21,7 @@ class StudentMainWrapper extends StatefulWidget {
 class _StudentMainWrapperState extends State<StudentMainWrapper> {
   int _currentIndex = 0;
   late final PageController _pageController;
+  StreamSubscription<DocumentSnapshot>? _studentStatusSubscription;
 
   final List<Widget> _screens = [
     const StudentDashboardScreen(),
@@ -46,6 +50,7 @@ class _StudentMainWrapperState extends State<StudentMainWrapper> {
             studentId: studentId,
           );
           NotificationService.listenForStudent(studentId);
+          _listenToStudentStatus(studentId);
         }
       }
     } catch (e) {
@@ -53,9 +58,51 @@ class _StudentMainWrapperState extends State<StudentMainWrapper> {
     }
   }
 
+  void _listenToStudentStatus(String studentId) {
+    _studentStatusSubscription?.cancel();
+    _studentStatusSubscription = FirebaseFirestore.instance
+        .collection('students')
+        .doc(studentId)
+        .snapshots()
+        .listen((doc) {
+      if (!doc.exists && mounted) {
+        _handleForceLogout();
+      }
+    }, onError: (e) {
+      debugPrint('[StudentMainWrapper] Student status stream error: $e');
+    });
+  }
+
+  Future<void> _handleForceLogout() async {
+    _studentStatusSubscription?.cancel();
+    final session = await StudentAuthService.getLocalSession();
+    if (session != null) {
+      final studentId = session['studentId'] as String? ?? '';
+      if (studentId.isNotEmpty) {
+        try {
+          await NotificationService.unregisterFcmToken(userId: studentId);
+        } catch (_) {}
+        NotificationService.cancelStudentSubscription();
+      }
+    }
+    await StudentAuthService.logout();
+
+    if (mounted) {
+      Navigator.of(context).pushAndRemoveUntil(
+        MaterialPageRoute(
+          builder: (_) => const StudentLoginScreen(
+            message: 'Your account has been deleted by administration. Please login again.',
+          ),
+        ),
+        (_) => false,
+      );
+    }
+  }
+
   @override
   void dispose() {
     _pageController.dispose();
+    _studentStatusSubscription?.cancel();
     super.dispose();
   }
 

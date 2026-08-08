@@ -15,7 +15,9 @@ import '../models/student_model.dart';
 import '../screens/fee_reminders_screen.dart';
 import '../screens/notifications_screen.dart';
 import '../settings/class_schedules_screen.dart';
+import '../student_portal/student_auth_service.dart';
 import '../student_portal/student_dashboard_screen.dart';
+import '../student_portal/student_notifications_screen.dart';
 import '../theme/app_theme.dart';
 import 'sound_service.dart';
 
@@ -438,15 +440,31 @@ class NotificationService {
       final context = navigatorKey?.currentContext;
       if (context == null) return;
 
-      if (type == 'fee_reminder' || screen == 'fee_details') {
-        Navigator.push(context, MaterialPageRoute(builder: (_) => const FeeRemindersScreen()));
-      } else if (type == 'attendance_check_in' || type == 'attendance_check_out' || type == 'absent_alert') {
-        Navigator.push(context, MaterialPageRoute(builder: (_) => const StudentDashboardScreen()));
-      } else if (type == 'timetable_updated' || screen == 'class_schedules') {
-        Navigator.push(context, MaterialPageRoute(builder: (_) => const ClassSchedulesScreen()));
-      } else {
-        Navigator.push(context, MaterialPageRoute(builder: (_) => const NotificationsScreen()));
-      }
+      // Detect if we're currently in the student portal
+      StudentAuthService.getLocalSession().then((session) {
+        final isStudentSession = session != null;
+        if (isStudentSession) {
+          // Route student portal notifications to student screens
+          if (type == 'fee_reminder' || screen == 'fee_details') {
+            Navigator.push(context, MaterialPageRoute(builder: (_) => const StudentNotificationsScreen()));
+          } else if (type == 'announcement' || type == 'broadcast' || screen == 'notifications') {
+            Navigator.push(context, MaterialPageRoute(builder: (_) => const StudentNotificationsScreen()));
+          } else {
+            Navigator.push(context, MaterialPageRoute(builder: (_) => const StudentDashboardScreen()));
+          }
+        } else {
+          // Admin portal routing
+          if (type == 'fee_reminder' || screen == 'fee_details') {
+            Navigator.push(context, MaterialPageRoute(builder: (_) => const FeeRemindersScreen()));
+          } else if (type == 'attendance_check_in' || type == 'attendance_check_out' || type == 'absent_alert') {
+            Navigator.push(context, MaterialPageRoute(builder: (_) => const StudentDashboardScreen()));
+          } else if (type == 'timetable_updated' || screen == 'class_schedules') {
+            Navigator.push(context, MaterialPageRoute(builder: (_) => const ClassSchedulesScreen()));
+          } else {
+            Navigator.push(context, MaterialPageRoute(builder: (_) => const NotificationsScreen()));
+          }
+        }
+      });
     } catch (e) {
       debugPrint('[NotificationService] Payload parse error: $e');
     }
@@ -622,6 +640,43 @@ class NotificationService {
       title: notification.title,
       body: notification.message,
     );
+  }
+
+  /// Creates a personalized fee reminder notification targeted to a specific student.
+  /// The student's [listenForStudent] subscription picks it up, plays sound, and
+  /// shows a push notification with the student's personal fee breakdown.
+  static Future<void> createFeeReminderNotificationForStudent({
+    required StudentModel student,
+  }) async {
+    final fullName = student.name;
+    final notification = NotificationModel(
+      id: 'fee_alert_${student.id}_${DateTime.now().millisecondsSinceEpoch}',
+      title: '💳 Fee Payment Reminder',
+      message:
+          'Dear $fullName, your fee balance is pending.\n'
+          '• Total Fee: Rs. ${student.totalFee.toStringAsFixed(0)}\n'
+          '• Paid: Rs. ${student.feeSubmitted.toStringAsFixed(0)}\n'
+          '• Remaining: Rs. ${student.feeRemaining.toStringAsFixed(0)}\n'
+          'Please clear your dues at the earliest.',
+      studentName: fullName,
+      className: student.classType,
+      subject: student.subject,
+      registeredBy: 'Administrator',
+      timestamp: DateTime.now(),
+      notificationType: 'fee_reminder',
+      isRead: false,
+      studentId: student.id, // Targeted: only this student receives it
+    );
+
+    // Persist to Firestore so the student's real-time listener picks it up
+    try {
+      await _firestore
+          .collection(_collection)
+          .doc(notification.id)
+          .set(notification.toMap());
+    } catch (e) {
+      debugPrint('[NotificationService] Fee reminder notification failed: $e');
+    }
   }
 
   static Future<void> createAttendanceNotification({

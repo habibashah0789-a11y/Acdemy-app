@@ -12,7 +12,8 @@ import '../services/notification_service.dart';
 
 
 class StudentLoginScreen extends StatefulWidget {
-  const StudentLoginScreen({super.key});
+  final String? message;
+  const StudentLoginScreen({super.key, this.message});
 
   @override
   State<StudentLoginScreen> createState() => _StudentLoginScreenState();
@@ -169,6 +170,28 @@ class _StudentLoginScreenState extends State<StudentLoginScreen> {
                       letterSpacing: 0.5,
                     ),
                   ).animate().fadeIn(delay: 250.ms),
+
+                  if (widget.message != null) ...[
+                    const SizedBox(height: 18),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                      width: double.infinity,
+                      decoration: BoxDecoration(
+                        color: AppTheme.warningRed.withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: AppTheme.warningRed.withValues(alpha: 0.2)),
+                      ),
+                      child: Text(
+                        widget.message!,
+                        textAlign: TextAlign.center,
+                        style: GoogleFonts.poppins(
+                          color: AppTheme.warningRed,
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ).animate().fadeIn().shake(hz: 3, curve: Curves.easeInOut),
+                  ],
 
                   const SizedBox(height: 36),
 

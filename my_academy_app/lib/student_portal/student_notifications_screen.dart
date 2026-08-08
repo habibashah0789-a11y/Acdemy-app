@@ -159,6 +159,10 @@ class _StudentNotificationsScreenState extends State<StudentNotificationsScreen>
                             leadingIcon = Icons.payments_rounded;
                             themeColor = AppTheme.secondaryGreen;
                             bgActiveColor = AppTheme.secondaryGreen.withValues(alpha: 0.12);
+                          } else if (item.notificationType == 'fee_reminder') {
+                            leadingIcon = Icons.credit_card_rounded;
+                            themeColor = AppTheme.warningRed;
+                            bgActiveColor = AppTheme.warningRed.withValues(alpha: 0.12);
                           } else if (item.notificationType == 'broadcast') {
                             leadingIcon = Icons.campaign_rounded;
                             themeColor = AppTheme.accentOrange;
@@ -167,113 +171,245 @@ class _StudentNotificationsScreenState extends State<StudentNotificationsScreen>
 
                           return Padding(
                             padding: const EdgeInsets.only(bottom: 14),
-                            child: CustomCard(
-                              padding: const EdgeInsets.all(18),
-                              child: Row(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Container(
-                                    padding: const EdgeInsets.all(12),
-                                    decoration: BoxDecoration(
-                                      color: bgActiveColor,
-                                      shape: BoxShape.circle,
+                            child: GestureDetector(
+                              onTap: () => _openNotificationDetail(item, themeColor, leadingIcon),
+                              child: CustomCard(
+                                padding: const EdgeInsets.all(18),
+                                child: Row(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Container(
+                                      padding: const EdgeInsets.all(12),
+                                      decoration: BoxDecoration(
+                                        color: bgActiveColor,
+                                        shape: BoxShape.circle,
+                                      ),
+                                      child: Icon(leadingIcon, color: themeColor, size: 22),
                                     ),
-                                    child: Icon(leadingIcon, color: themeColor, size: 22),
-                                  ),
-                                  const SizedBox(width: 14),
-                                  Expanded(
-                                    child: Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
-                                      children: [
-                                        Row(
-                                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                          children: [
-                                            Expanded(
-                                              child: Text(
-                                                item.title,
-                                                style: GoogleFonts.poppins(
-                                                  fontWeight: FontWeight.bold,
-                                                  fontSize: 14,
+                                    const SizedBox(width: 14),
+                                    Expanded(
+                                      child: Column(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        children: [
+                                          Row(
+                                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                            children: [
+                                              Expanded(
+                                                child: Text(
+                                                  item.title,
+                                                  style: GoogleFonts.poppins(
+                                                    fontWeight: FontWeight.bold,
+                                                    fontSize: 14,
+                                                  ),
+                                                  maxLines: 1,
+                                                  overflow: TextOverflow.ellipsis,
                                                 ),
-                                                maxLines: 1,
-                                                overflow: TextOverflow.ellipsis,
                                               ),
-                                            ),
-                                            Text(
-                                              DateFormat('MMM dd').format(item.timestamp),
-                                              style: TextStyle(
-                                                fontSize: 11,
-                                                color: isDark ? AppTheme.darkTextSecondary : AppTheme.lightTextSecondary,
-                                              ),
-                                            ),
-                                          ],
-                                        ),
-                                        const SizedBox(height: 6),
-                                        Text(
-                                          item.message,
-                                          style: TextStyle(
-                                            fontSize: 13,
-                                            color: isDark ? AppTheme.darkTextPrimary : AppTheme.lightTextPrimary,
-                                            height: 1.4,
-                                          ),
-                                        ),
-                                        const SizedBox(height: 10),
-                                        Row(
-                                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                          children: [
-                                            Expanded(
-                                              child: Text(
-                                                'Issued by: ${item.registeredBy.isNotEmpty ? item.registeredBy : "Administration"}',
+                                              Text(
+                                                DateFormat('MMM dd').format(item.timestamp),
                                                 style: TextStyle(
                                                   fontSize: 11,
                                                   color: isDark ? AppTheme.darkTextSecondary : AppTheme.lightTextSecondary,
-                                                  fontStyle: FontStyle.italic,
                                                 ),
-                                                overflow: TextOverflow.ellipsis,
                                               ),
+                                            ],
+                                          ),
+                                          const SizedBox(height: 6),
+                                          Text(
+                                            item.message,
+                                            style: TextStyle(
+                                              fontSize: 13,
+                                              color: isDark ? AppTheme.darkTextPrimary : AppTheme.lightTextPrimary,
+                                              height: 1.4,
                                             ),
-                                            const SizedBox(width: 8),
-                                            Text(
-                                              DateFormat('hh:mm a').format(item.timestamp),
-                                              style: TextStyle(
-                                                fontSize: 10,
-                                                color: isDark ? AppTheme.darkTextSecondary : AppTheme.lightTextSecondary,
-                                              ),
-                                            ),
-                                          ],
-                                        ),
-                                        const SizedBox(height: 6),
-                                        Row(
-                                          children: [
-                                            const Icon(Icons.email_outlined, size: 12, color: Colors.grey),
-                                            const SizedBox(width: 4),
-                                            Expanded(
-                                              child: Align(
-                                                alignment: Alignment.centerLeft,
-                                                child: FittedBox(
-                                                  fit: BoxFit.scaleDown,
-                                                  child: Text(
-                                                    'info@quaidacademy.com',
-                                                    style: TextStyle(
-                                                      fontSize: 11,
-                                                      color: isDark ? AppTheme.darkTextSecondary : AppTheme.lightTextSecondary,
-                                                    ),
+                                            maxLines: 2,
+                                            overflow: TextOverflow.ellipsis,
+                                          ),
+                                          const SizedBox(height: 10),
+                                          Row(
+                                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                            children: [
+                                              Expanded(
+                                                child: Text(
+                                                  'Issued by: ${item.registeredBy.isNotEmpty ? item.registeredBy : "Administration"}',
+                                                  style: TextStyle(
+                                                    fontSize: 11,
+                                                    color: isDark ? AppTheme.darkTextSecondary : AppTheme.lightTextSecondary,
+                                                    fontStyle: FontStyle.italic,
                                                   ),
+                                                  overflow: TextOverflow.ellipsis,
                                                 ),
                                               ),
-                                            ),
-                                          ],
-                                        ),
-                                      ],
+                                              const SizedBox(width: 8),
+                                              Text(
+                                                DateFormat('hh:mm a').format(item.timestamp),
+                                                style: TextStyle(
+                                                  fontSize: 10,
+                                                  color: isDark ? AppTheme.darkTextSecondary : AppTheme.lightTextSecondary,
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ],
+                                      ),
                                     ),
-                                  ),
-                                ],
+                                  ],
+                                ),
                               ),
                             ),
                           ).animate().fadeIn(delay: (index * 40).ms).slideY(begin: 0.05);
                         },
                       ),
                     ),
+    );
+  }
+
+  void _openNotificationDetail(
+    NotificationModel item,
+    Color themeColor,
+    IconData leadingIcon,
+  ) {
+    // Mark notification as read in Firestore silently
+    FirebaseFirestore.instance
+        .collection('notifications')
+        .doc(item.id)
+        .update({'isRead': true}).catchError((_) {});
+
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => DraggableScrollableSheet(
+        initialChildSize: 0.75,
+        minChildSize: 0.4,
+        maxChildSize: 0.95,
+        builder: (_, scrollController) => Container(
+          decoration: BoxDecoration(
+            color: isDark ? AppTheme.darkSurface : Colors.white,
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+          ),
+          child: Column(
+            children: [
+              // Drag handle
+              const SizedBox(height: 12),
+              Container(
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: Colors.grey.shade300,
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+              const SizedBox(height: 20),
+              // Icon banner
+              Container(
+                padding: const EdgeInsets.all(20),
+                decoration: BoxDecoration(
+                  color: themeColor.withValues(alpha: 0.1),
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(leadingIcon, color: themeColor, size: 36),
+              ),
+              const SizedBox(height: 16),
+              Expanded(
+                child: SingleChildScrollView(
+                  controller: scrollController,
+                  padding: const EdgeInsets.symmetric(horizontal: 24),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Title
+                      Text(
+                        item.title,
+                        textAlign: TextAlign.center,
+                        style: GoogleFonts.poppins(
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
+                          color: isDark ? Colors.white : AppTheme.primaryDarkBlue,
+                        ),
+                      ),
+                      const SizedBox(height: 6),
+                      // Time + Type badge
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                            decoration: BoxDecoration(
+                              color: themeColor.withValues(alpha: 0.12),
+                              borderRadius: BorderRadius.circular(20),
+                            ),
+                            child: Text(
+                              item.notificationType.replaceAll('_', ' ').toUpperCase(),
+                              style: TextStyle(
+                                color: themeColor,
+                                fontSize: 10,
+                                fontWeight: FontWeight.bold,
+                                letterSpacing: 0.5,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Text(
+                            DateFormat('MMM dd, yyyy • hh:mm a').format(item.timestamp),
+                            style: TextStyle(
+                              fontSize: 11,
+                              color: isDark ? AppTheme.darkTextSecondary : AppTheme.lightTextSecondary,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 24),
+                      // Divider
+                      Divider(color: isDark ? Colors.white12 : Colors.grey.shade200),
+                      const SizedBox(height: 16),
+                      // Full message
+                      Text(
+                        item.message,
+                        style: TextStyle(
+                          fontSize: 15,
+                          height: 1.7,
+                          color: isDark ? AppTheme.darkTextPrimary : AppTheme.lightTextPrimary,
+                        ),
+                      ),
+                      const SizedBox(height: 24),
+                      // Footer — issued by
+                      Container(
+                        padding: const EdgeInsets.all(14),
+                        decoration: BoxDecoration(
+                          color: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.grey.shade50,
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(
+                            color: isDark ? Colors.white12 : Colors.grey.shade200,
+                          ),
+                        ),
+                        child: Row(
+                          children: [
+                            Icon(Icons.admin_panel_settings_rounded, size: 16, color: themeColor),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                'Issued by: ${item.registeredBy.isNotEmpty ? item.registeredBy : "Administration"}',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: isDark ? AppTheme.darkTextSecondary : AppTheme.lightTextSecondary,
+                                  fontStyle: FontStyle.italic,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 32),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }

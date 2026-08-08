@@ -7,6 +7,7 @@ import 'package:flutter/foundation.dart';
 import 'package:hive/hive.dart';
 import 'package:uuid/uuid.dart';
 import '../models/student_model.dart';
+import '../services/database_service.dart';
 
 /// Handles all student-specific authentication logic using Firestore.
 ///
@@ -372,16 +373,51 @@ class StudentAuthService {
     required String studentId,
     String? studentCode,
   }) async {
-    // 1. Try direct lookup by studentId
+    // 0. Try local Hive box first (instantaneous & offline-friendly)
+    if (studentId.isNotEmpty) {
+      try {
+        final localStudent = DatabaseService.studentBox.get(studentId);
+        if (localStudent != null) {
+          return localStudent;
+        }
+      } catch (e) {
+        debugPrint('[StudentAuthService] Local Hive read failed: $e');
+      }
+    }
+
+    // 0.5. Try local Firestore cache (fast, offline-friendly fallback)
+    if (studentId.isNotEmpty) {
+      try {
+        final doc = await _firestore
+            .collection('students')
+            .doc(studentId)
+            .get(const GetOptions(source: Source.cache));
+        if (doc.exists && doc.data() != null) {
+          final student = StudentModel.fromFirestore(doc);
+          // Sync back to local Hive cache
+          try {
+            await DatabaseService.studentBox.put(student.id, student);
+          } catch (_) {}
+          return student;
+        }
+      } catch (_) {}
+    }
+
+    // 1. Try direct lookup by studentId from server
     if (studentId.isNotEmpty) {
       try {
         final doc = await _firestore
             .collection('students')
             .doc(studentId)
             .get()
-            .timeout(const Duration(seconds: 8));
+            .timeout(const Duration(seconds: 4));
         if (doc.exists && doc.data() != null) {
-          return StudentModel.fromFirestore(doc);
+          final student = StudentModel.fromFirestore(doc);
+          // Sync back to local Hive cache
+          try {
+            await DatabaseService.studentBox.put(student.id, student);
+          } catch (_) {}
+          return student;
         }
       } catch (e) {
         debugPrint(
