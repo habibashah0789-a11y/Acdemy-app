@@ -781,7 +781,7 @@ class _HelpSupportScreenState extends State<HelpSupportScreen>
                 isDark,
                 icon: Icons.phone_rounded,
                 title: 'Helpdesk Phone & WhatsApp',
-                subtitle: '+92 300 0000000 / Campus Helpline',
+                subtitle: '+92 313 9509505 / Campus Helpline',
               ),
             ],
           ),
