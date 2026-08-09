@@ -10,6 +10,7 @@ import '../services/database_service.dart';
 import '../theme/app_theme.dart';
 import '../utils/whatsapp_helper.dart';
 import '../students/student_detail_screen.dart';
+import '../widgets/shimmer_loading_widget.dart';
 
 class ClassSchedulesScreen extends StatefulWidget {
   const ClassSchedulesScreen({super.key});
@@ -141,12 +142,9 @@ class _ClassSchedulesScreenState extends State<ClassSchedulesScreen> {
       return CachedNetworkImage(
         imageUrl: url,
         fit: BoxFit.cover,
-        placeholder: (_, __) => const Center(
-          child: SizedBox(
-            width: 20,
-            height: 20,
-            child: CircularProgressIndicator(strokeWidth: 2),
-          ),
+        placeholder: (_, __) => const ShimmerLoadingWidget(
+          width: double.infinity,
+          height: double.infinity,
         ),
         errorWidget: (_, __, ___) => const Center(
           child: Icon(Icons.person_rounded, color: AppTheme.primaryBlue, size: 24),
@@ -494,8 +492,10 @@ class _ClassSchedulesScreenState extends State<ClassSchedulesScreen> {
           // ── Schedule slots displaying section ──
           Expanded(
             child: _isLoading
-                ? const Center(
-                    child: CircularProgressIndicator(),
+                ? ListView.builder(
+                    padding: const EdgeInsets.all(16),
+                    itemCount: 5,
+                    itemBuilder: (context, _) => ShimmerLoadingWidget.listTilePlaceholder(context),
                   )
                 : sortedTimeKeys.isEmpty
                     ? _buildEmptyState()

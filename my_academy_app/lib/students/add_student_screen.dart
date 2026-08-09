@@ -5,7 +5,6 @@ import 'package:flutter/services.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:google_fonts/google_fonts.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:flutter_spinkit/flutter_spinkit.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 import '../models/student_model.dart';
@@ -18,6 +17,7 @@ import '../student_portal/student_auth_service.dart';
 import 'bulk_registration_widget.dart';
 import '../widgets/celebration_overlay.dart';
 import '../services/sound_service.dart';
+import '../widgets/shimmer_loading_widget.dart';
 import '../utils/responsive_utils.dart';
 
 class AddStudentScreen extends StatefulWidget {
@@ -1013,14 +1013,11 @@ class _AddStudentScreenState extends State<AddStudentScreen> {
                           ),
                           const SizedBox(width: 12),
                           Expanded(
-                            child: ElevatedButton(
-                              onPressed: _isSaving ? null : () => _save(addAnother: false),
-                              style: ElevatedButton.styleFrom(
-                                padding: const EdgeInsets.symmetric(vertical: 16),
-                              ),
-                              child: _isSaving
-                                  ? const SpinKitThreeBounce(color: Colors.white, size: 20)
-                                  : const Text('REGISTER STUDENT (Ctrl+S)'),
+                            child: InlineLoadingButton(
+                              isLoading: _isSaving,
+                              label: 'REGISTER STUDENT',
+                              loadingLabel: 'Registering...',
+                              onPressed: () => _save(addAnother: false),
                             ),
                           ),
                         ],
@@ -1030,23 +1027,20 @@ class _AddStudentScreenState extends State<AddStudentScreen> {
                     return Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
-                        ElevatedButton(
-                          onPressed: _isSaving ? null : () => _save(addAnother: false),
-                          style: ElevatedButton.styleFrom(
-                            padding: const EdgeInsets.symmetric(vertical: 16),
-                          ),
-                          child: _isSaving
-                              ? const SpinKitThreeBounce(color: Colors.white, size: 20)
-                              : const Text('REGISTER STUDENT'),
+                        InlineLoadingButton(
+                          isLoading: _isSaving,
+                          label: 'REGISTER STUDENT',
+                          loadingLabel: 'Registering...',
+                          onPressed: () => _save(addAnother: false),
                         ),
                         const SizedBox(height: 12),
-                        OutlinedButton.icon(
-                          onPressed: _isSaving ? null : () => _save(addAnother: true),
-                          icon: const Icon(Icons.library_add_rounded),
-                          label: const Text('SAVE & ADD ANOTHER'),
-                          style: OutlinedButton.styleFrom(
-                            padding: const EdgeInsets.symmetric(vertical: 16),
-                          ),
+                        InlineLoadingButton(
+                          isLoading: _isSaving,
+                          label: 'SAVE & ADD ANOTHER',
+                          loadingLabel: 'Saving...',
+                          isOutlined: true,
+                          icon: Icons.library_add_rounded,
+                          onPressed: () => _save(addAnother: true),
                         ),
                       ],
                     );
@@ -1057,17 +1051,10 @@ class _AddStudentScreenState extends State<AddStudentScreen> {
             ),
           ),
         ),
-        if (_isSaving)
-          Container(
-            color: Colors.black.withValues(alpha: 0.1),
-            child: const Center(
-              child: SpinKitPulse(color: AppTheme.primaryBlue, size: 60),
-            ),
-          ),
       ]),
     ),
-    );
-  }
+  );
+}
 
   Widget _feeField(
     String label,

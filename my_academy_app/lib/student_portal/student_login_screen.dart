@@ -4,6 +4,7 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../login/login_screen.dart';
 import '../theme/app_theme.dart';
+import '../widgets/shimmer_loading_widget.dart';
 import '../widgets/custom_card.dart';
 import 'student_auth_service.dart';
 import 'student_main_wrapper.dart';
@@ -305,34 +306,12 @@ class _StudentLoginScreenState extends State<StudentLoginScreen> {
                   // Submit Button
                   SizedBox(
                     width: double.infinity,
-                    child: ElevatedButton(
-                      onPressed: _isLoading ? null : _handleLogin,
-                      style: ElevatedButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(vertical: 16),
-                      ),
-                      child: _isLoading
-                          ? const SizedBox(
-                              width: 22,
-                              height: 22,
-                              child: CircularProgressIndicator(
-                                color: Colors.white,
-                                strokeWidth: 2.5,
-                              ),
-                            )
-                          : Row(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                Text(
-                                  'Access Student Portal',
-                                  style: GoogleFonts.poppins(
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: 15,
-                                  ),
-                                ),
-                                const SizedBox(width: 8),
-                                const Icon(Icons.arrow_forward_rounded, size: 18),
-                              ],
-                            ),
+                    child: InlineLoadingButton(
+                      isLoading: _isLoading,
+                      label: 'Access Student Portal',
+                      loadingLabel: 'Verifying Credentials...',
+                      icon: Icons.arrow_forward_rounded,
+                      onPressed: _handleLogin,
                     ),
                   ).animate().fadeIn(delay: 550.ms),
 

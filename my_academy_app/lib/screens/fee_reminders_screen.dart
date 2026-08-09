@@ -259,14 +259,30 @@ class _FeeRemindersScreenState extends State<FeeRemindersScreen> {
         foregroundColor: Colors.white,
         actions: [
           if (_isPrinting)
-            const Center(
-              child: Padding(
-                padding: EdgeInsets.symmetric(horizontal: 16),
-                child: SizedBox(
-                    width: 20,
-                    height: 20,
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+              margin: const EdgeInsets.only(right: 12),
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha: 0.2),
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const SizedBox(
+                    width: 14,
+                    height: 14,
                     child: CircularProgressIndicator(
-                        strokeWidth: 2.5, color: Colors.white)),
+                      strokeWidth: 2.0,
+                      valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Text(
+                    'Preparing PDF...',
+                    style: GoogleFonts.poppins(color: Colors.white, fontSize: 12),
+                  ),
+                ],
               ),
             )
           else
@@ -401,24 +417,12 @@ class _FeeRemindersScreenState extends State<FeeRemindersScreen> {
                   padding: const EdgeInsets.symmetric(horizontal: 16),
                   child: SizedBox(
                     width: double.infinity,
-                    child: ElevatedButton.icon(
-                      onPressed: (_isSending || filtered.isEmpty) ? null : _sendPushToAll,
-                      icon: _isSending
-                          ? const SizedBox(
-                              width: 18,
-                              height: 18,
-                              child: CircularProgressIndicator(strokeWidth: 2.5, color: Colors.white),
-                            )
-                          : const Icon(Icons.notifications_active_rounded, color: Colors.white, size: 20),
-                      label: Text(
-                        'Send Push Fee Alerts (${filtered.length})',
-                        style: GoogleFonts.poppins(fontWeight: FontWeight.bold, fontSize: 13),
-                      ),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: AppTheme.primaryBlue,
-                        padding: const EdgeInsets.symmetric(vertical: 14),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                      ),
+                    child: InlineLoadingButton(
+                      isLoading: _isSending,
+                      label: 'Send Push Fee Alerts (${filtered.length})',
+                      loadingLabel: 'Sending Alerts...',
+                      icon: Icons.notifications_active_rounded,
+                      onPressed: filtered.isEmpty ? null : _sendPushToAll,
                     ),
                   ),
                 ),

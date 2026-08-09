@@ -140,7 +140,7 @@ class _StudentAvatarState extends State<StudentAvatar> {
       return SizedBox(
         width: widget.size,
         height: widget.size,
-        child: const Center(child: CircularProgressIndicator(strokeWidth: 2)),
+        child: _buildFallback(),
       );
     }
 
@@ -165,11 +165,14 @@ class _StudentAvatarState extends State<StudentAvatar> {
           memCacheHeight: cacheDimension,
           placeholder: (context, url) => Container(
             color: AppTheme.primaryBlue.withValues(alpha: 0.08),
-            child: const Center(
-              child: SizedBox(
-                width: 16,
-                height: 16,
-                child: CircularProgressIndicator(strokeWidth: 1.5),
+            child: Center(
+              child: Text(
+                widget.student.initials,
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: widget.size * 0.4,
+                  color: AppTheme.primaryBlue.withValues(alpha: 0.5),
+                ),
               ),
             ),
           ),

@@ -107,15 +107,43 @@ class _AuthWrapperState extends State<AuthWrapper> {
     });
   }
 
+  Widget _buildStartupSplash(BuildContext context) {
+    return Scaffold(
+      body: Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Image.asset(
+              'assets/images/logo.png',
+              width: 90,
+              height: 90,
+              errorBuilder: (_, __, ___) => const Icon(Icons.school_rounded, size: 72, color: AppTheme.primaryBlue),
+            ),
+            const SizedBox(height: 20),
+            SizedBox(
+              width: 120,
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(4),
+                child: const LinearProgressIndicator(
+                  backgroundColor: Colors.black12,
+                  valueColor: AlwaysStoppedAnimation<Color>(AppTheme.primaryBlue),
+                  minHeight: 3,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return StreamBuilder<User?>(
       stream: FirebaseAuth.instance.authStateChanges(),
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Scaffold(
-            body: Center(child: CircularProgressIndicator()),
-          );
+          return _buildStartupSplash(context);
         }
         if (snapshot.hasData && snapshot.data != null) {
           return RoleRoutingWrapper(user: snapshot.data!);
@@ -157,8 +185,15 @@ class _StudentPortalEntryWrapperState extends State<StudentPortalEntryWrapper> {
   @override
   Widget build(BuildContext context) {
     if (_checkingSession) {
-      return const Scaffold(
-        body: Center(child: CircularProgressIndicator()),
+      return Scaffold(
+        body: Center(
+          child: Image.asset(
+            'assets/images/logo.png',
+            width: 80,
+            height: 80,
+            errorBuilder: (_, __, ___) => const Icon(Icons.school_rounded, size: 64, color: AppTheme.primaryBlue),
+          ),
+        ),
       );
     }
 
@@ -264,9 +299,24 @@ class _RoleRoutingWrapperState extends State<RoleRoutingWrapper> {
   @override
   Widget build(BuildContext context) {
     if (_isLoading) {
-      return const Scaffold(
+      return Scaffold(
         body: Center(
-          child: CircularProgressIndicator(),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Image.asset(
+                'assets/images/logo.png',
+                width: 80,
+                height: 80,
+                errorBuilder: (_, __, ___) => const Icon(Icons.school_rounded, size: 64, color: AppTheme.primaryBlue),
+              ),
+              const SizedBox(height: 16),
+              Text(
+                'Verifying Permissions...',
+                style: GoogleFonts.poppins(color: AppTheme.primaryBlue, fontSize: 13),
+              ),
+            ],
+          ),
         ),
       );
     }

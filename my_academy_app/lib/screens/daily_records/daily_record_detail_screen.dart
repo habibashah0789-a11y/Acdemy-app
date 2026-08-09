@@ -8,6 +8,7 @@ import 'daily_records_screen.dart';
 import '../../theme/app_theme.dart';
 import '../../students/student_detail_screen.dart';
 import '../../models/student_model.dart';
+import '../../widgets/shimmer_loading_widget.dart';
 
 class DailyRecordDetailScreen extends StatefulWidget {
   final DailyRecordData record;
@@ -699,12 +700,10 @@ class _DailyRecordDetailScreenState extends State<DailyRecordDetailScreen>
                         ? CachedNetworkImage(
                             imageUrl: student.profilePicUrl,
                             fit: BoxFit.cover,
-                            placeholder: (_, __) => const Center(
-                              child: SizedBox(
-                                  width: 20,
-                                  height: 20,
-                                  child: CircularProgressIndicator(
-                                      strokeWidth: 2)),
+                            placeholder: (_, __) => const ShimmerLoadingWidget(
+                              width: 48,
+                              height: 48,
+                              borderRadius: 14,
                             ),
                             errorWidget: (_, __, ___) => const Icon(
                                 Icons.person_rounded,

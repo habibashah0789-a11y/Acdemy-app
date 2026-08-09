@@ -7,6 +7,7 @@ import 'package:hive_flutter/hive_flutter.dart';
 import '../models/recycled_student.dart';
 import '../services/database_service.dart';
 import '../theme/app_theme.dart';
+import '../widgets/shimmer_loading_widget.dart';
 
 class RecycleBinScreen extends StatefulWidget {
   const RecycleBinScreen({super.key});
@@ -152,7 +153,14 @@ class _RecycleBinScreenState extends State<RecycleBinScreen> {
         final local = DatabaseService.getRecycledStudents();
 
         if (snapshot.connectionState == ConnectionState.waiting && local.isEmpty) {
-          return const Center(child: CircularProgressIndicator());
+          return ListView.builder(
+            padding: const EdgeInsets.all(16),
+            itemCount: 4,
+            itemBuilder: (context, _) => Padding(
+              padding: const EdgeInsets.only(bottom: 12),
+              child: ShimmerLoadingWidget.studentCardPlaceholder(context),
+            ),
+          );
         }
 
         final docs = snapshot.data?.docs ?? [];
@@ -262,12 +270,10 @@ class _RecycleBinScreenState extends State<RecycleBinScreen> {
                       ? CachedNetworkImage(
                           imageUrl: student.profilePicUrl,
                           fit: BoxFit.cover,
-                          placeholder: (_, __) => const Center(
-                            child: SizedBox(
-                              width: 24,
-                              height: 24,
-                              child: CircularProgressIndicator(strokeWidth: 2),
-                            ),
+                          placeholder: (_, __) => const ShimmerLoadingWidget(
+                            width: 54,
+                            height: 54,
+                            borderRadius: 16,
                           ),
                           errorWidget: (_, __, ___) => Center(
                             child: Icon(

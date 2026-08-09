@@ -4,6 +4,7 @@ import 'package:google_fonts/google_fonts.dart';
 import '../main.dart';
 import '../services/auth_service.dart';
 import '../theme/app_theme.dart';
+import '../widgets/shimmer_loading_widget.dart';
 import '../theme/ui_helpers.dart';
 import '../widgets/custom_card.dart';
 
@@ -193,37 +194,14 @@ class _LoginScreenState extends State<LoginScreen> {
                               ),
                             ),
                             const SizedBox(height: 20),
-                            SizedBox(
+                             SizedBox(
                               width: double.infinity,
-                              child: ElevatedButton(
-                                onPressed: _isLoading ? null : _handleLogin,
-                                style: ElevatedButton.styleFrom(
-                                  padding: const EdgeInsets.symmetric(vertical: 16),
-                                ),
-                                child: _isLoading
-                                    ? const SizedBox(
-                                        height: 22,
-                                        width: 22,
-                                        child: CircularProgressIndicator(
-                                          color: Colors.white,
-                                          strokeWidth: 2.5,
-                                        ),
-                                      )
-                                    : Row(
-                                        mainAxisAlignment: MainAxisAlignment.center,
-                                        children: [
-                                          Text(
-                                            'LOGIN TO ADMIN PORTAL',
-                                            style: GoogleFonts.poppins(
-                                              fontWeight: FontWeight.bold,
-                                              fontSize: 14,
-                                              letterSpacing: 0.5,
-                                            ),
-                                          ),
-                                          const SizedBox(width: 8),
-                                          const Icon(Icons.arrow_forward_rounded, size: 18),
-                                        ],
-                                      ),
+                              child: InlineLoadingButton(
+                                isLoading: _isLoading,
+                                label: 'LOGIN TO ADMIN PORTAL',
+                                loadingLabel: 'Signing in...',
+                                icon: Icons.arrow_forward_rounded,
+                                onPressed: _handleLogin,
                               ),
                             ),
                             const SizedBox(height: 20),

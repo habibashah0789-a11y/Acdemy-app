@@ -21,6 +21,7 @@ import '../widgets/crop_image_dialog.dart';
 import '../widgets/student_avatar.dart';
 import '../utils/image_utils.dart';
 import '../student_portal/student_auth_service.dart';
+import '../widgets/shimmer_loading_widget.dart';
 
 class StudentDetailScreen extends StatefulWidget {
   final StudentModel student;
@@ -175,8 +176,10 @@ class _StudentDetailScreenState extends State<StudentDetailScreen> {
       return CachedNetworkImage(
         imageUrl: url,
         fit: BoxFit.contain,
-        placeholder: (_, __) => const Center(
-          child: CircularProgressIndicator(),
+        placeholder: (_, __) => const ShimmerLoadingWidget(
+          width: double.infinity,
+          height: double.infinity,
+          borderRadius: 0,
         ),
         errorWidget: (_, __, ___) => Container(
           color: Colors.black12,
@@ -526,17 +529,30 @@ class _StudentDetailScreenState extends State<StudentDetailScreen> {
       backgroundColor: AppTheme.primaryBlue,
       actions: [
         _isPrinting
-            ? const Center(
-                child: Padding(
-                  padding: EdgeInsets.symmetric(horizontal: 16.0),
-                  child: SizedBox(
-                    width: 20,
-                    height: 20,
-                    child: CircularProgressIndicator(
-                      strokeWidth: 2.5,
-                      valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+            ? Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                margin: const EdgeInsets.only(right: 12),
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: 0.2),
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const SizedBox(
+                      width: 14,
+                      height: 14,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2.0,
+                        valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                      ),
                     ),
-                  ),
+                    const SizedBox(width: 8),
+                    Text(
+                      'Preparing PDF...',
+                      style: GoogleFonts.poppins(color: Colors.white, fontSize: 12),
+                    ),
+                  ],
                 ),
               )
             : IconButton(

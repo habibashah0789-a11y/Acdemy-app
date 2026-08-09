@@ -6,6 +6,7 @@ import '../models/notification_model.dart';
 import '../services/notification_service.dart';
 
 import '../screens/notification_settings_screen.dart';
+import '../widgets/shimmer_loading_widget.dart';
 
 class NotificationsScreen extends StatefulWidget {
   const NotificationsScreen({super.key});
@@ -60,7 +61,10 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
         builder: (context, snapshot) {
           final items = snapshot.data ?? [];
           if (items.isEmpty && snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(child: CircularProgressIndicator());
+            return ListView.builder(
+              itemCount: 6,
+              itemBuilder: (context, _) => ShimmerLoadingWidget.listTilePlaceholder(context),
+            );
           }
           if (items.isEmpty) {
             return const Center(child: Text('No notifications yet'));
@@ -206,68 +210,63 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                   onPressed: isPublishing ? null : () => Navigator.pop(context),
                   child: const Text('Cancel'),
                 ),
-                ElevatedButton(
-                  onPressed: isPublishing
-                      ? null
-                      : () async {
-                          if (!formKey.currentState!.validate()) return;
-                          setDialogState(() => isPublishing = true);
+                InlineLoadingButton(
+                  isLoading: isPublishing,
+                  label: 'Publish',
+                  loadingLabel: 'Publishing...',
+                  verticalPadding: 8,
+                  onPressed: () async {
+                    if (!formKey.currentState!.validate()) return;
+                    setDialogState(() => isPublishing = true);
 
-                          try {
-                            final notification = NotificationModel(
-                              id: 'broadcast_${DateTime.now().millisecondsSinceEpoch}',
-                              title: titleController.text.trim(),
-                              message: messageController.text.trim(),
-                              studentName: 'All Students',
-                              className: 'All',
-                              subject: 'General',
-                              registeredBy: FirebaseAuth.instance.currentUser?.email ?? 'Administrator',
-                              timestamp: DateTime.now(),
-                              notificationType: 'broadcast',
-                              isRead: false,
-                              studentId: '', // Empty means broadcast
-                            );
+                    try {
+                      final notification = NotificationModel(
+                        id: 'broadcast_${DateTime.now().millisecondsSinceEpoch}',
+                        title: titleController.text.trim(),
+                        message: messageController.text.trim(),
+                        studentName: 'All Students',
+                        className: 'All',
+                        subject: 'General',
+                        registeredBy: FirebaseAuth.instance.currentUser?.email ?? 'Administrator',
+                        timestamp: DateTime.now(),
+                        notificationType: 'broadcast',
+                        isRead: false,
+                        studentId: '', // Empty means broadcast
+                      );
 
-                            await FirebaseFirestore.instance
-                                .collection('notifications')
-                                .doc(notification.id)
-                                .set(notification.toMap());
+                      await FirebaseFirestore.instance
+                          .collection('notifications')
+                          .doc(notification.id)
+                          .set(notification.toMap());
 
-                            await NotificationService.showLocalNotification(
-                              channelId: 'academy_important_alerts',
-                              title: '📢 ${titleController.text.trim()}',
-                              body: messageController.text.trim(),
-                              payload: '{"type": "announcement", "screen": "notifications"}',
-                            );
+                      await NotificationService.showLocalNotification(
+                        channelId: 'academy_important_alerts',
+                        title: '📢 ${titleController.text.trim()}',
+                        body: messageController.text.trim(),
+                        payload: '{"type": "announcement", "screen": "notifications"}',
+                      );
 
-                            if (context.mounted) {
-                              Navigator.pop(context);
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(
-                                  content: Text('Announcement published successfully!'),
-                                  backgroundColor: Colors.green,
-                                ),
-                              );
-                            }
-                          } catch (e) {
-                            if (context.mounted) {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(
-                                  content: Text('Failed to publish: $e'),
-                                  backgroundColor: Colors.red,
-                                ),
-                              );
-                            }
-                            setDialogState(() => isPublishing = false);
-                          }
-                        },
-                  child: isPublishing
-                      ? const SizedBox(
-                          width: 20,
-                          height: 20,
-                          child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
-                        )
-                      : const Text('Publish'),
+                      if (context.mounted) {
+                        Navigator.pop(context);
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text('Announcement published successfully!'),
+                            backgroundColor: Colors.green,
+                          ),
+                        );
+                      }
+                    } catch (e) {
+                      if (context.mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text('Failed to publish: $e'),
+                            backgroundColor: Colors.red,
+                          ),
+                        );
+                      }
+                      setDialogState(() => isPublishing = false);
+                    }
+                  },
                 ),
               ],
             );
