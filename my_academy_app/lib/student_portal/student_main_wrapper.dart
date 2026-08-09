@@ -58,6 +58,7 @@ class _StudentMainWrapperState extends State<StudentMainWrapper> {
       final session = await StudentAuthService.getLocalSession();
       if (session != null) {
         final studentId = session['studentId'] as String? ?? '';
+        final studentCode = session['studentCode'] as String? ?? '';
         final deviceId = session['deviceId'] as String? ?? '';
         if (studentId.isNotEmpty) {
           await Hive.openBox<bool>('read_notices');
@@ -72,6 +73,13 @@ class _StudentMainWrapperState extends State<StudentMainWrapper> {
           final currentDeviceId = deviceId.isNotEmpty
               ? deviceId
               : await StudentAuthService.getDeviceId();
+
+          // Ensure device binding is synced to Firestore
+          await StudentAuthService.ensureDeviceBound(
+            studentId: studentId,
+            currentDeviceId: currentDeviceId,
+            studentCode: studentCode,
+          );
 
           _listenToStudentStatus(studentId, currentDeviceId);
         }

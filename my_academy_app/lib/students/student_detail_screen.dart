@@ -45,7 +45,7 @@ class _StudentDetailScreenState extends State<StudentDetailScreen> {
   // Real-time device binding state — updated live from Firestore stream.
   // This ensures the Device Bound / Not Bound badge reflects the actual
   // Firestore value at all times, not just at screen-open time.
-  StreamSubscription<DocumentSnapshot>? _authStreamSub;
+  StreamSubscription? _authStreamSub;
   String _deviceId = ''; // live-updated linkedDeviceId from Firestore
 
   @override
@@ -60,25 +60,66 @@ class _StudentDetailScreenState extends State<StudentDetailScreen> {
   /// Updates _deviceId live so the Device Bound / Not Bound badge always
   /// reflects the true Firestore state without requiring a screen reload.
   void _subscribeToDeviceStatus() {
-    _authStreamSub = FirebaseFirestore.instance
-        .collection('student_auth')
-        .doc(student.id)
-        .snapshots()
-        .listen((doc) {
-      if (!mounted) return;
-      final data = doc.data();
-      final id = data?['linkedDeviceId'] as String? ?? '';
-      setState(() => _deviceId = id);
-    }, onError: (_) {});
+    _authStreamSub?.cancel();
+    final cleanCode = student.studentCode.trim().toUpperCase();
+
+    if (cleanCode.isNotEmpty) {
+      _authStreamSub = FirebaseFirestore.instance
+          .collection('student_auth')
+          .where('studentCode', isEqualTo: cleanCode)
+          .snapshots()
+          .listen((query) {
+        if (!mounted) return;
+        String foundId = '';
+        for (final doc in query.docs) {
+          final id = doc.data()['linkedDeviceId'] as String? ?? '';
+          if (id.isNotEmpty) {
+            foundId = id;
+            break;
+          }
+        }
+        if (foundId.isNotEmpty) {
+          setState(() => _deviceId = foundId);
+        } else {
+          FirebaseFirestore.instance
+              .collection('student_auth')
+              .doc(student.id)
+              .get()
+              .then((doc) {
+            if (mounted && doc.exists && doc.data() != null) {
+              final id = doc.data()?['linkedDeviceId'] as String? ?? '';
+              setState(() => _deviceId = id);
+            }
+          });
+        }
+      }, onError: (_) {});
+    } else {
+      _authStreamSub = FirebaseFirestore.instance
+          .collection('student_auth')
+          .doc(student.id)
+          .snapshots()
+          .listen((doc) {
+        if (!mounted) return;
+        if (doc.exists && doc.data() != null) {
+          final id = doc.data()?['linkedDeviceId'] as String? ?? '';
+          setState(() => _deviceId = id);
+        }
+      }, onError: (_) {});
+    }
   }
 
   Future<void> _loadAuthInfo() async {
     setState(() => _isLoadingAuth = true);
     try {
-      final info = await StudentAuthService.getStudentAuthInfo(student.id);
+      final info = await StudentAuthService.getStudentAuthInfo(
+        student.id,
+        studentCode: student.studentCode,
+      );
       if (mounted) {
+        final initialDeviceId = info?['linkedDeviceId'] as String? ?? '';
         setState(() {
           _authInfo = info;
+          if (initialDeviceId.isNotEmpty) _deviceId = initialDeviceId;
           _isLoadingAuth = false;
         });
       }
@@ -123,7 +164,10 @@ class _StudentDetailScreenState extends State<StudentDetailScreen> {
       // 1. Write the reset to Firestore. The student portal's real-time
       //    Firestore listener will detect this change and force-logout
       //    the student on their device automatically.
-      await StudentAuthService.resetDeviceBinding(student.id);
+      await StudentAuthService.resetDeviceBinding(
+        student.id,
+        studentCode: student.studentCode,
+      );
 
       // 2. Update local _authInfo so the badge flips to 'Not Bound'.
       //    _deviceId is also updated immediately via the Firestore stream.
@@ -938,25 +982,25 @@ class _StudentDetailScreenState extends State<StudentDetailScreen> {
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                       decoration: BoxDecoration(
-                        color: deviceId.isEmpty ? Colors.grey.shade100 : Colors.amber.shade50,
+                        color: deviceId.isEmpty ? Colors.grey.shade100 : Colors.green.shade50,
                         borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: deviceId.isEmpty ? Colors.grey.shade300 : Colors.amber.shade200),
+                        border: Border.all(color: deviceId.isEmpty ? Colors.grey.shade300 : Colors.green.shade300),
                       ),
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
                           Icon(
-                            deviceId.isEmpty ? Icons.lightbulb_outline_rounded : Icons.lightbulb_rounded,
+                            deviceId.isEmpty ? Icons.phonelink_off_rounded : Icons.phonelink_setup_rounded,
                             size: 16,
-                            color: deviceId.isEmpty ? Colors.grey : Colors.amber.shade700,
+                            color: deviceId.isEmpty ? Colors.grey.shade600 : Colors.green.shade700,
                           ),
                           const SizedBox(width: 6),
                           Text(
-                            deviceId.isEmpty ? 'Not Bound' : 'Device Bound',
+                            deviceId.isEmpty ? 'Not Bound' : '1 Bound',
                             style: TextStyle(
                               fontSize: 11,
                               fontWeight: FontWeight.bold,
-                              color: deviceId.isEmpty ? Colors.grey.shade600 : Colors.amber.shade800,
+                              color: deviceId.isEmpty ? Colors.grey.shade600 : Colors.green.shade800,
                             ),
                           ),
                         ],

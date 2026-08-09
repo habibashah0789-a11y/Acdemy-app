@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:hive_flutter/hive_flutter.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 import 'student_detail_screen.dart';
 import 'add_student_screen.dart';
@@ -359,8 +360,11 @@ class _StudentListScreenState extends State<StudentListScreen> {
               crossAxisAlignment: CrossAxisAlignment.end,
               children: [
                 _buildFeeBadge(student),
-                const SizedBox(height: 8),
-                const Icon(Icons.arrow_forward_ios_rounded, size: 14, color: Colors.grey),
+                const SizedBox(height: 6),
+                StudentDeviceStatusBadge(
+                  studentId: student.id,
+                  studentCode: student.studentCode,
+                ),
               ],
             ),
           ],
@@ -387,6 +391,109 @@ class _StudentListScreenState extends State<StudentListScreen> {
           fontWeight: FontWeight.bold,
           color: isClear ? AppTheme.secondaryGreen : AppTheme.warningRed,
         ),
+      ),
+    );
+  }
+}
+
+class StudentDeviceStatusBadge extends StatelessWidget {
+  final String studentId;
+  final String studentCode;
+
+  const StudentDeviceStatusBadge({
+    super.key,
+    required this.studentId,
+    required this.studentCode,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final cleanCode = studentCode.trim().toUpperCase();
+
+    if (cleanCode.isNotEmpty) {
+      return StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+        stream: FirebaseFirestore.instance
+            .collection('student_auth')
+            .where('studentCode', isEqualTo: cleanCode)
+            .snapshots(),
+        builder: (context, querySnap) {
+          String deviceId = '';
+          if (querySnap.hasData && querySnap.data!.docs.isNotEmpty) {
+            for (final doc in querySnap.data!.docs) {
+              final id = doc.data()['linkedDeviceId'] as String? ?? '';
+              if (id.isNotEmpty) {
+                deviceId = id;
+                break;
+              }
+            }
+          }
+
+          if (deviceId.isNotEmpty) {
+            return _buildBadgeContent(true);
+          }
+
+          return StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
+            stream: FirebaseFirestore.instance
+                .collection('student_auth')
+                .doc(studentId)
+                .snapshots(),
+            builder: (context, docSnap) {
+              String fallbackId = '';
+              if (docSnap.hasData && docSnap.data!.exists) {
+                fallbackId =
+                    docSnap.data!.data()?['linkedDeviceId'] as String? ?? '';
+              }
+              return _buildBadgeContent(fallbackId.isNotEmpty);
+            },
+          );
+        },
+      );
+    }
+
+    return StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
+      stream: FirebaseFirestore.instance
+          .collection('student_auth')
+          .doc(studentId)
+          .snapshots(),
+      builder: (context, snapshot) {
+        String deviceId = '';
+        if (snapshot.hasData && snapshot.data!.exists) {
+          deviceId = snapshot.data!.data()?['linkedDeviceId'] as String? ?? '';
+        }
+        return _buildBadgeContent(deviceId.isNotEmpty);
+      },
+    );
+  }
+
+  Widget _buildBadgeContent(bool isBound) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+      decoration: BoxDecoration(
+        color: isBound ? Colors.green.shade50 : Colors.grey.shade100,
+        borderRadius: BorderRadius.circular(6),
+        border: Border.all(
+          color: isBound ? Colors.green.shade300 : Colors.grey.shade300,
+          width: 0.8,
+        ),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            isBound ? Icons.phonelink_setup_rounded : Icons.phonelink_off_rounded,
+            size: 10,
+            color: isBound ? Colors.green.shade700 : Colors.grey.shade600,
+          ),
+          const SizedBox(width: 3),
+          Text(
+            isBound ? '1 Bound' : 'Not Bound',
+            style: TextStyle(
+              fontSize: 9,
+              fontWeight: FontWeight.bold,
+              color: isBound ? Colors.green.shade800 : Colors.grey.shade600,
+            ),
+          ),
+        ],
       ),
     );
   }
