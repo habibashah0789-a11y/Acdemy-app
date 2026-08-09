@@ -74,13 +74,6 @@ class _StudentMainWrapperState extends State<StudentMainWrapper> {
               ? deviceId
               : await StudentAuthService.getDeviceId();
 
-          // Ensure device binding is synced to Firestore
-          await StudentAuthService.ensureDeviceBound(
-            studentId: studentId,
-            currentDeviceId: currentDeviceId,
-            studentCode: studentCode,
-          );
-
           _listenToStudentStatus(studentId, currentDeviceId);
         }
       }
@@ -129,44 +122,30 @@ class _StudentMainWrapperState extends State<StudentMainWrapper> {
 
       final linkedDeviceId = data['linkedDeviceId'] as String? ?? '';
 
-      // ── FIRST SNAPSHOT ────────────────────────────────────────────────
-      // Always skip force-logout on the very first snapshot. This covers the
-      // login race-condition: the student just logged in, the device-binding
-      // Firestore write is still in-flight, so this snapshot may still have
-      // linkedDeviceId == ''. Logging out here would be wrong.
-      //
-      // Exception: if the first snapshot already shows a DIFFERENT non-empty
-      // device, this is a true device conflict that must be rejected.
+      if (linkedDeviceId.isEmpty) {
+        debugPrint(
+            '[StudentMainWrapper] Device binding is empty on server — forcing logout.');
+        _handleForceLogout(
+            'Your device binding has been reset by administration. Please log in again.');
+        return;
+      }
+
       if (_isInitialAuthSnapshot) {
         _isInitialAuthSnapshot = false;
         _lastKnownLinkedDeviceId = linkedDeviceId;
 
-        if (linkedDeviceId.isNotEmpty && linkedDeviceId != currentDeviceId) {
-          // This device is definitively NOT the bound device.
+        if (linkedDeviceId != currentDeviceId) {
           debugPrint(
               '[StudentMainWrapper] First snapshot: device mismatch — forcing logout.');
           _handleForceLogout('already login on another device');
         }
-        // In ALL other first-snapshot cases (empty or matching): do nothing.
         return;
       }
-
-      // ── SUBSEQUENT SNAPSHOTS ──────────────────────────────────────────
-      // Now we compare to the last known value to detect real state changes.
 
       final previousId = _lastKnownLinkedDeviceId ?? '';
       _lastKnownLinkedDeviceId = linkedDeviceId;
 
-      if (linkedDeviceId.isEmpty && previousId.isNotEmpty) {
-        // linkedDeviceId went from a real value → empty.
-        // This ONLY happens when admin explicitly clicks "Reset Device".
-        debugPrint(
-            '[StudentMainWrapper] Device binding reset detected — forcing logout.');
-        _handleForceLogout(
-            'Your device binding has been reset by administration. Please log in again.');
-      } else if (linkedDeviceId.isNotEmpty &&
-          linkedDeviceId != currentDeviceId) {
-        // A different device is now bound to this account.
+      if (linkedDeviceId != currentDeviceId) {
         debugPrint(
             '[StudentMainWrapper] Different device bound — forcing logout.');
         _handleForceLogout('already login on another device');
