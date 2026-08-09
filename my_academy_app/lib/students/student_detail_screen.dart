@@ -91,11 +91,74 @@ class _StudentDetailScreenState extends State<StudentDetailScreen> {
         await StudentAuthService.resetDeviceBinding(student.id);
         await _loadAuthInfo();
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Device binding reset successfully.'),
-              backgroundColor: Colors.green,
-            ),
+          showDialog(
+            context: context,
+            barrierDismissible: true,
+            builder: (context) {
+              return Dialog(
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 24.0, horizontal: 20.0),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          color: Colors.green.shade50,
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Icon(
+                          Icons.check_circle_outline_rounded,
+                          color: Colors.green,
+                          size: 60,
+                        ),
+                      )
+                          .animate()
+                          .scale(duration: 500.ms, curve: Curves.elasticOut)
+                          .fadeIn(duration: 300.ms),
+                      const SizedBox(height: 16),
+                      Text(
+                        'Success!',
+                        style: GoogleFonts.poppins(
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.green,
+                        ),
+                      )
+                          .animate()
+                          .slideY(begin: 0.3, end: 0, duration: 400.ms, curve: Curves.easeOutBack)
+                          .fadeIn(duration: 300.ms),
+                      const SizedBox(height: 8),
+                      Text(
+                        'Device binding has been reset successfully.',
+                        textAlign: TextAlign.center,
+                        style: GoogleFonts.poppins(
+                          fontSize: 14,
+                          color: Colors.grey.shade600,
+                        ),
+                      )
+                          .animate()
+                          .slideY(begin: 0.3, end: 0, duration: 450.ms, curve: Curves.easeOutBack)
+                          .fadeIn(duration: 300.ms),
+                      const SizedBox(height: 24),
+                      ElevatedButton(
+                        onPressed: () => Navigator.pop(context),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.green,
+                          foregroundColor: Colors.white,
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                        ),
+                        child: const Text('OK'),
+                      )
+                          .animate()
+                          .fadeIn(delay: 200.ms, duration: 300.ms),
+                    ],
+                  ),
+                ),
+              );
+            },
           );
         }
       } catch (e) {
@@ -808,19 +871,30 @@ class _StudentDetailScreenState extends State<StudentDetailScreen> {
                   children: [
                     const Text('Device Binding:', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w500)),
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                       decoration: BoxDecoration(
-                        color: deviceId.isEmpty ? Colors.grey.shade100 : Colors.green.shade50,
-                        borderRadius: BorderRadius.circular(8),
-                        border: Border.all(color: deviceId.isEmpty ? Colors.grey.shade300 : Colors.green.shade200),
+                        color: deviceId.isEmpty ? Colors.grey.shade100 : Colors.amber.shade50,
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: deviceId.isEmpty ? Colors.grey.shade300 : Colors.amber.shade200),
                       ),
-                      child: Text(
-                        deviceId.isEmpty ? 'Not Bound' : 'Linked',
-                        style: TextStyle(
-                          fontSize: 11,
-                          fontWeight: FontWeight.bold,
-                          color: deviceId.isEmpty ? Colors.grey.shade600 : Colors.green,
-                        ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            deviceId.isEmpty ? Icons.lightbulb_outline_rounded : Icons.lightbulb_rounded,
+                            size: 16,
+                            color: deviceId.isEmpty ? Colors.grey : Colors.amber.shade700,
+                          ),
+                          const SizedBox(width: 6),
+                          Text(
+                            deviceId.isEmpty ? 'Not Bound' : 'One Device Bound',
+                            style: TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.bold,
+                              color: deviceId.isEmpty ? Colors.grey.shade600 : Colors.amber.shade800,
+                            ),
+                          ),
+                        ],
                       ),
                     ),
                   ],
