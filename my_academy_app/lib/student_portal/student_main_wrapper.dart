@@ -23,6 +23,7 @@ class _StudentMainWrapperState extends State<StudentMainWrapper> {
   int _currentIndex = 0;
   late final PageController _pageController;
   StreamSubscription<DocumentSnapshot>? _studentStatusSubscription;
+  StreamSubscription<DocumentSnapshot>? _studentAuthSubscription;
 
   final List<Widget> _screens = [
     const StudentDashboardScreen(),
@@ -43,6 +44,7 @@ class _StudentMainWrapperState extends State<StudentMainWrapper> {
       final session = await StudentAuthService.getLocalSession();
       if (session != null) {
         final studentId = session['studentId'] as String? ?? '';
+        final deviceId = session['deviceId'] as String? ?? '';
         if (studentId.isNotEmpty) {
           await Hive.openBox<bool>('read_notices');
           await NotificationService.init();
@@ -52,7 +54,12 @@ class _StudentMainWrapperState extends State<StudentMainWrapper> {
             studentId: studentId,
           );
           NotificationService.listenForStudent(studentId);
-          _listenToStudentStatus(studentId);
+
+          final currentDeviceId = deviceId.isNotEmpty
+              ? deviceId
+              : await StudentAuthService.getDeviceId();
+
+          _listenToStudentStatus(studentId, currentDeviceId);
         }
       }
     } catch (e) {
@@ -60,7 +67,7 @@ class _StudentMainWrapperState extends State<StudentMainWrapper> {
     }
   }
 
-  void _listenToStudentStatus(String studentId) {
+  void _listenToStudentStatus(String studentId, String currentDeviceId) {
     _studentStatusSubscription?.cancel();
     _studentStatusSubscription = FirebaseFirestore.instance
         .collection('students')
@@ -68,15 +75,41 @@ class _StudentMainWrapperState extends State<StudentMainWrapper> {
         .snapshots()
         .listen((doc) {
       if (!doc.exists && mounted) {
-        _handleForceLogout();
+        _handleForceLogout('Your account has been deleted by administration. Please login again.');
       }
     }, onError: (e) {
       debugPrint('[StudentMainWrapper] Student status stream error: $e');
     });
+
+    _studentAuthSubscription?.cancel();
+    _studentAuthSubscription = FirebaseFirestore.instance
+        .collection('student_auth')
+        .doc(studentId)
+        .snapshots()
+        .listen((doc) {
+      if (mounted) {
+        if (!doc.exists) {
+          _handleForceLogout('Your student authorization has been removed. Please contact admin.');
+          return;
+        }
+        final data = doc.data();
+        if (data == null) return;
+
+        final linkedDeviceId = data['linkedDeviceId'] as String? ?? '';
+        if (linkedDeviceId.isEmpty) {
+          _handleForceLogout('Your device binding has been reset by administration.');
+        } else if (linkedDeviceId != currentDeviceId) {
+          _handleForceLogout('already login on another device');
+        }
+      }
+    }, onError: (e) {
+      debugPrint('[StudentMainWrapper] Student auth stream error: $e');
+    });
   }
 
-  Future<void> _handleForceLogout() async {
+  Future<void> _handleForceLogout(String message) async {
     _studentStatusSubscription?.cancel();
+    _studentAuthSubscription?.cancel();
     final session = await StudentAuthService.getLocalSession();
     if (session != null) {
       final studentId = session['studentId'] as String? ?? '';
@@ -92,8 +125,8 @@ class _StudentMainWrapperState extends State<StudentMainWrapper> {
     if (mounted) {
       Navigator.of(context).pushAndRemoveUntil(
         MaterialPageRoute(
-          builder: (_) => const StudentLoginScreen(
-            message: 'Your account has been deleted by administration. Please login again.',
+          builder: (_) => StudentLoginScreen(
+            message: message,
           ),
         ),
         (_) => false,
@@ -105,6 +138,7 @@ class _StudentMainWrapperState extends State<StudentMainWrapper> {
   void dispose() {
     _pageController.dispose();
     _studentStatusSubscription?.cancel();
+    _studentAuthSubscription?.cancel();
     super.dispose();
   }
 

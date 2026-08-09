@@ -301,9 +301,7 @@ class StudentAuthService {
     if (storedDeviceId.isNotEmpty && storedDeviceId != currentDeviceId) {
       // This account is already bound to a different device.
       throw Exception(
-        'This account is linked to another device.\n'
-        'Only one device is allowed per student account.\n'
-        'If you need to use a new device, ask the academy admin to reset your device binding.',
+        'already login on another device',
       );
     }
 
