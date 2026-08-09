@@ -473,13 +473,16 @@ class StudentDeviceStatusBadge extends StatelessWidget {
   }
 
   Widget _buildBadgeContent(bool isBound) {
+    if (!isBound) {
+      return const SizedBox.shrink();
+    }
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
       decoration: BoxDecoration(
-        color: isBound ? Colors.green.shade50 : Colors.grey.shade100,
+        color: Colors.green.shade50,
         borderRadius: BorderRadius.circular(6),
         border: Border.all(
-          color: isBound ? Colors.green.shade300 : Colors.grey.shade300,
+          color: Colors.green.shade300,
           width: 0.8,
         ),
       ),
@@ -487,17 +490,17 @@ class StudentDeviceStatusBadge extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         children: [
           Icon(
-            isBound ? Icons.phonelink_setup_rounded : Icons.phonelink_off_rounded,
+            Icons.phonelink_setup_rounded,
             size: 10,
-            color: isBound ? Colors.green.shade700 : Colors.grey.shade600,
+            color: Colors.green.shade700,
           ),
           const SizedBox(width: 3),
           Text(
-            isBound ? '1 Bound' : 'Not Bound',
+            '1 Bound',
             style: TextStyle(
               fontSize: 9,
               fontWeight: FontWeight.bold,
-              color: isBound ? Colors.green.shade800 : Colors.grey.shade600,
+              color: Colors.green.shade800,
             ),
           ),
         ],
