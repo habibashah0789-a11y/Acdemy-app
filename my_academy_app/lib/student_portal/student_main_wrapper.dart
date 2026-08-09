@@ -82,30 +82,65 @@ class _StudentMainWrapperState extends State<StudentMainWrapper> {
     });
 
     _studentAuthSubscription?.cancel();
+    // _lastKnownLinkedDeviceId starts as null meaning "haven't received first snapshot yet".
+    // This lets us distinguish:
+    //   null → '' : first snapshot with no binding yet (login race condition) — do NOT logout
+    //   'someId' → '' : admin explicitly reset the binding — MUST logout
+    //   '' or 'someId' → 'differentId' : different device logged in — MUST logout
+    String? _lastKnownLinkedDeviceId;
+
     _studentAuthSubscription = FirebaseFirestore.instance
         .collection('student_auth')
         .doc(studentId)
         .snapshots()
         .listen((doc) {
-      if (mounted) {
-        if (!doc.exists) {
-          _handleForceLogout('Your student authorization has been removed. Please contact admin.');
-          return;
-        }
-        final data = doc.data();
-        if (data == null) return;
+      if (!mounted) return;
 
-        final linkedDeviceId = data['linkedDeviceId'] as String? ?? '';
-        if (linkedDeviceId.isEmpty) {
-          _handleForceLogout('Your device binding has been reset by administration.');
-        } else if (linkedDeviceId != currentDeviceId) {
+      if (!doc.exists) {
+        _handleForceLogout('Your student authorization has been removed. Please contact admin.');
+        return;
+      }
+
+      final data = doc.data();
+      if (data == null) return;
+
+      final linkedDeviceId = data['linkedDeviceId'] as String? ?? '';
+
+      // First snapshot: record the current binding state and return.
+      // If linkedDeviceId is already empty on the first snapshot, it means
+      // the login device-binding write hasn't completed yet — do NOT logout.
+      // If linkedDeviceId is non-empty on the first snapshot, record it and
+      // check it matches the current device.
+      if (_lastKnownLinkedDeviceId == null) {
+        _lastKnownLinkedDeviceId = linkedDeviceId;
+
+        // On first snapshot: only logout if there's a confirmed device mismatch
+        // (a non-empty binding to a DIFFERENT device — meaning this device has
+        // no right to be in the portal at all).
+        if (linkedDeviceId.isNotEmpty && linkedDeviceId != currentDeviceId) {
           _handleForceLogout('already login on another device');
         }
+        return;
+      }
+
+      // Subsequent snapshots:
+      if (linkedDeviceId.isEmpty && _lastKnownLinkedDeviceId!.isNotEmpty) {
+        // Transition: was bound → now empty. Admin explicitly reset the device.
+        _lastKnownLinkedDeviceId = linkedDeviceId;
+        _handleForceLogout('Your device binding has been reset by administration.');
+      } else if (linkedDeviceId.isNotEmpty && linkedDeviceId != currentDeviceId) {
+        // A different device is now bound to this account.
+        _lastKnownLinkedDeviceId = linkedDeviceId;
+        _handleForceLogout('already login on another device');
+      } else {
+        // Normal update (name, fees, etc.) — just record the new value, do nothing.
+        _lastKnownLinkedDeviceId = linkedDeviceId;
       }
     }, onError: (e) {
       debugPrint('[StudentMainWrapper] Student auth stream error: $e');
     });
   }
+
 
   Future<void> _handleForceLogout(String message) async {
     _studentStatusSubscription?.cancel();

@@ -120,7 +120,7 @@ class _StudentDetailScreenState extends State<StudentDetailScreen> {
                           .fadeIn(duration: 300.ms),
                       const SizedBox(height: 16),
                       Text(
-                        'Success!',
+                        'Device Reset Successfully',
                         style: GoogleFonts.poppins(
                           fontSize: 20,
                           fontWeight: FontWeight.bold,
@@ -132,7 +132,7 @@ class _StudentDetailScreenState extends State<StudentDetailScreen> {
                           .fadeIn(duration: 300.ms),
                       const SizedBox(height: 8),
                       Text(
-                        'Device binding has been reset successfully.',
+                        'Device binding cleared. Status is now "Not Bound".',
                         textAlign: TextAlign.center,
                         style: GoogleFonts.poppins(
                           fontSize: 14,
@@ -903,7 +903,7 @@ class _StudentDetailScreenState extends State<StudentDetailScreen> {
                           ),
                           const SizedBox(width: 6),
                           Text(
-                            deviceId.isEmpty ? 'Not Bound' : 'One Device Bound',
+                            deviceId.isEmpty ? 'Not Bound' : 'Device Bound',
                             style: TextStyle(
                               fontSize: 11,
                               fontWeight: FontWeight.bold,
