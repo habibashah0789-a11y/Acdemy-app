@@ -33,12 +33,6 @@ class _StudentMainWrapperState extends State<StudentMainWrapper> {
   /// null = no snapshot received yet (initial state).
   String? _lastKnownLinkedDeviceId;
 
-  /// True while we are still waiting for the very first auth snapshot.
-  /// The first snapshot is NEVER used to force-logout the student because
-  /// the device-binding Firestore write may not have propagated yet
-  /// (race condition between login write and stream delivery).
-  bool _isInitialAuthSnapshot = true;
-
   final List<Widget> _screens = [
     const StudentDashboardScreen(),
     const StudentFeeScreen(),
@@ -99,8 +93,8 @@ class _StudentMainWrapperState extends State<StudentMainWrapper> {
 
     // ── Student auth stream (for device-binding enforcement) ──────────────
     // Reset tracking state whenever we (re)start this listener.
+    // _lastKnownLinkedDeviceId is null until we receive a confirmed NON-EMPTY linkedDeviceId.
     _lastKnownLinkedDeviceId = null;
-    _isInitialAuthSnapshot = true;
 
     _studentAuthSubscription?.cancel();
     _studentAuthSubscription = FirebaseFirestore.instance
@@ -121,41 +115,18 @@ class _StudentMainWrapperState extends State<StudentMainWrapper> {
 
       final linkedDeviceId = data['linkedDeviceId'] as String? ?? '';
 
-      if (_isInitialAuthSnapshot) {
-        _isInitialAuthSnapshot = false;
-
-        if (linkedDeviceId.isEmpty) {
-          debugPrint(
-              '[StudentMainWrapper] First snapshot: device binding is empty on server — auto-binding current device.');
-          _lastKnownLinkedDeviceId = currentDeviceId;
-          StudentAuthService.ensureDeviceBound(
-            studentId: studentId,
-            currentDeviceId: currentDeviceId,
-          );
-          return;
-        }
-
-        _lastKnownLinkedDeviceId = linkedDeviceId;
-
-        if (linkedDeviceId != currentDeviceId) {
-          debugPrint(
-              '[StudentMainWrapper] First snapshot: device mismatch — forcing logout.');
-          _handleForceLogout('already login on another device');
-        }
-        return;
-      }
-
-      final previousId = _lastKnownLinkedDeviceId ?? '';
-      _lastKnownLinkedDeviceId = linkedDeviceId;
-
+      // CASE 1: Device binding is currently empty on Firestore
       if (linkedDeviceId.isEmpty) {
-        if (previousId.isNotEmpty) {
+        if (_lastKnownLinkedDeviceId != null && _lastKnownLinkedDeviceId!.isNotEmpty) {
+          // Binding was transitionally cleared from a non-empty state -> Admin reset binding!
           debugPrint(
               '[StudentMainWrapper] Device binding was reset by admin while logged in — forcing logout.');
           _handleForceLogout(
               'Your device binding has been reset by administration. Please log in again.');
         } else {
-          // If previous was also empty (e.g. initial binding in progress), auto-bind
+          // Binding is empty and was not previously non-empty in this session -> Auto-bind current device!
+          debugPrint(
+              '[StudentMainWrapper] Device binding is empty — auto-binding current device.');
           StudentAuthService.ensureDeviceBound(
             studentId: studentId,
             currentDeviceId: currentDeviceId,
@@ -164,12 +135,17 @@ class _StudentMainWrapperState extends State<StudentMainWrapper> {
         return;
       }
 
+      // CASE 2: Device binding is non-empty on Firestore
       if (linkedDeviceId != currentDeviceId) {
         debugPrint(
-            '[StudentMainWrapper] Different device bound — forcing logout.');
+            '[StudentMainWrapper] Different device bound ($linkedDeviceId vs $currentDeviceId) — forcing logout.');
         _handleForceLogout('already login on another device');
+        return;
       }
-      // All other cases (linkedDeviceId is same as currentDeviceId): no action needed.
+
+      // CASE 3: Device binding matches currentDeviceId
+      _lastKnownLinkedDeviceId = linkedDeviceId;
+      debugPrint('[StudentMainWrapper] Device binding confirmed active: $linkedDeviceId');
     }, onError: (e) {
       debugPrint('[StudentMainWrapper] Student auth stream error: $e');
     });
