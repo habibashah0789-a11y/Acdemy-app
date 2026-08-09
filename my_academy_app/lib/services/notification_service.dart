@@ -588,7 +588,7 @@ class NotificationService {
       timestamp: DateTime.now(),
       notificationType: 'student_registered',
       isRead: false,
-      studentId: student.id,
+      studentId: 'admin_only', // Only Admin receives student registration notifications
     );
   }
 
@@ -804,8 +804,9 @@ class NotificationService {
           return NotificationModel.fromMap(map, doc.id);
         }).toList();
 
-        // Filter notices for this student (broadcast or targeted)
+        // Filter notices for this student (broadcast or targeted to this student, excluding admin_only)
         final filteredNotices = notifications.where((n) {
+          if (n.studentId == 'admin_only') return false;
           return n.studentId.isEmpty || n.studentId == studentId;
         }).toList();
 

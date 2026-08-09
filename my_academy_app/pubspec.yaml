@@ -101,6 +101,7 @@ flutter:
   uses-material-design: true
   assets:
     - assets/images/Quaid Academy logo.png
+    - assets/images/hamza.png
 
 flutter_native_splash:
   color: "#FFFFFF"

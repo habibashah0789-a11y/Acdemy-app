@@ -32,10 +32,10 @@ class _FeeRemindersScreenState extends State<FeeRemindersScreen> {
 
   final List<String> _gradeFilters = [
     'All',
-    'Ninth',
-    'Tenth',
-    'First Year',
-    'Second Year'
+    'Class 9',
+    'Class 10',
+    '1st Year',
+    '2nd Year'
   ];
 
   @override
@@ -73,10 +73,29 @@ class _FeeRemindersScreenState extends State<FeeRemindersScreen> {
     }
   }
 
+  bool _matchesGrade(StudentModel s, String filter) {
+    if (filter == 'All') return true;
+    final grade = s.grade.toLowerCase().trim();
+    final classType = s.classType.toLowerCase().trim();
+
+    if (filter == 'Class 9') {
+      return grade.contains('9') || grade.contains('ninth');
+    }
+    if (filter == 'Class 10') {
+      return grade.contains('10') || grade.contains('tenth');
+    }
+    if (filter == '1st Year') {
+      return grade.contains('11') || grade.contains('first') || grade.contains('1st');
+    }
+    if (filter == '2nd Year') {
+      return grade.contains('12') || grade.contains('second') || grade.contains('2nd');
+    }
+    return grade == filter.toLowerCase() || classType == filter.toLowerCase();
+  }
+
   List<StudentModel> get _filteredDefaulters {
-    if (_filterGrade == 'All') return _defaulters;
     return _defaulters
-        .where((s) => s.grade.toLowerCase() == _filterGrade.toLowerCase())
+        .where((s) => _matchesGrade(s, _filterGrade))
         .toList();
   }
 
@@ -97,11 +116,11 @@ class _FeeRemindersScreenState extends State<FeeRemindersScreen> {
         'Thank you,\n$academyName';
   }
 
-
-
   Future<void> _sendPushToAll() async {
     final filtered = _filteredDefaulters;
     if (filtered.isEmpty) return;
+
+    final targetLabel = _filterGrade == 'All' ? 'All Classes' : _filterGrade;
 
     final confirmed = await showDialog<bool>(
       context: context,
@@ -119,15 +138,15 @@ class _FeeRemindersScreenState extends State<FeeRemindersScreen> {
           ],
         ),
         content: Text(
-          'This will send a personalized fee reminder notification to each of the ${filtered.length} defaulter student(s) directly on their Student Portal.\n\n'
-          'Each student will see their own fee breakdown (Total, Paid, Remaining) and hear a notification sound.',
+          'This will send a personalized fee reminder notification to each of the ${filtered.length} defaulter student(s) in $targetLabel directly on their Student Portal.\n\n'
+          'Each student will see ONLY their own fee breakdown (Total, Paid, Remaining) and hear a notification sound.',
         ),
         actions: [
           OutlinedButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
           ElevatedButton(
             onPressed: () => Navigator.pop(ctx, true),
             style: ElevatedButton.styleFrom(backgroundColor: AppTheme.primaryBlue, foregroundColor: Colors.white),
-            child: const Text('Send to All'),
+            child: Text('Send to $targetLabel'),
           ),
         ],
       ),
@@ -143,34 +162,36 @@ class _FeeRemindersScreenState extends State<FeeRemindersScreen> {
       if (mounted) setState(() => _sentCount = sent);
     }
     if (mounted) {
-      await _logReminderNotification(sent);
+      await _logReminderNotification(sent, _filterGrade);
       setState(() {
         _isSending = false;
         _sentCount = 0;
       });
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('✅ Sent fee alerts to $sent student(s) on their portals!'),
+          content: Text('✅ Sent fee alerts to $sent student(s) in $targetLabel on their portals!'),
           backgroundColor: AppTheme.primaryBlue,
         ),
       );
     }
   }
 
-  Future<void> _logReminderNotification(int count) async {
+  Future<void> _logReminderNotification(int count, String targetClass) async {
     try {
       await NotificationService.init();
+      final classLabel = targetClass == 'All' ? 'all classes' : targetClass;
       final notification = NotificationModel(
         id: 'fee_reminder_${DateTime.now().millisecondsSinceEpoch}',
-        title: 'Fee Reminders Sent',
-        message: 'Sent fee push alerts to $count student(s) on their portals.',
-        studentName: '',
-        className: '',
+        title: 'Fee Alerts Sent ($classLabel)',
+        message: 'Successfully dispatched fee push alerts to $count defaulter student(s) in $classLabel.',
+        studentName: 'Admin Summary',
+        className: targetClass,
         subject: '',
         registeredBy: FirebaseAuth.instance.currentUser?.email ?? 'Administrator',
         timestamp: DateTime.now(),
-        notificationType: 'fee_reminder',
+        notificationType: 'fee_reminder_summary',
         isRead: false,
+        studentId: 'admin_only', // ONLY visible to admin portal
       );
       try {
         await FirebaseFirestore.instance
