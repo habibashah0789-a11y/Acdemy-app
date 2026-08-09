@@ -312,14 +312,18 @@ class _StudentDashboardScreenState extends State<StudentDashboardScreen> {
                                         ),
                                       ),
                                       const SizedBox(width: 8),
-                                      Text(
-                                        '${student.classType} • ${student.grade}',
-                                        style: TextStyle(
-                                          color: Colors.white.withValues(alpha: 0.9),
-                                          fontSize: 12,
-                                          fontWeight: FontWeight.w500,
-                                        ),
-                                      ),
+                                       Expanded(
+                                         child: Text(
+                                           '${student.classType} • ${student.grade}',
+                                           style: TextStyle(
+                                             color: Colors.white.withValues(alpha: 0.9),
+                                             fontSize: 12,
+                                             fontWeight: FontWeight.w500,
+                                           ),
+                                           maxLines: 1,
+                                           overflow: TextOverflow.ellipsis,
+                                         ),
+                                       ),
                                     ],
                                   ),
                                 ],

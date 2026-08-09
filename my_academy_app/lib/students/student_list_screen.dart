@@ -176,18 +176,38 @@ class _StudentListScreenState extends State<StudentListScreen> {
                   );
                 }
 
-                return ListView.builder(
-                  padding: const EdgeInsets.all(16),
-                  itemCount: filteredStudents.length,
-                  cacheExtent: 600,
-                  addAutomaticKeepAlives: true,
-                  itemBuilder: (context, index) {
-                    final student = filteredStudents[index];
+                return LayoutBuilder(
+                  builder: (context, constraints) {
+                    if (constraints.maxWidth >= 768) {
+                      return GridView.builder(
+                        padding: const EdgeInsets.all(16),
+                        gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
+                          maxCrossAxisExtent: 480,
+                          mainAxisExtent: 110,
+                          crossAxisSpacing: 12,
+                          mainAxisSpacing: 12,
+                        ),
+                        itemCount: filteredStudents.length,
+                        itemBuilder: (context, index) {
+                          return _buildStudentCard(filteredStudents[index], index, isDark);
+                        },
+                      );
+                    }
 
-                    return _buildStudentCard(
-                      student,
-                      index,
-                      isDark,
+                    return ListView.builder(
+                      padding: const EdgeInsets.all(16),
+                      itemCount: filteredStudents.length,
+                      cacheExtent: 600,
+                      addAutomaticKeepAlives: true,
+                      itemBuilder: (context, index) {
+                        final student = filteredStudents[index];
+
+                        return _buildStudentCard(
+                          student,
+                          index,
+                          isDark,
+                        );
+                      },
                     );
                   },
                 );

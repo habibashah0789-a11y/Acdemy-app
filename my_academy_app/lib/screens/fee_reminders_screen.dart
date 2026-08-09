@@ -302,18 +302,21 @@ class _FeeRemindersScreenState extends State<FeeRemindersScreen> {
                     child: Column(
                       children: [
                         Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceAround,
                           children: [
-                            _summaryItem(
-                              icon: Icons.people_outline,
-                              label: 'Pending Defaulters',
-                              value: '${filtered.length}',
+                            Expanded(
+                              child: _summaryItem(
+                                icon: Icons.people_outline,
+                                label: 'Pending Defaulters',
+                                value: '${filtered.length}',
+                              ),
                             ),
                             Container(width: 1, height: 44, color: Colors.white24),
-                            _summaryItem(
-                              icon: Icons.money_off_rounded,
-                              label: 'Total Outstanding Dues',
-                              value: 'Rs. ${NumberFormat('#,##0').format(totalPending)}',
+                            Expanded(
+                              child: _summaryItem(
+                                icon: Icons.money_off_rounded,
+                                label: 'Total Outstanding Dues',
+                                value: 'Rs. ${NumberFormat('#,##0').format(totalPending)}',
+                              ),
                             ),
                           ],
                         ),
@@ -511,6 +514,9 @@ class _FeeRemindersScreenState extends State<FeeRemindersScreen> {
         const SizedBox(height: 4),
         Text(
           value,
+          textAlign: TextAlign.center,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
           style: GoogleFonts.poppins(
             fontSize: 18,
             fontWeight: FontWeight.bold,
@@ -519,6 +525,9 @@ class _FeeRemindersScreenState extends State<FeeRemindersScreen> {
         ),
         Text(
           label,
+          textAlign: TextAlign.center,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
           style: const TextStyle(fontSize: 12, color: Colors.white70),
         ),
       ],

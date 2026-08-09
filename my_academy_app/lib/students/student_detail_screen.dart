@@ -162,66 +162,7 @@ class _StudentDetailScreenState extends State<StudentDetailScreen> {
     }
   }
 
-  Widget _buildAvatarImage(String url) {
-    if (url.isEmpty) {
-      return Container(
-        color: Colors.white.withValues(alpha: 0.2),
-        child: const Icon(Icons.person, size: 60, color: Colors.white),
-      );
-    }
-    if (url.startsWith('http://') || url.startsWith('https://')) {
-      return CachedNetworkImage(
-        imageUrl: url,
-        fit: BoxFit.cover,
-        placeholder: (_, __) => const Center(
-          child: SizedBox(
-            width: 30,
-            height: 30,
-            child: CircularProgressIndicator(strokeWidth: 2),
-          ),
-        ),
-        errorWidget: (_, __, ___) => Container(
-          color: Colors.white.withValues(alpha: 0.2),
-          child: const Icon(Icons.person, size: 60, color: Colors.white),
-        ),
-      );
-    }
-    if (url.startsWith('data:image') || (!url.contains('/') && !url.contains('\\') && url.length > 100)) {
-      try {
-        final base64Str = url.contains(',') ? url.split(',').last : url;
-        final bytes = base64Decode(base64Str.trim());
-        return Image.memory(
-          bytes,
-          fit: BoxFit.cover,
-        );
-      } catch (e) {
-        // fallback
-      }
-    }
-    if (url.startsWith('blob:')) {
-      return Image.network(url, fit: BoxFit.cover);
-    }
-    if (!kIsWeb) {
-      try {
-        return Image.file(
-          io.File(url),
-          fit: BoxFit.cover,
-          errorBuilder: (context, error, stackTrace) {
-            return Container(
-              color: Colors.white.withValues(alpha: 0.2),
-              child: const Icon(Icons.person, size: 60, color: Colors.white),
-            );
-          },
-        );
-      } catch (e) {
-        // fallback
-      }
-    }
-    return Container(
-      color: Colors.white.withValues(alpha: 0.2),
-      child: const Icon(Icons.person, size: 60, color: Colors.white),
-    );
-  }
+
 
   Widget _buildLargeAvatarImage(String url) {
     if (url.isEmpty) {
