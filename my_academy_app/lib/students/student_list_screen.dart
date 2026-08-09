@@ -410,46 +410,6 @@ class StudentDeviceStatusBadge extends StatelessWidget {
   Widget build(BuildContext context) {
     final cleanCode = studentCode.trim().toUpperCase();
 
-    if (cleanCode.isNotEmpty) {
-      return StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
-        stream: FirebaseFirestore.instance
-            .collection('student_auth')
-            .where('studentCode', isEqualTo: cleanCode)
-            .snapshots(),
-        builder: (context, querySnap) {
-          String deviceId = '';
-          if (querySnap.hasData && querySnap.data!.docs.isNotEmpty) {
-            for (final doc in querySnap.data!.docs) {
-              final id = doc.data()['linkedDeviceId'] as String? ?? '';
-              if (id.isNotEmpty) {
-                deviceId = id;
-                break;
-              }
-            }
-          }
-
-          if (deviceId.isNotEmpty) {
-            return _buildBadgeContent(true);
-          }
-
-          return StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
-            stream: FirebaseFirestore.instance
-                .collection('student_auth')
-                .doc(studentId)
-                .snapshots(),
-            builder: (context, docSnap) {
-              String fallbackId = '';
-              if (docSnap.hasData && docSnap.data!.exists) {
-                fallbackId =
-                    docSnap.data!.data()?['linkedDeviceId'] as String? ?? '';
-              }
-              return _buildBadgeContent(fallbackId.isNotEmpty);
-            },
-          );
-        },
-      );
-    }
-
     return StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
       stream: FirebaseFirestore.instance
           .collection('student_auth')
@@ -460,7 +420,54 @@ class StudentDeviceStatusBadge extends StatelessWidget {
         if (snapshot.hasData && snapshot.data!.exists) {
           deviceId = snapshot.data!.data()?['linkedDeviceId'] as String? ?? '';
         }
-        return _buildBadgeContent(deviceId.isNotEmpty);
+
+        if (deviceId.isEmpty && cleanCode.isNotEmpty) {
+          return StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+            stream: FirebaseFirestore.instance
+                .collection('student_auth')
+                .where('studentCode', isEqualTo: cleanCode)
+                .snapshots(),
+            builder: (context, querySnap) {
+              String altDeviceId = '';
+              if (querySnap.hasData && querySnap.data!.docs.isNotEmpty) {
+                for (final doc in querySnap.data!.docs) {
+                  final id = doc.data()['linkedDeviceId'] as String? ?? '';
+                  if (id.isNotEmpty) {
+                    altDeviceId = id;
+                    break;
+                  }
+                }
+              }
+              final isBound = altDeviceId.isNotEmpty;
+              if (querySnap.hasData) {
+                final fromCache = querySnap.data!.metadata.isFromCache;
+                final hasPendingWrites = querySnap.data!.metadata.hasPendingWrites;
+                debugPrint(
+                    '[ADMIN LIVE TEST] List query snapshot received\n'
+                    '  studentCode = $cleanCode\n'
+                    '  linkedDeviceId = $altDeviceId\n'
+                    '  fromCache = $fromCache\n'
+                    '  hasPendingWrites = $hasPendingWrites\n'
+                    '  calculated bound count = ${isBound ? 1 : 0}');
+              }
+              return _buildBadgeContent(isBound);
+            },
+          );
+        }
+
+        final isBound = deviceId.isNotEmpty;
+        if (snapshot.hasData) {
+          final fromCache = snapshot.data!.metadata.isFromCache;
+          final hasPendingWrites = snapshot.data!.metadata.hasPendingWrites;
+          debugPrint(
+              '[ADMIN LIVE TEST] List doc snapshot received\n'
+              '  studentId = $studentId\n'
+              '  linkedDeviceId = $deviceId\n'
+              '  fromCache = $fromCache\n'
+              '  hasPendingWrites = $hasPendingWrites\n'
+              '  calculated bound count = ${isBound ? 1 : 0}');
+        }
+        return _buildBadgeContent(isBound);
       },
     );
   }

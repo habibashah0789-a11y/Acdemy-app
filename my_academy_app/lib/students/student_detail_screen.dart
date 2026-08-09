@@ -78,6 +78,8 @@ class _StudentDetailScreenState extends State<StudentDetailScreen> {
             break;
           }
         }
+        debugPrint(
+            '[ADMIN BINDING] Detail query snapshot received | student = $cleanCode (ID: ${student.id}) | linkedDeviceId = $foundId | calculated bound count = ${foundId.isNotEmpty ? 1 : 0}');
         if (foundId.isNotEmpty) {
           setState(() => _deviceId = foundId);
         } else {
@@ -88,6 +90,8 @@ class _StudentDetailScreenState extends State<StudentDetailScreen> {
               .then((doc) {
             if (mounted && doc.exists && doc.data() != null) {
               final id = doc.data()?['linkedDeviceId'] as String? ?? '';
+              debugPrint(
+                  '[ADMIN BINDING] Detail fallback doc fetched | studentId = ${student.id} | linkedDeviceId = $id | calculated bound count = ${id.isNotEmpty ? 1 : 0}');
               setState(() => _deviceId = id);
             }
           });
@@ -102,6 +106,8 @@ class _StudentDetailScreenState extends State<StudentDetailScreen> {
         if (!mounted) return;
         if (doc.exists && doc.data() != null) {
           final id = doc.data()?['linkedDeviceId'] as String? ?? '';
+          debugPrint(
+              '[ADMIN BINDING] Detail doc snapshot received | studentId = ${student.id} | linkedDeviceId = $id | calculated bound count = ${id.isNotEmpty ? 1 : 0}');
           setState(() => _deviceId = id);
         }
       }, onError: (_) {});

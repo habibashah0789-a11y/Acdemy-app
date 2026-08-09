@@ -31,11 +31,13 @@ service cloud.firestore {
 
     // ── Student Auth ─────────────────────────────────────────────────
     // Public read: used during QR-code login to verify the token hash.
-    // The QR token is stored as a SHA-256 hash, so exposure is safe.
-    // All writes remain admin-only.
+    // Allow student devices to update binding fields (linkedDeviceId, deviceLinkedAt).
     match /student_auth/{studentId} {
       allow read: if true;
-      allow create, update, delete: if isAdmin();
+      allow create, delete: if isAdmin();
+      allow update: if isAdmin() || (
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['linkedDeviceId', 'deviceLinkedAt', 'accountStatus', 'studentId', 'studentCode'])
+      );
     }
 
     // ── Notifications / Announcements ────────────────────────────────

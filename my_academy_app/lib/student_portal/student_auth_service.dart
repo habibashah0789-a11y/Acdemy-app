@@ -293,16 +293,11 @@ class StudentAuthService {
     }
 
     // ── One-Device Policy Enforcement ─────────────────────────────────────
-    // Resolve the current device ID before any further checks.
     final currentDeviceId = await getDeviceId();
-
     final storedDeviceId = authData['linkedDeviceId'] as String? ?? '';
 
     if (storedDeviceId.isNotEmpty && storedDeviceId != currentDeviceId) {
-      // This account is already bound to a different device.
-      throw Exception(
-        'already login on another device',
-      );
+      throw Exception('already login on another device');
     }
 
     // ── Ensure studentId Matches Main Students Collection ─────────────────
@@ -325,8 +320,30 @@ class StudentAuthService {
     }
 
     final String validStudentId = studentId!;
+    final projectId = _firestore.app.options.projectId;
+
+    debugPrint('[QR LIVE TEST] binding function entered');
+    debugPrint('[QR LIVE TEST] studentCode = $cleanCode');
+    debugPrint('[QR LIVE TEST] resolved studentId = $validStudentId');
+    debugPrint('[QR LIVE TEST] Firebase projectId = $projectId');
+    debugPrint('[QR LIVE TEST] authentication successful');
+
+    // ── Device ID Verification ───────────────────────────────────────────
+    debugPrint('[QR LIVE TEST] currentDeviceId length = ${currentDeviceId.length}');
+    debugPrint('[QR LIVE TEST] masked currentDeviceId = ${_maskId(currentDeviceId)}');
+
+    if (currentDeviceId.isEmpty) {
+      debugPrint('[QR LIVE TEST] ERROR: currentDeviceId is empty! Aborting binding write.');
+      throw Exception('Device ID generation failed. Cannot bind empty device ID.');
+    }
 
     // ── Bind Device on Login ──────────────────────────────────────────────
+    final targetDocRef =
+        _firestore.collection('student_auth').doc(validStudentId);
+    debugPrint(
+        '[QR LIVE TEST] writing to: student_auth/$validStudentId');
+    debugPrint('[QR LIVE TEST] Firestore write START');
+
     try {
       final bindData = {
         'studentId': validStudentId,
@@ -335,23 +352,40 @@ class StudentAuthService {
         'deviceLinkedAt': FieldValue.serverTimestamp(),
         'accountStatus': 'active',
       };
-      await _firestore
-          .collection('student_auth')
-          .doc(validStudentId)
-          .set(bindData, SetOptions(merge: true))
-          .timeout(const Duration(seconds: 6));
 
-      if (cleanCode != validStudentId) {
-        await _firestore
-            .collection('student_auth')
-            .doc(cleanCode)
-            .set(bindData, SetOptions(merge: true))
-            .catchError((_) {});
+      await targetDocRef
+          .set(bindData, SetOptions(merge: true))
+          .timeout(const Duration(seconds: 8));
+
+      debugPrint('[QR LIVE TEST] Firestore write SUCCESS');
+
+      // ── Forced Server Read-back Verification ──────────────────────────
+      debugPrint('[QR LIVE TEST] SERVER READBACK START (source: Source.server)...');
+      try {
+        final serverSnap = await targetDocRef.get(const GetOptions(source: Source.server));
+        final serverData = serverSnap.data();
+        final serverDeviceId = serverData?['linkedDeviceId'] as String? ?? '';
+        final serverLinkedAt = serverData?['deviceLinkedAt'];
+        debugPrint(
+            '[QR LIVE TEST] SERVER READBACK:\n'
+            '  exists = ${serverSnap.exists}\n'
+            '  linkedDeviceId = ${_maskId(serverDeviceId)}\n'
+            '  deviceLinkedAt = $serverLinkedAt');
+      } catch (serverErr) {
+        debugPrint('[QR LIVE TEST] SERVER READBACK ERROR: $serverErr');
       }
+    } on FirebaseException catch (fe, st) {
       debugPrint(
-          '[StudentAuthService] Device bound immediately: ${_maskId(currentDeviceId)}');
-    } catch (e) {
-      debugPrint('[StudentAuthService] Device binding write failed: $e');
+          '[QR LIVE TEST] Firestore write FAILED:\n'
+          '  code = ${fe.code}\n'
+          '  message = ${fe.message}\n'
+          '  plugin = ${fe.plugin}\n'
+          '  stackTrace = $st');
+    } catch (e, st) {
+      debugPrint(
+          '[QR LIVE TEST] Firestore write FAILED (General Exception):\n'
+          '  error = $e\n'
+          '  stackTrace = $st');
     }
 
     // ── Save Session to Local Hive Storage ────────────────────────────────

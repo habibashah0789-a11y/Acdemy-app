@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -35,9 +36,14 @@ Future<void> main() async {
   WidgetsBinding widgetsBinding = WidgetsFlutterBinding.ensureInitialized();
   FlutterNativeSplash.preserve(widgetsBinding: widgetsBinding);
 
-  await Firebase.initializeApp(
+  final app = await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   );
+
+  debugPrint('[FIREBASE CONFIG] platform = ${defaultTargetPlatform.name}');
+  debugPrint('[FIREBASE CONFIG] projectId = ${app.options.projectId}');
+  debugPrint('[FIREBASE CONFIG] appId = ${app.options.appId}');
+  debugPrint('[FIREBASE CONFIG] storageBucket = ${app.options.storageBucket}');
 
   await Hive.initFlutter();
 

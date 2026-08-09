@@ -46,6 +46,8 @@ class _StudentLoginScreenState extends State<StudentLoginScreen> {
       if (enteredCode.isEmpty && tokenToUse.isEmpty) return;
     }
 
+    debugPrint('[QR BINDING] login started');
+
     setState(() {
       _isLoading = true;
       _errorMessage = null;
@@ -92,6 +94,8 @@ class _StudentLoginScreenState extends State<StudentLoginScreen> {
     );
 
     if (result != null && mounted) {
+      debugPrint('[QR LIVE TEST] QR detected');
+      debugPrint('[QR LIVE TEST] studentCode = ${result.studentCode}');
       setState(() {
         if (result.studentCode.isNotEmpty) {
           _studentIdController.text = result.studentCode;
