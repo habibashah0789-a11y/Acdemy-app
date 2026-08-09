@@ -326,36 +326,32 @@ class StudentAuthService {
 
     final String validStudentId = studentId!;
 
-    // ── Bind Device on First Login ────────────────────────────────────────
-    // Only write if the device is not yet bound (storedDeviceId is empty).
-    // This NEVER modifies studentCode, qrToken, qrTokenHash, or createdAt.
-    if (storedDeviceId.isEmpty) {
-      try {
-        final bindData = {
-          'studentId': validStudentId,
-          'studentCode': cleanCode,
-          'linkedDeviceId': currentDeviceId,
-          'deviceLinkedAt': FieldValue.serverTimestamp(),
-          'accountStatus': 'active',
-        };
+    // ── Bind Device on Login ──────────────────────────────────────────────
+    try {
+      final bindData = {
+        'studentId': validStudentId,
+        'studentCode': cleanCode,
+        'linkedDeviceId': currentDeviceId,
+        'deviceLinkedAt': FieldValue.serverTimestamp(),
+        'accountStatus': 'active',
+      };
+      await _firestore
+          .collection('student_auth')
+          .doc(validStudentId)
+          .set(bindData, SetOptions(merge: true))
+          .timeout(const Duration(seconds: 6));
+
+      if (cleanCode != validStudentId) {
         await _firestore
             .collection('student_auth')
-            .doc(validStudentId)
+            .doc(cleanCode)
             .set(bindData, SetOptions(merge: true))
-            .timeout(const Duration(seconds: 6));
-
-        if (cleanCode != validStudentId) {
-          await _firestore
-              .collection('student_auth')
-              .doc(cleanCode)
-              .set(bindData, SetOptions(merge: true))
-              .catchError((_) {});
-        }
-        debugPrint(
-            '[StudentAuthService] Device bound: ${_maskId(currentDeviceId)}');
-      } catch (e) {
-        debugPrint('[StudentAuthService] Device binding write failed: $e');
+            .catchError((_) {});
       }
+      debugPrint(
+          '[StudentAuthService] Device bound immediately: ${_maskId(currentDeviceId)}');
+    } catch (e) {
+      debugPrint('[StudentAuthService] Device binding write failed: $e');
     }
 
     // ── Save Session to Local Hive Storage ────────────────────────────────

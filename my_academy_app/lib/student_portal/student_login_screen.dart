@@ -34,13 +34,17 @@ class _StudentLoginScreenState extends State<StudentLoginScreen> {
     super.dispose();
   }
 
-  Future<void> _handleLogin() async {
-    if (!(_formKey.currentState?.validate() ?? false)) return;
-
+  Future<void> _handleLogin({bool isQrScan = false}) async {
     final enteredCode = _studentIdController.text.trim();
     final tokenToUse = (_scannedToken != null && _scannedToken!.isNotEmpty)
         ? _scannedToken!
         : enteredCode;
+
+    if (!isQrScan) {
+      if (!(_formKey.currentState?.validate() ?? false)) return;
+    } else {
+      if (enteredCode.isEmpty && tokenToUse.isEmpty) return;
+    }
 
     setState(() {
       _isLoading = true;
@@ -49,7 +53,7 @@ class _StudentLoginScreenState extends State<StudentLoginScreen> {
 
     try {
       final studentId = await StudentAuthService.loginStudent(
-        studentCode: enteredCode,
+        studentCode: enteredCode.isNotEmpty ? enteredCode : tokenToUse,
         scannedQrToken: tokenToUse,
       );
 
@@ -97,7 +101,7 @@ class _StudentLoginScreenState extends State<StudentLoginScreen> {
       });
 
       // Automatically trigger login process upon scanning valid QR code
-      _handleLogin();
+      _handleLogin(isQrScan: true);
     }
   }
 
