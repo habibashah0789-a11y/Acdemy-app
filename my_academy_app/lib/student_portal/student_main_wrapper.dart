@@ -105,15 +105,45 @@ class _StudentMainWrapperState extends State<StudentMainWrapper> {
         .listen((doc) {
       if (!mounted) return;
 
+      final docExists = doc.exists;
+      final isFromCache = doc.metadata.isFromCache;
+      final hasPendingWrites = doc.metadata.hasPendingWrites;
+      final data = doc.data();
+      final linkedDeviceId = data?['linkedDeviceId'] as String? ?? '';
+
+      final localMasked = currentDeviceId.length > 8
+          ? '${currentDeviceId.substring(0, 4)}...${currentDeviceId.substring(currentDeviceId.length - 4)}'
+          : currentDeviceId;
+      final remoteMasked = linkedDeviceId.length > 8
+          ? '${linkedDeviceId.substring(0, 4)}...${linkedDeviceId.substring(linkedDeviceId.length - 4)}'
+          : linkedDeviceId;
+
+      debugPrint('''
+==============================
+[SESSION BINDING CHECK]
+studentCode = ${studentCode ?? ''}
+canonicalStudentId = $studentId
+documentPath = student_auth/$studentId
+documentExists = $docExists
+snapshotFromCache = $isFromCache
+hasPendingWrites = $hasPendingWrites
+localDeviceId = $localMasked
+remoteLinkedDeviceId = $remoteMasked
+localLength = ${currentDeviceId.length}
+remoteLength = ${linkedDeviceId.length}
+exactMatch = ${linkedDeviceId == currentDeviceId}
+==============================''');
+
       if (!doc.exists) {
+        debugPrint('DECISION: FORCE LOGOUT\nREASON: student_auth document does not exist.');
         _handleForceLogout(
             'Your student authorization has been removed. Please contact admin.');
         return;
       }
 
-      final data = doc.data();
       if (data == null) return;
 
+<<<<<<< HEAD
       final linkedDeviceId = data['linkedDeviceId'] as String? ?? '';
 
       // CASE 1: Device binding is currently empty on Firestore (Admin reset)
@@ -129,38 +159,65 @@ class _StudentMainWrapperState extends State<StudentMainWrapper> {
         } else {
           debugPrint(
               '[StudentMainWrapper] Device binding is empty in cache — waiting for server snapshot.');
+=======
+      // CASE 1: Device binding is currently empty on Firestore
+      if (linkedDeviceId.isEmpty) {
+        if (_lastKnownLinkedDeviceId != null && _lastKnownLinkedDeviceId!.isNotEmpty) {
+          debugPrint('DECISION: FORCE LOGOUT\nREASON: Device binding was reset by administration.');
+          _handleForceLogout(
+              'Your device binding has been reset by administration. Please log in again.');
+        } else {
+          debugPrint('DECISION: KEEP SESSION\nREASON: Binding is empty on initial load — auto-binding current device.');
+          StudentAuthService.ensureDeviceBound(
+            studentId: studentId,
+            currentDeviceId: currentDeviceId,
+            studentCode: studentCode,
+          );
+>>>>>>> c040f9abc080caaa42792e0db2309fcdc9ad4249
         }
         return;
       }
 
       // CASE 2: Device binding is non-empty on Firestore
       if (linkedDeviceId != currentDeviceId) {
-        debugPrint(
-            '[StudentMainWrapper] Different device bound ($linkedDeviceId vs $currentDeviceId) — forcing logout.');
+        debugPrint('DECISION: FORCE LOGOUT\nREASON: Device ID mismatch ($remoteMasked vs $localMasked).');
         _handleForceLogout('already login on another device');
         return;
       }
 
       // CASE 3: Device binding matches currentDeviceId
       _lastKnownLinkedDeviceId = linkedDeviceId;
-      debugPrint('[StudentMainWrapper] Device binding confirmed active: $linkedDeviceId');
+      debugPrint('DECISION: KEEP SESSION\nREASON: Device binding confirmed active.');
     }, onError: (e) {
       debugPrint('[StudentMainWrapper] Student auth stream error: $e');
     });
   }
 
   Future<void> _handleForceLogout(String message) async {
+    final st = StackTrace.current;
+    final session = await StudentAuthService.getLocalSession();
+    final sid = session?['studentId'] as String? ?? '';
+    final scode = session?['studentCode'] as String? ?? '';
+
+    debugPrint('''
+==============================
+[STUDENT FORCED LOGOUT]
+reason = $message
+caller = _handleForceLogout
+studentId = $sid
+studentCode = $scode
+timestamp = ${DateTime.now().toIso8601String()}
+stackTrace =
+$st
+==============================''');
+
     _studentStatusSubscription?.cancel();
     _studentAuthSubscription?.cancel();
-    final session = await StudentAuthService.getLocalSession();
-    if (session != null) {
-      final studentId = session['studentId'] as String? ?? '';
-      if (studentId.isNotEmpty) {
-        try {
-          await NotificationService.unregisterFcmToken(userId: studentId);
-        } catch (_) {}
-        NotificationService.cancelStudentSubscription();
-      }
+    if (sid.isNotEmpty) {
+      try {
+        await NotificationService.unregisterFcmToken(userId: sid);
+      } catch (_) {}
+      NotificationService.cancelStudentSubscription();
     }
     await StudentAuthService.logout();
 
