@@ -301,7 +301,7 @@ class _BulkStudentRegistrationWidgetState extends State<BulkStudentRegistrationW
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
               title: const Text('Select Subjects & Schedules', style: TextStyle(fontWeight: FontWeight.bold, color: AppTheme.primaryBlue)),
               content: ConstrainedBox(
-                constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width < 380 ? MediaQuery.of(context).size.width * 0.8 : 340),
+                constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.85 < 420 ? MediaQuery.of(context).size.width * 0.85 : 420),
                 child: SingleChildScrollView(
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
@@ -380,7 +380,7 @@ class _BulkStudentRegistrationWidgetState extends State<BulkStudentRegistrationW
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
               title: const Text('Select Default Subjects & Schedules', style: TextStyle(fontWeight: FontWeight.bold, color: AppTheme.primaryBlue)),
               content: ConstrainedBox(
-                constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width < 380 ? MediaQuery.of(context).size.width * 0.8 : 340),
+                constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.85 < 420 ? MediaQuery.of(context).size.width * 0.85 : 420),
                 child: SingleChildScrollView(
                   child: Column(
                     mainAxisSize: MainAxisSize.min,

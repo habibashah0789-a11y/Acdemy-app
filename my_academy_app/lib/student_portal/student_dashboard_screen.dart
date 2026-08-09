@@ -345,84 +345,172 @@ class _StudentDashboardScreenState extends State<StudentDashboardScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     // Quick Stats Cards Grid
-                    Row(
-                      children: [
-                        Expanded(
-                          child: CustomCard(
-                            padding: const EdgeInsets.all(14),
-                            child: Row(
-                              children: [
-                                Container(
-                                  padding: const EdgeInsets.all(10),
-                                  decoration: BoxDecoration(
-                                    color: AppTheme.secondaryGreen.withValues(alpha: 0.12),
-                                    borderRadius: BorderRadius.circular(12),
-                                  ),
-                                  child: const Icon(Icons.check_circle_rounded, color: AppTheme.secondaryGreen, size: 22),
-                                ),
-                                const SizedBox(width: 12),
-                                Expanded(
-                                  child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
+                    LayoutBuilder(
+                      builder: (context, constraints) {
+                        if (constraints.maxWidth >= 340) {
+                          return Row(
+                            children: [
+                              Expanded(
+                                child: CustomCard(
+                                  padding: const EdgeInsets.all(14),
+                                  child: Row(
                                     children: [
-                                      const Text(
-                                        'Status',
-                                        style: TextStyle(fontSize: 11, color: Colors.grey),
+                                      Container(
+                                        padding: const EdgeInsets.all(10),
+                                        decoration: BoxDecoration(
+                                          color: AppTheme.secondaryGreen.withValues(alpha: 0.12),
+                                          borderRadius: BorderRadius.circular(12),
+                                        ),
+                                        child: const Icon(Icons.check_circle_rounded, color: AppTheme.secondaryGreen, size: 22),
                                       ),
-                                      Text(
-                                        student.enrollmentStatusText,
-                                        style: TextStyle(
-                                          fontSize: 13,
-                                          fontWeight: FontWeight.bold,
-                                          color: student.enrollmentStatusColor,
+                                      const SizedBox(width: 12),
+                                      Expanded(
+                                        child: Column(
+                                          crossAxisAlignment: CrossAxisAlignment.start,
+                                          children: [
+                                            const Text(
+                                              'Status',
+                                              style: TextStyle(fontSize: 11, color: Colors.grey),
+                                            ),
+                                            Text(
+                                              student.enrollmentStatusText,
+                                              style: TextStyle(
+                                                fontSize: 13,
+                                                fontWeight: FontWeight.bold,
+                                                color: student.enrollmentStatusColor,
+                                              ),
+                                              maxLines: 1,
+                                              overflow: TextOverflow.ellipsis,
+                                            ),
+                                          ],
                                         ),
                                       ),
                                     ],
                                   ),
-                                ),
-                              ],
-                            ),
-                          ).animate().fadeIn(delay: 100.ms).slideY(begin: 0.1, end: 0),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: CustomCard(
-                            padding: const EdgeInsets.all(14),
-                            child: Row(
-                              children: [
-                                Container(
-                                  padding: const EdgeInsets.all(10),
-                                  decoration: BoxDecoration(
-                                    color: AppTheme.primaryBlue.withValues(alpha: 0.12),
-                                    borderRadius: BorderRadius.circular(12),
-                                  ),
-                                  child: const Icon(Icons.book_rounded, color: AppTheme.primaryBlue, size: 22),
-                                ),
-                                const SizedBox(width: 12),
-                                Expanded(
-                                  child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                ).animate().fadeIn(delay: 100.ms).slideY(begin: 0.1, end: 0),
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: CustomCard(
+                                  padding: const EdgeInsets.all(14),
+                                  child: Row(
                                     children: [
-                                      const Text(
-                                        'Subjects',
-                                        style: TextStyle(fontSize: 11, color: Colors.grey),
+                                      Container(
+                                        padding: const EdgeInsets.all(10),
+                                        decoration: BoxDecoration(
+                                          color: AppTheme.primaryBlue.withValues(alpha: 0.12),
+                                          borderRadius: BorderRadius.circular(12),
+                                        ),
+                                        child: const Icon(Icons.book_rounded, color: AppTheme.primaryBlue, size: 22),
                                       ),
-                                      Text(
-                                        '${student.subjectSchedules.isNotEmpty ? 
-                                        student.subjectSchedules.length : 1} Active',
-                                        style: const TextStyle(
-                                          fontSize: 13,
-                                          fontWeight: FontWeight.bold,
+                                      const SizedBox(width: 12),
+                                      Expanded(
+                                        child: Column(
+                                          crossAxisAlignment: CrossAxisAlignment.start,
+                                          children: [
+                                            const Text(
+                                              'Subjects',
+                                              style: TextStyle(fontSize: 11, color: Colors.grey),
+                                            ),
+                                            Text(
+                                              '${student.subjectSchedules.isNotEmpty ? student.subjectSchedules.length : 1} Active',
+                                              style: const TextStyle(
+                                                fontSize: 13,
+                                                fontWeight: FontWeight.bold,
+                                              ),
+                                              maxLines: 1,
+                                              overflow: TextOverflow.ellipsis,
+                                            ),
+                                          ],
                                         ),
                                       ),
                                     ],
                                   ),
-                                ),
-                              ],
+                                ).animate().fadeIn(delay: 200.ms).slideY(begin: 0.1, end: 0),
+                              ),
+                            ],
+                          );
+                        }
+
+                        return Column(
+                          children: [
+                            CustomCard(
+                              padding: const EdgeInsets.all(14),
+                              child: Row(
+                                children: [
+                                  Container(
+                                    padding: const EdgeInsets.all(10),
+                                    decoration: BoxDecoration(
+                                      color: AppTheme.secondaryGreen.withValues(alpha: 0.12),
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
+                                    child: const Icon(Icons.check_circle_rounded, color: AppTheme.secondaryGreen, size: 22),
+                                  ),
+                                  const SizedBox(width: 12),
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        const Text(
+                                          'Status',
+                                          style: TextStyle(fontSize: 11, color: Colors.grey),
+                                        ),
+                                        Text(
+                                          student.enrollmentStatusText,
+                                          style: TextStyle(
+                                            fontSize: 13,
+                                            fontWeight: FontWeight.bold,
+                                            color: student.enrollmentStatusColor,
+                                          ),
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ],
+                              ),
                             ),
-                          ).animate().fadeIn(delay: 150.ms).slideY(begin: 0.1, end: 0),
-                        ),
-                      ],
+                            const SizedBox(height: 12),
+                            CustomCard(
+                              padding: const EdgeInsets.all(14),
+                              child: Row(
+                                children: [
+                                  Container(
+                                    padding: const EdgeInsets.all(10),
+                                    decoration: BoxDecoration(
+                                      color: AppTheme.primaryBlue.withValues(alpha: 0.12),
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
+                                    child: const Icon(Icons.book_rounded, color: AppTheme.primaryBlue, size: 22),
+                                  ),
+                                  const SizedBox(width: 12),
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        const Text(
+                                          'Subjects',
+                                          style: TextStyle(fontSize: 11, color: Colors.grey),
+                                        ),
+                                        Text(
+                                          '${student.subjectSchedules.isNotEmpty ? student.subjectSchedules.length : 1} Active',
+                                          style: const TextStyle(
+                                            fontSize: 13,
+                                            fontWeight: FontWeight.bold,
+                                          ),
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        );
+                      },
                     ),
 
                     const SizedBox(height: 24),

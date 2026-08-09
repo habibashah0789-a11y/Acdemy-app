@@ -18,6 +18,7 @@ import '../student_portal/student_auth_service.dart';
 import 'bulk_registration_widget.dart';
 import '../widgets/celebration_overlay.dart';
 import '../services/sound_service.dart';
+import '../utils/responsive_utils.dart';
 
 class AddStudentScreen extends StatefulWidget {
   final String? presetClassType;
@@ -860,33 +861,43 @@ class _AddStudentScreenState extends State<AddStudentScreen> {
                 const SizedBox(height: 32),
                 
                 _sectionTitle('Personal Information'),
-                TextFormField(
-                  controller: _nameC,
-                  focusNode: _nameFocusNode,
-                  textInputAction: TextInputAction.next,
-                  textCapitalization: TextCapitalization.words,
-                  decoration: const InputDecoration(
-                    labelText: 'Full Name *',
-                    prefixIcon: Icon(Icons.person_outline_rounded),
-                  ),
-                  onFieldSubmitted: (_) => _fatherFocusNode.requestFocus(),
-                  validator: (v) => (v == null || v.trim().isEmpty) ? 'Required' : null,
+                _sectionTitle('Personal Information'),
+                ConstraintAwareRowOrColumn(
+                  minRequiredWidth: 540,
+                  children: [
+                    Expanded(
+                      child: TextFormField(
+                        controller: _nameC,
+                        focusNode: _nameFocusNode,
+                        textInputAction: TextInputAction.next,
+                        textCapitalization: TextCapitalization.words,
+                        decoration: const InputDecoration(
+                          labelText: 'Full Name *',
+                          prefixIcon: Icon(Icons.person_outline_rounded),
+                        ),
+                        onFieldSubmitted: (_) => _fatherFocusNode.requestFocus(),
+                        validator: (v) => (v == null || v.trim().isEmpty) ? 'Required' : null,
+                      ),
+                    ),
+                    Expanded(
+                      child: TextFormField(
+                        controller: _fatherC,
+                        focusNode: _fatherFocusNode,
+                        textInputAction: TextInputAction.next,
+                        textCapitalization: TextCapitalization.words,
+                        decoration: const InputDecoration(
+                          labelText: 'Father Name *',
+                          prefixIcon: Icon(Icons.family_restroom_rounded),
+                        ),
+                        onFieldSubmitted: (_) => _phoneFocusNode.requestFocus(),
+                        validator: (v) => (v == null || v.trim().isEmpty) ? 'Required' : null,
+                      ),
+                    ),
+                  ],
                 ),
                 const SizedBox(height: 16),
-                TextFormField(
-                  controller: _fatherC,
-                  focusNode: _fatherFocusNode,
-                  textInputAction: TextInputAction.next,
-                  textCapitalization: TextCapitalization.words,
-                  decoration: const InputDecoration(
-                    labelText: 'Father Name *',
-                    prefixIcon: Icon(Icons.family_restroom_rounded),
-                  ),
-                  onFieldSubmitted: (_) => _phoneFocusNode.requestFocus(),
-                  validator: (v) => (v == null || v.trim().isEmpty) ? 'Required' : null,
-                ),
-                const SizedBox(height: 16),
-                Row(
+                ConstraintAwareRowOrColumn(
+                  minRequiredWidth: 540,
                   children: [
                     Expanded(
                       child: TextFormField(
@@ -902,7 +913,6 @@ class _AddStudentScreenState extends State<AddStudentScreen> {
                         validator: (v) => (v == null || v.trim().isEmpty) ? 'Required' : null,
                       ),
                     ),
-                    const SizedBox(width: 16),
                     Expanded(
                       child: TextFormField(
                         controller: _emailC,
@@ -922,48 +932,56 @@ class _AddStudentScreenState extends State<AddStudentScreen> {
                     ),
                   ],
                 ),
-
-                _sectionTitle('Class Information'),
-                Focus(
-                  focusNode: _classTypeFocusNode,
-                  child: DropdownButtonFormField<String>(
-                    value: _selectedClassType,
-                    decoration: const InputDecoration(
-                      labelText: 'Class Type *',
-                      prefixIcon: Icon(Icons.category_rounded),
-                    ),
-                    items: _classTypes.map((t) => DropdownMenuItem(value: t, child: Text(t))).toList(),
-                    onChanged: (v) {
-                      if (v != null) {
-                        setState(() {
-                          _selectedClassType = v;
-                          _selectedGrade = _gradeOptions[v]!.first;
-                        });
-                        _gradeFocusNode.requestFocus();
-                      }
-                    },
-                  ),
-                ),
                 const SizedBox(height: 16),
 
-                Focus(
-                  focusNode: _gradeFocusNode,
-                  child: DropdownButtonFormField<String>(
-                    value: _selectedGrade,
-                    decoration: const InputDecoration(
-                      labelText: 'Grade / Year *',
-                      prefixIcon: Icon(Icons.school_rounded),
+                _sectionTitle('Class Information'),
+                ConstraintAwareRowOrColumn(
+                  minRequiredWidth: 540,
+                  children: [
+                    Expanded(
+                      child: Focus(
+                        focusNode: _classTypeFocusNode,
+                        child: DropdownButtonFormField<String>(
+                          initialValue: _selectedClassType,
+                          decoration: const InputDecoration(
+                            labelText: 'Class Type *',
+                            prefixIcon: Icon(Icons.category_rounded),
+                          ),
+                          items: _classTypes.map((t) => DropdownMenuItem(value: t, child: Text(t))).toList(),
+                          onChanged: (v) {
+                            if (v != null) {
+                              setState(() {
+                                _selectedClassType = v;
+                                _selectedGrade = _gradeOptions[v]!.first;
+                              });
+                              _gradeFocusNode.requestFocus();
+                            }
+                          },
+                        ),
+                      ),
                     ),
-                    items: _gradeOptions[_selectedClassType]!
-                        .map((g) => DropdownMenuItem(value: g, child: Text(g)))
-                        .toList(),
-                    onChanged: (v) {
-                      if (v != null) {
-                        setState(() => _selectedGrade = v);
-                        firstFeeFocus.requestFocus();
-                      }
-                    },
-                  ),
+                    Expanded(
+                      child: Focus(
+                        focusNode: _gradeFocusNode,
+                        child: DropdownButtonFormField<String>(
+                          initialValue: _selectedGrade,
+                          decoration: const InputDecoration(
+                            labelText: 'Grade / Year *',
+                            prefixIcon: Icon(Icons.school_rounded),
+                          ),
+                          items: _gradeOptions[_selectedClassType]!
+                              .map((g) => DropdownMenuItem(value: g, child: Text(g)))
+                              .toList(),
+                          onChanged: (v) {
+                            if (v != null) {
+                              setState(() => _selectedGrade = v);
+                              firstFeeFocus.requestFocus();
+                            }
+                          },
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
                 const SizedBox(height: 24),
 
@@ -978,31 +996,61 @@ class _AddStudentScreenState extends State<AddStudentScreen> {
                 _feeField('Total Fee Remaining', _feeRemC, _feeRemFocusNode, null, Colors.red, isFinalField: true),
 
                 const SizedBox(height: 32),
-                Row(
-                  children: [
-                    Expanded(
-                      child: OutlinedButton.icon(
-                        onPressed: _isSaving ? null : () => _save(addAnother: true),
-                        icon: const Icon(Icons.library_add_rounded),
-                        label: const Text('SAVE & ADD ANOTHER (Ctrl+Enter)'),
-                        style: OutlinedButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(vertical: 16),
+                LayoutBuilder(
+                  builder: (context, constraints) {
+                    if (constraints.maxWidth >= 520) {
+                      return Row(
+                        children: [
+                          Expanded(
+                            child: OutlinedButton.icon(
+                              onPressed: _isSaving ? null : () => _save(addAnother: true),
+                              icon: const Icon(Icons.library_add_rounded),
+                              label: const Text('SAVE & ADD ANOTHER (Ctrl+Enter)'),
+                              style: OutlinedButton.styleFrom(
+                                padding: const EdgeInsets.symmetric(vertical: 16),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: ElevatedButton(
+                              onPressed: _isSaving ? null : () => _save(addAnother: false),
+                              style: ElevatedButton.styleFrom(
+                                padding: const EdgeInsets.symmetric(vertical: 16),
+                              ),
+                              child: _isSaving
+                                  ? const SpinKitThreeBounce(color: Colors.white, size: 20)
+                                  : const Text('REGISTER STUDENT (Ctrl+S)'),
+                            ),
+                          ),
+                        ],
+                      );
+                    }
+
+                    return Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        ElevatedButton(
+                          onPressed: _isSaving ? null : () => _save(addAnother: false),
+                          style: ElevatedButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(vertical: 16),
+                          ),
+                          child: _isSaving
+                              ? const SpinKitThreeBounce(color: Colors.white, size: 20)
+                              : const Text('REGISTER STUDENT'),
                         ),
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: ElevatedButton(
-                        onPressed: _isSaving ? null : () => _save(addAnother: false),
-                        style: ElevatedButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(vertical: 16),
+                        const SizedBox(height: 12),
+                        OutlinedButton.icon(
+                          onPressed: _isSaving ? null : () => _save(addAnother: true),
+                          icon: const Icon(Icons.library_add_rounded),
+                          label: const Text('SAVE & ADD ANOTHER'),
+                          style: OutlinedButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(vertical: 16),
+                          ),
                         ),
-                        child: _isSaving
-                            ? const SpinKitThreeBounce(color: Colors.white, size: 20)
-                            : const Text('REGISTER STUDENT (Ctrl+S)'),
-                      ),
-                    ),
-                  ],
+                      ],
+                    );
+                  },
                 ),
                 const SizedBox(height: 40),
               ],

@@ -301,24 +301,49 @@ class _FeeRemindersScreenState extends State<FeeRemindersScreen> {
                     padding: const EdgeInsets.all(20),
                     child: Column(
                       children: [
-                        Row(
-                          children: [
-                            Expanded(
-                              child: _summaryItem(
-                                icon: Icons.people_outline,
-                                label: 'Pending Defaulters',
-                                value: '${filtered.length}',
-                              ),
-                            ),
-                            Container(width: 1, height: 44, color: Colors.white24),
-                            Expanded(
-                              child: _summaryItem(
-                                icon: Icons.money_off_rounded,
-                                label: 'Total Outstanding Dues',
-                                value: 'Rs. ${NumberFormat('#,##0').format(totalPending)}',
-                              ),
-                            ),
-                          ],
+                        LayoutBuilder(
+                          builder: (context, constraints) {
+                            if (constraints.maxWidth >= 360) {
+                              return Row(
+                                children: [
+                                  Expanded(
+                                    child: _summaryItem(
+                                      icon: Icons.people_outline,
+                                      label: 'Pending Defaulters',
+                                      value: '${filtered.length}',
+                                    ),
+                                  ),
+                                  Container(width: 1, height: 44, color: Colors.white24),
+                                  Expanded(
+                                    child: _summaryItem(
+                                      icon: Icons.money_off_rounded,
+                                      label: 'Total Outstanding Dues',
+                                      value: 'Rs. ${NumberFormat('#,##0').format(totalPending)}',
+                                    ),
+                                  ),
+                                ],
+                              );
+                            }
+
+                            return Column(
+                              children: [
+                                _summaryItem(
+                                  icon: Icons.people_outline,
+                                  label: 'Pending Defaulters',
+                                  value: '${filtered.length}',
+                                ),
+                                const Padding(
+                                  padding: EdgeInsets.symmetric(vertical: 8),
+                                  child: Divider(color: Colors.white24),
+                                ),
+                                _summaryItem(
+                                  icon: Icons.money_off_rounded,
+                                  label: 'Total Outstanding Dues',
+                                  value: 'Rs. ${NumberFormat('#,##0').format(totalPending)}',
+                                ),
+                              ],
+                            );
+                          },
                         ),
                         if (_isSending) ...[
                           const SizedBox(height: 16),

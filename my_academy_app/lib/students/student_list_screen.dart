@@ -178,11 +178,11 @@ class _StudentListScreenState extends State<StudentListScreen> {
 
                 return LayoutBuilder(
                   builder: (context, constraints) {
-                    if (constraints.maxWidth >= 768) {
+                    if (constraints.maxWidth >= 520) {
                       return GridView.builder(
                         padding: const EdgeInsets.all(16),
                         gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
-                          maxCrossAxisExtent: 480,
+                          maxCrossAxisExtent: 450,
                           mainAxisExtent: 110,
                           crossAxisSpacing: 12,
                           mainAxisSpacing: 12,

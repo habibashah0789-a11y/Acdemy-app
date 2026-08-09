@@ -710,14 +710,30 @@ class _StudentDetailScreenState extends State<StudentDetailScreen> {
   }
 
   Widget _buildStatsRow(double totalFee) {
-    return Row(
-      children: [
-        Expanded(child: _buildStatCard('Total Fee', 'Rs ${totalFee.toStringAsFixed(0)}', AppTheme.primaryBlue)),
-        const SizedBox(width: 12),
-        Expanded(child: _buildStatCard('Paid', 'Rs ${student.feeSubmitted.toStringAsFixed(0)}', Colors.green)),
-        const SizedBox(width: 12),
-        Expanded(child: _buildStatCard('Due', 'Rs ${student.feeRemaining.toStringAsFixed(0)}', Colors.red)),
-      ],
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        if (constraints.maxWidth >= 420) {
+          return Row(
+            children: [
+              Expanded(child: _buildStatCard('Total Fee', 'Rs ${totalFee.toStringAsFixed(0)}', AppTheme.primaryBlue)),
+              const SizedBox(width: 8),
+              Expanded(child: _buildStatCard('Paid', 'Rs ${student.feeSubmitted.toStringAsFixed(0)}', Colors.green)),
+              const SizedBox(width: 8),
+              Expanded(child: _buildStatCard('Due', 'Rs ${student.feeRemaining.toStringAsFixed(0)}', Colors.red)),
+            ],
+          );
+        }
+
+        return Column(
+          children: [
+            _buildStatCard('Total Fee', 'Rs ${totalFee.toStringAsFixed(0)}', AppTheme.primaryBlue),
+            const SizedBox(height: 8),
+            _buildStatCard('Paid', 'Rs ${student.feeSubmitted.toStringAsFixed(0)}', Colors.green),
+            const SizedBox(height: 8),
+            _buildStatCard('Due', 'Rs ${student.feeRemaining.toStringAsFixed(0)}', Colors.red),
+          ],
+        );
+      },
     ).animate().fadeIn(delay: 200.ms);
   }
 
@@ -1086,34 +1102,67 @@ class _StudentDetailScreenState extends State<StudentDetailScreen> {
   }
   
   Widget _buildActionButtons(BuildContext context) {
-    return Row(
-      children: [
-        Expanded(
-          child: ElevatedButton.icon(
-            onPressed: _editStudent,
-            icon: const Icon(Icons.edit_rounded),
-            label: const Text('EDIT PROFILE'),
-            style: ElevatedButton.styleFrom(
-              padding: const EdgeInsets.symmetric(vertical: 14),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        if (constraints.maxWidth >= 380) {
+          return Row(
+            children: [
+              Expanded(
+                child: ElevatedButton.icon(
+                  onPressed: _editStudent,
+                  icon: const Icon(Icons.edit_rounded),
+                  label: const Text('EDIT PROFILE'),
+                  style: ElevatedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: OutlinedButton.icon(
+                  onPressed: _deleteStudent,
+                  style: OutlinedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    foregroundColor: Colors.red,
+                    side: const BorderSide(color: Colors.red),
+                  ),
+                  icon: const Icon(Icons.delete_outline_rounded),
+                  label: const Text('REMOVE'),
+                ),
+              ),
+            ],
+          );
+        }
+
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            ElevatedButton.icon(
+              onPressed: _editStudent,
+              icon: const Icon(Icons.edit_rounded),
+              label: const Text('EDIT PROFILE'),
+              style: ElevatedButton.styleFrom(
+                padding: const EdgeInsets.symmetric(vertical: 14),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              ),
             ),
-          ),
-        ),
-        const SizedBox(width: 16),
-        Expanded(
-          child: OutlinedButton.icon(
-            onPressed: _deleteStudent,
-            style: OutlinedButton.styleFrom(
-              padding: const EdgeInsets.symmetric(vertical: 14),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-              foregroundColor: Colors.red,
-              side: const BorderSide(color: Colors.red),
+            const SizedBox(height: 12),
+            OutlinedButton.icon(
+              onPressed: _deleteStudent,
+              style: OutlinedButton.styleFrom(
+                padding: const EdgeInsets.symmetric(vertical: 14),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                foregroundColor: Colors.red,
+                side: const BorderSide(color: Colors.red),
+              ),
+              icon: const Icon(Icons.delete_outline_rounded),
+              label: const Text('REMOVE'),
             ),
-            icon: const Icon(Icons.delete_outline_rounded),
-            label: const Text('REMOVE'),
-          ),
-        ),
-      ],
+          ],
+        );
+      },
     );
   }
 }

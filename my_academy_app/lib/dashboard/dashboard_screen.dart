@@ -2864,35 +2864,75 @@ class _DashboardStatSliderState extends State<DashboardStatSlider> {
       ),
     ];
 
-    return Column(
-      children: [
-        SizedBox(
-          height: 130,
-          child: PageView.builder(
-            controller: _pageController,
-            physics: const BouncingScrollPhysics(),
-            itemCount: slides.length,
-            itemBuilder: (context, index) {
-              return Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
-                child: slides[index],
-              );
-            },
-          ),
-        ),
-        const SizedBox(height: 12),
-        SmoothPageIndicator(
-          controller: _pageController,
-          count: slides.length,
-          effect: ExpandingDotsEffect(
-            dotHeight: 7,
-            dotWidth: 7,
-            expansionFactor: 3,
-            activeDotColor: AppTheme.primaryBlue,
-            dotColor: isDark ? Colors.white24 : Colors.grey.shade300,
-          ),
-        ),
-      ],
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final availableWidth = constraints.maxWidth;
+
+        if (availableWidth >= 840) {
+          return Row(
+            children: slides.map((slide) => Expanded(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 6),
+                child: SizedBox(
+                  height: 125,
+                  child: slide,
+                ),
+              ),
+            )).toList(),
+          );
+        }
+
+        if (availableWidth >= 500) {
+          return Column(
+            children: [
+              Row(
+                children: [
+                  Expanded(child: Padding(padding: const EdgeInsets.all(4), child: SizedBox(height: 120, child: slides[0]))),
+                  Expanded(child: Padding(padding: const EdgeInsets.all(4), child: SizedBox(height: 120, child: slides[1]))),
+                ],
+              ),
+              const SizedBox(height: 8),
+              Row(
+                children: [
+                  Expanded(child: Padding(padding: const EdgeInsets.all(4), child: SizedBox(height: 120, child: slides[2]))),
+                  Expanded(child: Padding(padding: const EdgeInsets.all(4), child: SizedBox(height: 120, child: slides[3]))),
+                ],
+              ),
+            ],
+          );
+        }
+
+        return Column(
+          children: [
+            SizedBox(
+              height: 130,
+              child: PageView.builder(
+                controller: _pageController,
+                physics: const BouncingScrollPhysics(),
+                itemCount: slides.length,
+                itemBuilder: (context, index) {
+                  return Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+                    child: slides[index],
+                  );
+                },
+              ),
+            ),
+            const SizedBox(height: 12),
+            SmoothPageIndicator(
+              controller: _pageController,
+              count: slides.length,
+              effect: ExpandingDotsEffect(
+                dotHeight: 7,
+                dotWidth: 7,
+                expansionFactor: 3,
+                activeDotColor: AppTheme.primaryBlue,
+                dotColor: isDark ? Colors.white24 : Colors.grey.shade300,
+              ),
+            ),
+          ],
+        );
+      },
     );
   }
 
