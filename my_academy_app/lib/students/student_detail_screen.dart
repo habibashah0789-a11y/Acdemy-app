@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter_animate/flutter_animate.dart';
@@ -41,11 +42,34 @@ class _StudentDetailScreenState extends State<StudentDetailScreen> {
   Map<String, dynamic>? _authInfo;
   bool _isLoadingAuth = true;
 
+  // Real-time device binding state — updated live from Firestore stream.
+  // This ensures the Device Bound / Not Bound badge reflects the actual
+  // Firestore value at all times, not just at screen-open time.
+  StreamSubscription<DocumentSnapshot>? _authStreamSub;
+  String _deviceId = ''; // live-updated linkedDeviceId from Firestore
+
   @override
   void initState() {
     super.initState();
     student = widget.student;
     _loadAuthInfo();
+    _subscribeToDeviceStatus();
+  }
+
+  /// Subscribes to real-time Firestore updates for this student's auth doc.
+  /// Updates _deviceId live so the Device Bound / Not Bound badge always
+  /// reflects the true Firestore state without requiring a screen reload.
+  void _subscribeToDeviceStatus() {
+    _authStreamSub = FirebaseFirestore.instance
+        .collection('student_auth')
+        .doc(student.id)
+        .snapshots()
+        .listen((doc) {
+      if (!mounted) return;
+      final data = doc.data();
+      final id = data?['linkedDeviceId'] as String? ?? '';
+      setState(() => _deviceId = id);
+    }, onError: (_) {});
   }
 
   Future<void> _loadAuthInfo() async {
@@ -65,13 +89,19 @@ class _StudentDetailScreenState extends State<StudentDetailScreen> {
     }
   }
 
+  @override
+  void dispose() {
+    _authStreamSub?.cancel();
+    super.dispose();
+  }
+
   Future<void> _resetDevice() async {
     final confirm = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Reset Student Device?'),
         content: const Text(
-            'This will clear the student\'s linked device. The student will be able to bind a new device on their next login.'),
+            'This will clear the student\'s linked device. The student will be logged out and must re-authenticate to bind a new device.'),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
@@ -86,92 +116,109 @@ class _StudentDetailScreenState extends State<StudentDetailScreen> {
       ),
     );
 
-    if (confirm == true) {
-      setState(() => _isLoadingAuth = true);
-      try {
-        await StudentAuthService.resetDeviceBinding(student.id);
-        await _loadAuthInfo();
-        if (mounted) {
-          showDialog(
-            context: context,
-            barrierDismissible: true,
-            builder: (context) {
-              return Dialog(
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 24.0, horizontal: 20.0),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.all(16),
-                        decoration: BoxDecoration(
-                          color: Colors.green.shade50,
-                          shape: BoxShape.circle,
-                        ),
-                        child: const Icon(
-                          Icons.check_circle_outline_rounded,
-                          color: Colors.green,
-                          size: 60,
-                        ),
-                      )
-                          .animate()
-                          .scale(duration: 500.ms, curve: Curves.elasticOut)
-                          .fadeIn(duration: 300.ms),
-                      const SizedBox(height: 16),
-                      Text(
-                        'Device Reset Successfully',
-                        style: GoogleFonts.poppins(
-                          fontSize: 20,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.green,
-                        ),
-                      )
-                          .animate()
-                          .slideY(begin: 0.3, end: 0, duration: 400.ms, curve: Curves.easeOutBack)
-                          .fadeIn(duration: 300.ms),
-                      const SizedBox(height: 8),
-                      Text(
-                        'Device binding cleared. Status is now "Not Bound".',
-                        textAlign: TextAlign.center,
-                        style: GoogleFonts.poppins(
-                          fontSize: 14,
-                          color: Colors.grey.shade600,
-                        ),
-                      )
-                          .animate()
-                          .slideY(begin: 0.3, end: 0, duration: 450.ms, curve: Curves.easeOutBack)
-                          .fadeIn(duration: 300.ms),
-                      const SizedBox(height: 24),
-                      ElevatedButton(
-                        onPressed: () => Navigator.pop(context),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.green,
-                          foregroundColor: Colors.white,
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-                        ),
-                        child: const Text('OK'),
-                      )
-                          .animate()
-                          .fadeIn(delay: 200.ms, duration: 300.ms),
-                    ],
-                  ),
-                ),
-              );
-            },
-          );
-        }
-      } catch (e) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('Failed to reset device: $e'),
-              backgroundColor: Colors.red,
+    if (confirm != true) return;
+
+    setState(() => _isLoadingAuth = true);
+    try {
+      // 1. Write the reset to Firestore. The student portal's real-time
+      //    Firestore listener will detect this change and force-logout
+      //    the student on their device automatically.
+      await StudentAuthService.resetDeviceBinding(student.id);
+
+      // 2. Update local _authInfo so the badge flips to 'Not Bound'.
+      //    _deviceId is also updated immediately via the Firestore stream.
+      if (mounted) {
+        setState(() {
+          _authInfo = _authInfo != null
+              ? {..._authInfo!, 'linkedDeviceId': '', 'deviceLinkedAt': null}
+              : {'linkedDeviceId': '', 'deviceLinkedAt': null};
+          _deviceId = '';
+          _isLoadingAuth = false;
+        });
+      }
+
+      // 3. Show the success animation dialog.
+      if (mounted) {
+        await showDialog(
+          context: context,
+          barrierDismissible: true,
+          builder: (ctx) => Dialog(
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(vertical: 24.0, horizontal: 20.0),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: Colors.green.shade50,
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(
+                      Icons.check_circle_outline_rounded,
+                      color: Colors.green,
+                      size: 60,
+                    ),
+                  )
+                      .animate()
+                      .scale(duration: 500.ms, curve: Curves.elasticOut)
+                      .fadeIn(duration: 300.ms),
+                  const SizedBox(height: 16),
+                  Text(
+                    'Device Reset Successfully',
+                    style: GoogleFonts.poppins(
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.green,
+                    ),
+                  )
+                      .animate()
+                      .slideY(begin: 0.3, end: 0, duration: 400.ms, curve: Curves.easeOutBack)
+                      .fadeIn(duration: 300.ms),
+                  const SizedBox(height: 8),
+                  Text(
+                    'Device binding cleared.\nStatus is now "Not Bound".',
+                    textAlign: TextAlign.center,
+                    style: GoogleFonts.poppins(
+                      fontSize: 14,
+                      color: Colors.grey.shade600,
+                    ),
+                  )
+                      .animate()
+                      .slideY(begin: 0.3, end: 0, duration: 450.ms, curve: Curves.easeOutBack)
+                      .fadeIn(duration: 300.ms),
+                  const SizedBox(height: 24),
+                  ElevatedButton(
+                    onPressed: () => Navigator.pop(ctx),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.green,
+                      foregroundColor: Colors.white,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                    ),
+                    child: const Text('OK'),
+                  )
+                      .animate()
+                      .fadeIn(delay: 200.ms, duration: 300.ms),
+                ],
+              ),
             ),
-          );
-          setState(() => _isLoadingAuth = false);
-        }
+          ),
+        );
+      }
+
+      // 4. Refresh auth info in the background to sync any server-side changes.
+      _loadAuthInfo();
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to reset device: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+        setState(() => _isLoadingAuth = false);
       }
     }
   }
@@ -818,7 +865,9 @@ class _StudentDetailScreenState extends State<StudentDetailScreen> {
 
   Widget _buildQrCodeCard(BuildContext context, bool isDark) {
     final qrToken = _authInfo?['qrToken'] as String?;
-    final deviceId = _authInfo?['linkedDeviceId'] as String? ?? '';
+    // Use _deviceId (live Firestore stream) instead of _authInfo for the
+    // device binding status. This ensures instant badge update on reset.
+    final deviceId = _deviceId;
 
     return Card(
       elevation: 2,
@@ -944,7 +993,7 @@ class _StudentDetailScreenState extends State<StudentDetailScreen> {
                     const SizedBox(width: 12),
                     Expanded(
                       child: OutlinedButton.icon(
-                        onPressed: _isLoadingAuth || deviceId.isEmpty ? null : _resetDevice,
+                        onPressed: _isLoadingAuth || _deviceId.isEmpty ? null : _resetDevice,
                         icon: const Icon(Icons.phonelink_erase_rounded, size: 16),
                         label: const Text('Reset Device'),
                         style: OutlinedButton.styleFrom(
