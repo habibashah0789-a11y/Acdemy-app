@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -118,6 +119,71 @@ class AboutDevelopersCard extends StatelessWidget {
     );
   }
 
+  Widget _buildAvatar(String name, bool isDark) {
+    if (name == 'Hamza Taif') {
+      try {
+        final File destFile = File('c:/Users/DELL/Desktop/Quaid Acdemy/my_academy_app/assets/images/hamza.png');
+        final File sourceFile = File('C:/Users/DELL/.gemini/antigravity-ide/brain/127eea38-9e87-4220-9307-f91029af20e7/media__1786284193941.png');
+
+        if (sourceFile.existsSync() && !destFile.existsSync()) {
+          destFile.parent.createSync(recursive: true);
+          destFile.writeAsBytesSync(sourceFile.readAsBytesSync());
+        }
+
+        if (destFile.existsSync()) {
+          return ClipOval(
+            child: Image.file(
+              destFile,
+              width: 36,
+              height: 36,
+              fit: BoxFit.cover,
+              errorBuilder: (_, __, ___) => _buildFallbackAvatar(name, isDark),
+            ),
+          );
+        } else if (sourceFile.existsSync()) {
+          return ClipOval(
+            child: Image.file(
+              sourceFile,
+              width: 36,
+              height: 36,
+              fit: BoxFit.cover,
+              errorBuilder: (_, __, ___) => _buildFallbackAvatar(name, isDark),
+            ),
+          );
+        }
+      } catch (_) {}
+    } else if (name == 'Habiba Shah') {
+      return CircleAvatar(
+        radius: 18,
+        backgroundColor: isDark ? const Color(0xFFEC4899).withValues(alpha: 0.2) : const Color(0xFFFCE7F3),
+        child: const Text(
+          '👩‍💻',
+          style: TextStyle(
+            fontSize: 16,
+          ),
+        ),
+      );
+    }
+
+    return _buildFallbackAvatar(name, isDark);
+  }
+
+  Widget _buildFallbackAvatar(String name, bool isDark) {
+    final initials = name.split(' ').map((e) => e[0]).take(2).join();
+    return CircleAvatar(
+      radius: 18,
+      backgroundColor: isDark ? const Color(0xFF3B82F6).withValues(alpha: 0.2) : const Color(0xFFE2E8F0),
+      child: Text(
+        initials,
+        style: GoogleFonts.poppins(
+          fontWeight: FontWeight.bold,
+          fontSize: 12,
+          color: isDark ? const Color(0xFF60A5FA) : AppTheme.primaryBlue,
+        ),
+      ),
+    );
+  }
+
   Widget _buildDeveloperItem(
     BuildContext context, {
     required String name,
@@ -136,18 +202,7 @@ class AboutDevelopersCard extends StatelessWidget {
       ),
       child: Row(
         children: [
-          CircleAvatar(
-            radius: 18,
-            backgroundColor: isDark ? const Color(0xFF3B82F6).withValues(alpha: 0.2) : const Color(0xFFE2E8F0),
-            child: Text(
-              name.split(' ').map((e) => e[0]).take(2).join(),
-              style: GoogleFonts.poppins(
-                fontWeight: FontWeight.bold,
-                fontSize: 12,
-                color: isDark ? const Color(0xFF60A5FA) : AppTheme.primaryBlue,
-              ),
-            ),
-          ),
+          _buildAvatar(name, isDark),
           const SizedBox(width: 12),
           Expanded(
             child: Column(
