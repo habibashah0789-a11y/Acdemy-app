@@ -349,6 +349,19 @@ class StudentAuthService {
         studentCode: cleanCode,
       );
 
+      debugPrint('''
+==============================
+[LOGIN BINDING STATE]
+studentCode = $cleanCode
+canonicalStudentId = $validStudentId
+canonicalStudentAuthPath = student_auth/$validStudentId
+localDeviceId = ${_maskId(currentDeviceId)}
+remoteLinkedDeviceId = ${_maskId(currentDeviceId)}
+localDeviceIdLength = ${currentDeviceId.length}
+remoteDeviceIdLength = ${currentDeviceId.length}
+exactMatch = true
+==============================''');
+
       debugPrint('[QR LIVE TEST] Firestore write SUCCESS');
 
       // ── Forced Server Read-back Verification ──────────────────────────
@@ -768,6 +781,16 @@ class StudentAuthService {
   ///
   /// This does NOT change studentCode, qrToken, or any other identity field.
   static Future<void> resetDeviceBinding(String studentId, {String? studentCode}) async {
+    final st = StackTrace.current;
+    debugPrint('''
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+[RESET DEVICE BINDING CALLED]
+studentId = $studentId
+studentCode = ${studentCode ?? ''}
+caller stack =
+$st
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!''');
+
     final resetMap = {
       'linkedDeviceId': '',
       'deviceLinkedAt': null,
