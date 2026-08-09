@@ -5,6 +5,7 @@ import 'package:qr_flutter/qr_flutter.dart';
 import '../models/student_model.dart';
 import '../student_portal/student_auth_service.dart';
 import '../theme/app_theme.dart';
+import 'shimmer_loading_widget.dart';
 
 /// Modern, scannable QR Code Widget powered by `qr_flutter`.
 /// Encodes structured JSON containing minimum necessary auth fields.
@@ -213,7 +214,7 @@ class _StudentQrDialogContentState extends State<_StudentQrDialogContent> {
                 const SizedBox(
                   height: 220,
                   child: Center(
-                    child: CircularProgressIndicator(),
+                    child: ShimmerLoadingWidget(width: 200, height: 200, borderRadius: 20),
                   ),
                 )
               else

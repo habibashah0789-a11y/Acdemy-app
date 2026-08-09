@@ -9,6 +9,7 @@ import '../models/student_model.dart';
 import '../services/database_service.dart';
 import '../theme/app_theme.dart';
 import '../utils/whatsapp_helper.dart';
+import '../widgets/shimmer_loading_widget.dart';
 
 class StudentExportScreen extends StatefulWidget {
   const StudentExportScreen({super.key});
@@ -89,12 +90,9 @@ class _StudentExportScreenState extends State<StudentExportScreen> {
       return CachedNetworkImage(
         imageUrl: url,
         fit: BoxFit.cover,
-        placeholder: (_, __) => const Center(
-          child: SizedBox(
-            width: 20,
-            height: 20,
-            child: CircularProgressIndicator(strokeWidth: 2),
-          ),
+        placeholder: (_, __) => const ShimmerLoadingWidget(
+          width: double.infinity,
+          height: double.infinity,
         ),
         errorWidget: (_, __, ___) => const Icon(Icons.person, color: AppTheme.primaryBlue),
       );

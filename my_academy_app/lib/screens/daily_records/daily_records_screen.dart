@@ -4,6 +4,7 @@ import 'package:intl/intl.dart';
 import '../../models/student_model.dart';
 import '../../services/database_service.dart';
 import '../../theme/app_theme.dart';
+import '../../widgets/shimmer_loading_widget.dart';
 import 'daily_record_detail_screen.dart';
 
 class DailyRecordData {
@@ -131,7 +132,11 @@ class _DailyRecordsScreenState extends State<DailyRecordsScreen> {
               stream: DatabaseService.getStudentsStream(),
               builder: (context, snapshot) {
                 if (snapshot.connectionState == ConnectionState.waiting) {
-                  return const Center(child: CircularProgressIndicator());
+                  return ListView.builder(
+                    padding: const EdgeInsets.all(16),
+                    itemCount: 5,
+                    itemBuilder: (context, _) => ShimmerLoadingWidget.listTilePlaceholder(context),
+                  );
                 }
                 
                 if (snapshot.hasError) {

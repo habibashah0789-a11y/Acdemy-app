@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:my_academy_app/settings/logout_screen.dart';
 import '../models/student_model.dart';
 import '../screens/app_info_screens.dart';
@@ -210,12 +211,16 @@ class _DeleteStudentsDialogState extends State<DeleteStudentsDialog> {
     return AlertDialog(
       title: const Text('Delete Students Data'),
       content: _isDeleting
-          ? const Column(
+          ? Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                CircularProgressIndicator(),
-                SizedBox(height: 16),
-                Text('Deleting students, please wait...'),
+                const SizedBox(height: 12),
+                const LinearProgressIndicator(color: Colors.red),
+                const SizedBox(height: 16),
+                Text(
+                  'Deleting students data, please wait...',
+                  style: GoogleFonts.poppins(fontSize: 13),
+                ),
               ],
             )
           : SingleChildScrollView(

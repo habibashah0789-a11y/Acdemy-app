@@ -5,7 +5,6 @@ import 'package:flutter/services.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:image_picker/image_picker.dart';
 import 'package:cached_network_image/cached_network_image.dart';
-import 'package:flutter_spinkit/flutter_spinkit.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import '../models/student_model.dart';
 import '../services/database_service.dart';
@@ -13,6 +12,7 @@ import '../services/notification_service.dart';
 import '../widgets/crop_image_dialog.dart';
 import '../theme/app_theme.dart';
 import '../utils/image_utils.dart';
+import '../widgets/shimmer_loading_widget.dart';
 
 class EditStudentScreen extends StatefulWidget {
   final StudentModel student;
@@ -586,16 +586,20 @@ class _EditStudentScreenState extends State<EditStudentScreen> {
                 _feeField('Total Fee Remaining', _feeRemC, Colors.red),
 
                 const SizedBox(height: 40),
-                SizedBox(width: double.infinity, child: ElevatedButton(
-                  onPressed: _isSaving ? null : _update,
-                  child: _isSaving ? const SpinKitThreeBounce(color: Colors.white, size: 20) : const Text('UPDATE STUDENT'),
-                )),
+                SizedBox(
+                  width: double.infinity,
+                  child: InlineLoadingButton(
+                    isLoading: _isSaving,
+                    label: 'UPDATE STUDENT',
+                    loadingLabel: 'Saving Changes...',
+                    onPressed: _update,
+                  ),
+                ),
                 const SizedBox(height: 40),
               ],
             ),
           ),
         ),
-        if (_isSaving) Container(color: Colors.black.withValues(alpha: 0.1), child: const Center(child: SpinKitPulse(color: AppTheme.primaryBlue, size: 60))),
       ]),
     );
   }
