@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../theme/app_theme.dart';
+import '../utils/whatsapp_helper.dart';
 import '../widgets/about_developers_widget.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -775,6 +777,24 @@ class _HelpSupportScreenState extends State<HelpSupportScreen>
                 icon: Icons.email_rounded,
                 title: 'Official Email Support',
                 subtitle: 'quaidacademy241992@gmail.com',
+                onTap: () async {
+                  final Uri emailLaunchUri = Uri(
+                    scheme: 'mailto',
+                    path: 'quaidacademy241992@gmail.com',
+                    queryParameters: {
+                      'subject': 'Support Request - Quaid Academy Student Portal',
+                    },
+                  );
+                  try {
+                    await launchUrl(emailLaunchUri);
+                  } catch (e) {
+                    if (context.mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(content: Text('Could not open email client: $e')),
+                      );
+                    }
+                  }
+                },
               ),
               const SizedBox(height: 12),
               _buildContactItem(
@@ -782,6 +802,9 @@ class _HelpSupportScreenState extends State<HelpSupportScreen>
                 icon: Icons.phone_rounded,
                 title: 'Helpdesk Phone & WhatsApp',
                 subtitle: '+92 313 9509505 / Campus Helpline',
+                onTap: () {
+                  WhatsAppHelper.openWhatsApp(context, '+92 313 9509505');
+                },
               ),
             ],
           ),
@@ -799,34 +822,76 @@ class _HelpSupportScreenState extends State<HelpSupportScreen>
     required IconData icon,
     required String title,
     required String subtitle,
+    VoidCallback? onTap,
   }) {
-    return Row(
-      children: [
-        Icon(icon, size: 20, color: AppTheme.primaryBlue),
-        const SizedBox(width: 12),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                title,
-                style: GoogleFonts.poppins(
-                  fontSize: 13,
-                  fontWeight: FontWeight.bold,
-                  color: isDark ? Colors.white : const Color(0xFF0F172A),
-                ),
-              ),
-              Text(
-                subtitle,
-                style: GoogleFonts.poppins(
-                  fontSize: 12,
-                  color: isDark ? Colors.grey.shade400 : Colors.grey.shade600,
-                ),
-              ),
-            ],
+    final content = Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 10),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: onTap != null
+                  ? AppTheme.primaryBlue.withValues(alpha: 0.1)
+                  : (isDark ? Colors.grey.shade850 : Colors.grey.shade100),
+              shape: BoxShape.circle,
+            ),
+            child: Icon(icon, size: 20, color: AppTheme.primaryBlue),
           ),
-        ),
-      ],
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: GoogleFonts.poppins(
+                    fontSize: 13,
+                    fontWeight: FontWeight.bold,
+                    color: isDark ? Colors.white : const Color(0xFF0F172A),
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  subtitle,
+                  style: GoogleFonts.poppins(
+                    fontSize: 12,
+                    color: onTap != null
+                        ? AppTheme.primaryBlue
+                        : (isDark ? Colors.grey.shade400 : Colors.grey.shade600),
+                    fontWeight: onTap != null ? FontWeight.w500 : FontWeight.normal,
+                    decoration: onTap != null ? TextDecoration.underline : null,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          if (onTap != null) ...[
+            const SizedBox(width: 8),
+            Icon(
+              Icons.open_in_new_rounded,
+              size: 14,
+              color: AppTheme.primaryBlue.withValues(alpha: 0.7),
+            ),
+          ],
+        ],
+      ),
+    );
+
+    if (onTap == null) {
+      return content;
+    }
+
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(12),
+        hoverColor: AppTheme.primaryBlue.withValues(alpha: 0.05),
+        splashColor: AppTheme.primaryBlue.withValues(alpha: 0.1),
+        highlightColor: AppTheme.primaryBlue.withValues(alpha: 0.05),
+        child: content,
+      ),
     );
   }
 }

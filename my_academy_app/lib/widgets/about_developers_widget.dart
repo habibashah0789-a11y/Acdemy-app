@@ -98,7 +98,7 @@ class AboutDevelopersCard extends StatelessWidget {
           _buildDeveloperItem(
             context,
             name: 'Habiba Shah',
-            role: 'Lead Application Developer',
+            role: 'Software Engineer & App Developer',
             linkedInUrl: 'https://www.linkedin.com/in/habiba-shah-3337883a8/',
             isDark: isDark,
           ),
@@ -109,7 +109,7 @@ class AboutDevelopersCard extends StatelessWidget {
           _buildDeveloperItem(
             context,
             name: 'Hamza Taif',
-            role: 'Full Stack & Mobile Engineer',
+            role: 'Software Engineer & App Developer',
             linkedInUrl: 'https://www.linkedin.com/in/hamza-taif-626853341/',
             isDark: isDark,
           ),
