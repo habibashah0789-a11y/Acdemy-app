@@ -988,25 +988,25 @@ class _StudentDetailScreenState extends State<StudentDetailScreen> {
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                       decoration: BoxDecoration(
-                        color: deviceId.isEmpty ? Colors.grey.shade100 : Colors.green.shade50,
+                        color: deviceId.isEmpty ? Colors.grey.shade100 : Colors.amber.shade50,
                         borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: deviceId.isEmpty ? Colors.grey.shade300 : Colors.green.shade300),
+                        border: Border.all(color: deviceId.isEmpty ? Colors.grey.shade300 : Colors.amber.shade300),
                       ),
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
                           Icon(
-                            deviceId.isEmpty ? Icons.phonelink_off_rounded : Icons.phonelink_setup_rounded,
+                            deviceId.isEmpty ? Icons.lightbulb_outline_rounded : Icons.lightbulb_rounded,
                             size: 16,
-                            color: deviceId.isEmpty ? Colors.grey.shade600 : Colors.green.shade700,
+                            color: deviceId.isEmpty ? Colors.grey.shade600 : Colors.amber.shade800,
                           ),
                           const SizedBox(width: 6),
                           Text(
-                            deviceId.isEmpty ? 'Not Bound' : '1 Bound',
+                            deviceId.isEmpty ? 'Not Bound' : 'Bound',
                             style: TextStyle(
                               fontSize: 11,
                               fontWeight: FontWeight.bold,
-                              color: deviceId.isEmpty ? Colors.grey.shade600 : Colors.green.shade800,
+                              color: deviceId.isEmpty ? Colors.grey.shade600 : Colors.amber.shade900,
                             ),
                           ),
                         ],
