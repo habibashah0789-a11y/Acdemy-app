@@ -25,6 +25,20 @@ class _StudentMainWrapperState extends State<StudentMainWrapper> {
   StreamSubscription<DocumentSnapshot>? _studentStatusSubscription;
   StreamSubscription<DocumentSnapshot>? _studentAuthSubscription;
 
+  // ── Device-binding tracking fields (class-level, NOT local to method) ────
+  // These must be class fields so they persist across multiple Firestore
+  // snapshots. A local variable inside the listener would reset each call.
+
+  /// The linkedDeviceId value from the LAST processed Firestore snapshot.
+  /// null = no snapshot received yet (initial state).
+  String? _lastKnownLinkedDeviceId;
+
+  /// True while we are still waiting for the very first auth snapshot.
+  /// The first snapshot is NEVER used to force-logout the student because
+  /// the device-binding Firestore write may not have propagated yet
+  /// (race condition between login write and stream delivery).
+  bool _isInitialAuthSnapshot = true;
+
   final List<Widget> _screens = [
     const StudentDashboardScreen(),
     const StudentFeeScreen(),
@@ -36,10 +50,10 @@ class _StudentMainWrapperState extends State<StudentMainWrapper> {
   void initState() {
     super.initState();
     _pageController = PageController(initialPage: _currentIndex);
-    _initializeStudentNotifications();
+    _initializeStudentSession();
   }
 
-  Future<void> _initializeStudentNotifications() async {
+  Future<void> _initializeStudentSession() async {
     try {
       final session = await StudentAuthService.getLocalSession();
       if (session != null) {
@@ -63,11 +77,12 @@ class _StudentMainWrapperState extends State<StudentMainWrapper> {
         }
       }
     } catch (e) {
-      debugPrint('[StudentMainWrapper] Failed to initialize notifications: $e');
+      debugPrint('[StudentMainWrapper] Failed to initialize session: $e');
     }
   }
 
   void _listenToStudentStatus(String studentId, String currentDeviceId) {
+    // ── Student document stream (for account deletion detection) ──────────
     _studentStatusSubscription?.cancel();
     _studentStatusSubscription = FirebaseFirestore.instance
         .collection('students')
@@ -75,20 +90,19 @@ class _StudentMainWrapperState extends State<StudentMainWrapper> {
         .snapshots()
         .listen((doc) {
       if (!doc.exists && mounted) {
-        _handleForceLogout('Your account has been deleted by administration. Please login again.');
+        _handleForceLogout(
+            'Your account has been deleted by administration. Please login again.');
       }
     }, onError: (e) {
       debugPrint('[StudentMainWrapper] Student status stream error: $e');
     });
 
-    _studentAuthSubscription?.cancel();
-    // _lastKnownLinkedDeviceId starts as null meaning "haven't received first snapshot yet".
-    // This lets us distinguish:
-    //   null → '' : first snapshot with no binding yet (login race condition) — do NOT logout
-    //   'someId' → '' : admin explicitly reset the binding — MUST logout
-    //   '' or 'someId' → 'differentId' : different device logged in — MUST logout
-    String? _lastKnownLinkedDeviceId;
+    // ── Student auth stream (for device-binding enforcement) ──────────────
+    // Reset tracking state whenever we (re)start this listener.
+    _lastKnownLinkedDeviceId = null;
+    _isInitialAuthSnapshot = true;
 
+    _studentAuthSubscription?.cancel();
     _studentAuthSubscription = FirebaseFirestore.instance
         .collection('student_auth')
         .doc(studentId)
@@ -97,7 +111,8 @@ class _StudentMainWrapperState extends State<StudentMainWrapper> {
       if (!mounted) return;
 
       if (!doc.exists) {
-        _handleForceLogout('Your student authorization has been removed. Please contact admin.');
+        _handleForceLogout(
+            'Your student authorization has been removed. Please contact admin.');
         return;
       }
 
@@ -106,41 +121,55 @@ class _StudentMainWrapperState extends State<StudentMainWrapper> {
 
       final linkedDeviceId = data['linkedDeviceId'] as String? ?? '';
 
-      // First snapshot: record the current binding state and return.
-      // If linkedDeviceId is already empty on the first snapshot, it means
-      // the login device-binding write hasn't completed yet — do NOT logout.
-      // If linkedDeviceId is non-empty on the first snapshot, record it and
-      // check it matches the current device.
-      if (_lastKnownLinkedDeviceId == null) {
+      // ── FIRST SNAPSHOT ────────────────────────────────────────────────
+      // Always skip force-logout on the very first snapshot. This covers the
+      // login race-condition: the student just logged in, the device-binding
+      // Firestore write is still in-flight, so this snapshot may still have
+      // linkedDeviceId == ''. Logging out here would be wrong.
+      //
+      // Exception: if the first snapshot already shows a DIFFERENT non-empty
+      // device, this is a true device conflict that must be rejected.
+      if (_isInitialAuthSnapshot) {
+        _isInitialAuthSnapshot = false;
         _lastKnownLinkedDeviceId = linkedDeviceId;
 
-        // On first snapshot: only logout if there's a confirmed device mismatch
-        // (a non-empty binding to a DIFFERENT device — meaning this device has
-        // no right to be in the portal at all).
         if (linkedDeviceId.isNotEmpty && linkedDeviceId != currentDeviceId) {
+          // This device is definitively NOT the bound device.
+          debugPrint(
+              '[StudentMainWrapper] First snapshot: device mismatch — forcing logout.');
           _handleForceLogout('already login on another device');
         }
+        // In ALL other first-snapshot cases (empty or matching): do nothing.
         return;
       }
 
-      // Subsequent snapshots:
-      if (linkedDeviceId.isEmpty && _lastKnownLinkedDeviceId!.isNotEmpty) {
-        // Transition: was bound → now empty. Admin explicitly reset the device.
-        _lastKnownLinkedDeviceId = linkedDeviceId;
-        _handleForceLogout('Your device binding has been reset by administration.');
-      } else if (linkedDeviceId.isNotEmpty && linkedDeviceId != currentDeviceId) {
+      // ── SUBSEQUENT SNAPSHOTS ──────────────────────────────────────────
+      // Now we compare to the last known value to detect real state changes.
+
+      final previousId = _lastKnownLinkedDeviceId ?? '';
+      _lastKnownLinkedDeviceId = linkedDeviceId;
+
+      if (linkedDeviceId.isEmpty && previousId.isNotEmpty) {
+        // linkedDeviceId went from a real value → empty.
+        // This ONLY happens when admin explicitly clicks "Reset Device".
+        debugPrint(
+            '[StudentMainWrapper] Device binding reset detected — forcing logout.');
+        _handleForceLogout(
+            'Your device binding has been reset by administration. Please log in again.');
+      } else if (linkedDeviceId.isNotEmpty &&
+          linkedDeviceId != currentDeviceId) {
         // A different device is now bound to this account.
-        _lastKnownLinkedDeviceId = linkedDeviceId;
+        debugPrint(
+            '[StudentMainWrapper] Different device bound — forcing logout.');
         _handleForceLogout('already login on another device');
-      } else {
-        // Normal update (name, fees, etc.) — just record the new value, do nothing.
-        _lastKnownLinkedDeviceId = linkedDeviceId;
       }
+      // All other cases (linkedDeviceId is same as before, or went from
+      // empty → filled by our own binding write): no action needed.
+      // This covers: admin edits name, fees, class, phone, etc.
     }, onError: (e) {
       debugPrint('[StudentMainWrapper] Student auth stream error: $e');
     });
   }
-
 
   Future<void> _handleForceLogout(String message) async {
     _studentStatusSubscription?.cancel();
@@ -160,9 +189,7 @@ class _StudentMainWrapperState extends State<StudentMainWrapper> {
     if (mounted) {
       Navigator.of(context).pushAndRemoveUntil(
         MaterialPageRoute(
-          builder: (_) => StudentLoginScreen(
-            message: message,
-          ),
+          builder: (_) => StudentLoginScreen(message: message),
         ),
         (_) => false,
       );
@@ -211,7 +238,9 @@ class _StudentMainWrapperState extends State<StudentMainWrapper> {
               return GoogleFonts.poppins(
                 fontSize: 12,
                 fontWeight: FontWeight.w500,
-                color: isDark ? AppTheme.darkTextSecondary : AppTheme.lightTextSecondary,
+                color: isDark
+                    ? AppTheme.darkTextSecondary
+                    : AppTheme.lightTextSecondary,
               );
             }),
             iconTheme: WidgetStateProperty.resolveWith((states) {
@@ -219,7 +248,9 @@ class _StudentMainWrapperState extends State<StudentMainWrapper> {
                 return const IconThemeData(color: AppTheme.primaryBlue, size: 24);
               }
               return IconThemeData(
-                color: isDark ? AppTheme.darkTextSecondary : AppTheme.lightTextSecondary,
+                color: isDark
+                    ? AppTheme.darkTextSecondary
+                    : AppTheme.lightTextSecondary,
                 size: 22,
               );
             }),
@@ -279,3 +310,4 @@ class _StudentMainWrapperState extends State<StudentMainWrapper> {
     );
   }
 }
+
