@@ -52,6 +52,7 @@ class _StudentMainWrapperState extends State<StudentMainWrapper> {
       final session = await StudentAuthService.getLocalSession();
       if (session != null) {
         final studentId = session['studentId'] as String? ?? '';
+        final studentCode = session['studentCode'] as String? ?? '';
         final deviceId = session['deviceId'] as String? ?? '';
         if (studentId.isNotEmpty) {
           await Hive.openBox<bool>('read_notices');
@@ -67,7 +68,7 @@ class _StudentMainWrapperState extends State<StudentMainWrapper> {
               ? deviceId
               : await StudentAuthService.getDeviceId();
 
-          _listenToStudentStatus(studentId, currentDeviceId);
+          _listenToStudentStatus(studentId, currentDeviceId, studentCode: studentCode);
         }
       }
     } catch (e) {
@@ -75,7 +76,7 @@ class _StudentMainWrapperState extends State<StudentMainWrapper> {
     }
   }
 
-  void _listenToStudentStatus(String studentId, String currentDeviceId) {
+  void _listenToStudentStatus(String studentId, String currentDeviceId, {String? studentCode}) {
     // ── Student document stream (for account deletion detection) ──────────
     _studentStatusSubscription?.cancel();
     _studentStatusSubscription = FirebaseFirestore.instance
@@ -130,6 +131,7 @@ class _StudentMainWrapperState extends State<StudentMainWrapper> {
           StudentAuthService.ensureDeviceBound(
             studentId: studentId,
             currentDeviceId: currentDeviceId,
+            studentCode: studentCode,
           );
         }
         return;

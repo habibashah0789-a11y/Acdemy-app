@@ -342,20 +342,12 @@ class StudentAuthService {
         _firestore.collection('student_auth').doc(validStudentId);
     debugPrint(
         '[QR LIVE TEST] writing to: student_auth/$validStudentId');
-    debugPrint('[QR LIVE TEST] Firestore write START');
-
     try {
-      final bindData = {
-        'studentId': validStudentId,
-        'studentCode': cleanCode,
-        'linkedDeviceId': currentDeviceId,
-        'deviceLinkedAt': FieldValue.serverTimestamp(),
-        'accountStatus': 'active',
-      };
-
-      await targetDocRef
-          .set(bindData, SetOptions(merge: true))
-          .timeout(const Duration(seconds: 8));
+      await ensureDeviceBound(
+        studentId: validStudentId,
+        currentDeviceId: currentDeviceId,
+        studentCode: cleanCode,
+      );
 
       debugPrint('[QR LIVE TEST] Firestore write SUCCESS');
 
