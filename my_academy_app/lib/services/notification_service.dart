@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:device_info_plus/device_info_plus.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -23,8 +24,8 @@ import 'sound_service.dart';
 
 /// Top-level background message handler for FCM.
 @pragma('vm:entry-point')
-Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
-  debugPrint("Handling a background message: ${message.messageId}");
+Future<void> firebaseMessagingBackgroundHandler(RemoteMessage message) async {
+  debugPrint("[FCM BACKGROUND] Received background message ID: ${message.messageId}");
 }
 
 class NotificationService {
@@ -58,43 +59,33 @@ class NotificationService {
 
   // ── 1. Android Notification Channels ──────────────────────────────────
 
-  static const AndroidNotificationChannel _importantAlertsChannel =
-      AndroidNotificationChannel(
-    'academy_important_alerts',
-    'Academy Important Alerts',
-    description: 'Emergency notices, arrivals, and urgent academy alerts',
-    importance: Importance.max,
-    playSound: true,
-    enableVibration: true,
-  );
+  static const String defaultChannelId = 'academy_notifications_v2';
+  static const String defaultChannelName = 'Academy Notifications';
+  static const String defaultSoundName = 'academy_notification';
 
-  static const AndroidNotificationChannel _feeRemindersChannel =
+  static const String feeReminderChannelId = 'academy_fee_reminders_v2';
+  static const String feeReminderChannelName = 'Fee Reminders';
+
+  static const AndroidNotificationChannel _academyNotificationsV2Channel =
       AndroidNotificationChannel(
-    'fee_reminders',
-    'Fee Reminders',
-    description: 'Pending fee reminders and payment confirmations',
+    defaultChannelId,
+    defaultChannelName,
+    description: 'Important academy notifications and student updates',
     importance: Importance.high,
     playSound: true,
+    sound: RawResourceAndroidNotificationSound(defaultSoundName),
     enableVibration: true,
   );
 
-  static const AndroidNotificationChannel _attendanceUpdatesChannel =
+  static const AndroidNotificationChannel _feeRemindersV2Channel =
       AndroidNotificationChannel(
-    'attendance_updates',
-    'Attendance Updates',
-    description: 'Student check-in, check-out, absent, and late alerts',
+    feeReminderChannelId,
+    feeReminderChannelName,
+    description: 'Fee reminders and payment notifications from the academy',
     importance: Importance.high,
     playSound: true,
+    sound: RawResourceAndroidNotificationSound(defaultSoundName),
     enableVibration: true,
-  );
-
-  static const AndroidNotificationChannel _generalNotificationsChannel =
-      AndroidNotificationChannel(
-    'general_notifications',
-    'General Notifications',
-    description: 'News, results, timetable updates, and holiday notices',
-    importance: Importance.defaultImportance,
-    playSound: true,
   );
 
   // ── 2. Initialization ────────────────────────────────────────────────
@@ -134,10 +125,15 @@ class NotificationService {
       final androidPlugin = _localNotificationsPlugin
           .resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>();
       if (androidPlugin != null) {
-        await androidPlugin.createNotificationChannel(_importantAlertsChannel);
-        await androidPlugin.createNotificationChannel(_feeRemindersChannel);
-        await androidPlugin.createNotificationChannel(_attendanceUpdatesChannel);
-        await androidPlugin.createNotificationChannel(_generalNotificationsChannel);
+        await androidPlugin.createNotificationChannel(_academyNotificationsV2Channel);
+        await androidPlugin.createNotificationChannel(_feeRemindersV2Channel);
+        debugPrint('''
+==============================
+[FEE CHANNEL]
+created = $feeReminderChannelId
+sound = $defaultSoundName
+importance = high
+==============================''');
       }
     }
 
@@ -230,26 +226,43 @@ class NotificationService {
         provisional: false,
       );
 
-      debugPrint('[NotificationService] Permission status: ${settings.authorizationStatus}');
+      final statusStr = settings.authorizationStatus.toString();
+      debugPrint('''
+==============================
+[FCM DEBUG]
+authorizationStatus = $statusStr
+platform = ${defaultTargetPlatform.name}
+Firebase projectId = ${Firebase.app().options.projectId}
+==============================''');
 
       if (settings.authorizationStatus == AuthorizationStatus.denied) {
-        debugPrint('[NotificationService] User denied notification permissions');
+        debugPrint('[FCM DEBUG] User denied notification permissions');
         return;
       }
 
+      final token = await _messaging.getToken();
+      final tokenExists = token != null && token.isNotEmpty;
+      debugPrint('''
+==============================
+[FCM DEBUG TOKEN]
+token exists = ${tokenExists ? 'YES' : 'NO'}
+token length = ${token?.length ?? 0}
+platform = ${defaultTargetPlatform.name}
+Firebase projectId = ${Firebase.app().options.projectId}
+==============================''');
+
       await _messaging.subscribeToTopic('academy_all');
       await _messaging.subscribeToTopic('students');
-      FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
+      FirebaseMessaging.onBackgroundMessage(firebaseMessagingBackgroundHandler);
 
-      // Handle Foreground Notifications
+      // Handle Foreground Notifications (App OPEN)
       FirebaseMessaging.onMessage.listen((RemoteMessage message) {
         debugPrint('[NotificationService] Foreground message received: ${message.notification?.title}');
         final notification = message.notification;
-        final android = message.notification?.android;
 
         if (notification != null) {
           showLocalNotification(
-            channelId: android?.channelId ?? 'academy_important_alerts',
+            channelId: defaultChannelId,
             title: notification.title ?? 'Quaid Academy Alert',
             body: notification.body ?? '',
             payload: jsonEncode(message.data),
@@ -272,10 +285,11 @@ class NotificationService {
 
       // Listen for FCM Token refreshes
       _messaging.onTokenRefresh.listen((newToken) {
+        debugPrint('[FCM DEBUG] Token refreshed (${newToken.length} chars)');
         registerFcmToken(fcmToken: newToken);
       });
 
-      await registerFcmToken();
+      await registerFcmToken(fcmToken: token);
     } catch (e) {
       debugPrint('[NotificationService] Push init error: $e');
     }
@@ -345,67 +359,30 @@ class NotificationService {
   // ── 5. Display Local Notification ────────────────────────────────────
 
   static Future<void> showLocalNotification({
-    String channelId = 'academy_important_alerts',
+    String channelId = defaultChannelId,
     required String title,
     required String body,
     String? payload,
   }) async {
-    AndroidNotificationDetails androidDetails;
+    const androidDetails = AndroidNotificationDetails(
+      defaultChannelId,
+      defaultChannelName,
+      channelDescription: 'Important academy notifications and student updates',
+      importance: Importance.high,
+      priority: Priority.high,
+      visibility: NotificationVisibility.public,
+      playSound: true,
+      sound: RawResourceAndroidNotificationSound(defaultSoundName),
+      enableVibration: true,
+    );
 
-    switch (channelId) {
-      case 'fee_reminders':
-        androidDetails = const AndroidNotificationDetails(
-          'fee_reminders',
-          'Fee Reminders',
-          channelDescription: 'Pending fee reminders & payment confirmations',
-          importance: Importance.high,
-          priority: Priority.high,
-          visibility: NotificationVisibility.public,
-          playSound: true,
-          enableVibration: true,
-        );
-        break;
-      case 'attendance_updates':
-        androidDetails = const AndroidNotificationDetails(
-          'attendance_updates',
-          'Attendance Updates',
-          channelDescription: 'Student check-in, check-out, absent, and late alerts',
-          importance: Importance.high,
-          priority: Priority.high,
-          visibility: NotificationVisibility.public,
-          playSound: true,
-          enableVibration: true,
-        );
-        break;
-      case 'general_notifications':
-        androidDetails = const AndroidNotificationDetails(
-          'general_notifications',
-          'General Notifications',
-          channelDescription: 'News, results, timetable updates',
-          importance: Importance.defaultImportance,
-          priority: Priority.defaultPriority,
-          playSound: true,
-        );
-        break;
-      default:
-        androidDetails = const AndroidNotificationDetails(
-          'academy_important_alerts',
-          'Academy Important Alerts',
-          channelDescription: 'Emergency notices, arrivals, and urgent alerts',
-          importance: Importance.max,
-          priority: Priority.high,
-          visibility: NotificationVisibility.public,
-          playSound: true,
-          enableVibration: true,
-        );
-    }
-
-    final platformDetails = NotificationDetails(
+    const platformDetails = NotificationDetails(
       android: androidDetails,
-      iOS: const DarwinNotificationDetails(
+      iOS: DarwinNotificationDetails(
         presentAlert: true,
         presentBadge: true,
         presentSound: true,
+        sound: 'academy_notification.wav',
       ),
     );
 
@@ -416,13 +393,6 @@ class NotificationService {
       platformDetails,
       payload: payload,
     );
-
-    // Play in-app sound to accompany the system notification.
-    if (channelId == 'academy_important_alerts') {
-      SoundService.playImportantAlert();
-    } else {
-      SoundService.playNotification();
-    }
   }
 
   // ── 6. Notification Payload Routing ──────────────────────────────────
@@ -673,10 +643,10 @@ class NotificationService {
       timestamp: DateTime.now(),
       notificationType: 'fee_reminder',
       isRead: false,
-      studentId: student.id, // Targeted: only this student receives it
+      studentId: student.id,
     );
 
-    // Persist to Firestore so the student's real-time listener picks it up
+    // Persist to Firestore
     try {
       await _firestore
           .collection(_collection)
@@ -685,6 +655,51 @@ class NotificationService {
     } catch (e) {
       debugPrint('[NotificationService] Fee reminder notification failed: $e');
     }
+
+    // Check device token for logging
+    bool tokenFound = false;
+    try {
+      final devicesSnap = await _firestore
+          .collection('devices')
+          .where('userId', isEqualTo: student.id)
+          .where('isActive', isEqualTo: true)
+          .get();
+
+      if (devicesSnap.docs.isNotEmpty) {
+        tokenFound = true;
+      } else {
+        final studentSnap = await _firestore
+            .collection('devices')
+            .where('studentId', isEqualTo: student.id)
+            .where('isActive', isEqualTo: true)
+            .get();
+        if (studentSnap.docs.isNotEmpty) tokenFound = true;
+      }
+    } catch (_) {}
+
+    debugPrint('''
+==============================
+[FEE REMINDER SEND]
+studentCode = ${student.id}
+studentId = ${student.id}
+FCM token found = ${tokenFound ? 'YES' : 'NO'}
+token source path = devices (userId/studentId == ${student.id})
+Firebase project = ${Firebase.app().options.projectId}
+==============================''');
+
+    // Trigger push notification for background & terminated device delivery
+    await triggerPushNotification(
+      targetUserId: student.id,
+      title: 'Fee Reminder',
+      body: 'You have a new fee reminder from Quaid Academy.',
+      channelId: feeReminderChannelId,
+      payload: {
+        'type': 'fee_reminder',
+        'studentId': student.id,
+        'studentCode': student.id,
+        'screen': 'fee_details',
+      },
+    );
   }
 
   static Future<void> createAttendanceNotification({
@@ -712,10 +727,46 @@ class NotificationService {
 
     await _saveNotification(notification, emitLocal: true);
     showLocalNotification(
-      channelId: 'attendance_updates',
+      channelId: defaultChannelId,
       title: title,
       body: body,
     );
+  }
+
+  static Future<void> triggerPushNotification({
+    required String targetUserId,
+    required String title,
+    required String body,
+    String? channelId,
+    Map<String, String>? payload,
+  }) async {
+    final targetChannel = channelId ?? feeReminderChannelId;
+    try {
+      final docRef = await _firestore.collection('notification_triggers').add({
+        'targetUserId': targetUserId,
+        'title': title,
+        'body': body,
+        'channelId': targetChannel,
+        'sound': defaultSoundName,
+        'payload': payload ?? {},
+        'status': 'pending',
+        'createdAt': FieldValue.serverTimestamp(),
+      });
+
+      debugPrint('''
+==============================
+[FEE PUSH CHECKPOINT 1] Creating notification trigger...
+triggerId = ${docRef.id}
+studentId = $targetUserId
+studentCode = ${payload?['studentCode'] ?? targetUserId}
+title = $title
+
+[FEE PUSH CHECKPOINT 1] TRIGGER CREATED SUCCESSFULLY
+Firestore Path: notification_triggers/${docRef.id}
+==============================''');
+    } catch (e) {
+      debugPrint('[FCM TRIGGER ERROR] Failed to create push trigger: $e');
+    }
   }
 
   static Future<void> _saveNotification(NotificationModel notification, {required bool emitLocal}) async {
@@ -731,6 +782,18 @@ class NotificationService {
           .doc(notification.id)
           .set(notification.toMap())
           .catchError((_) {}));
+
+      if (notification.studentId.isNotEmpty && notification.studentId != 'admin_only') {
+        unawaited(triggerPushNotification(
+          targetUserId: notification.studentId,
+          title: notification.title,
+          body: notification.message,
+          payload: {
+            'type': notification.notificationType,
+            'studentId': notification.studentId,
+          },
+        ));
+      }
     }
   }
 
@@ -834,19 +897,10 @@ class NotificationService {
           ).toList();
 
           if (newUnread.isNotEmpty) {
-            // Play notification sound
-            SoundService.playNotification();
-            
             // Show a local notification for each new unread message
             for (final n in newUnread) {
-              String targetChannel = 'general_notifications';
-              if (n.notificationType.startsWith('attendance')) {
-                targetChannel = 'attendance_updates';
-              } else if (n.notificationType.contains('fee') || n.notificationType.contains('installment')) {
-                targetChannel = 'fee_reminders';
-              }
               showLocalNotification(
-                channelId: targetChannel,
+                channelId: defaultChannelId,
                 title: n.title,
                 body: n.message,
               );

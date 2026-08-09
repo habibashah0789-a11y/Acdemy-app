@@ -12,7 +12,7 @@
         <!-- Default Firebase Messaging Channel and Icon -->
         <meta-data
             android:name="com.google.firebase.messaging.default_notification_channel_id"
-            android:value="academy_important_alerts" />
+            android:value="academy_notifications_v2" />
         <meta-data
             android:name="com.google.firebase.messaging.default_notification_icon"
             android:resource="@mipmap/launcher_icon" />

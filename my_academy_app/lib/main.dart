@@ -29,6 +29,8 @@ import 'student_portal/student_main_wrapper.dart';
 import 'student_portal/student_login_screen.dart';
 
 
+import 'package:firebase_messaging/firebase_messaging.dart';
+
 // Firebase options
 import 'firebase_options.dart';
 
@@ -39,6 +41,8 @@ Future<void> main() async {
   final app = await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   );
+
+  FirebaseMessaging.onBackgroundMessage(firebaseMessagingBackgroundHandler);
 
   debugPrint('[FIREBASE CONFIG] platform = ${defaultTargetPlatform.name}');
   debugPrint('[FIREBASE CONFIG] projectId = ${app.options.projectId}');
@@ -55,6 +59,7 @@ Future<void> main() async {
   }
 
   await DatabaseService.init();
+  await NotificationService.init(key: appNavigatorKey);
 
   final themeProvider = ThemeProvider();
   await themeProvider.init();

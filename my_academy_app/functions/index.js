@@ -65,14 +65,14 @@ app.post("/send-to-user", verifyAdminAuth, async (req, res) => {
       android: {
         priority: "high",
         notification: {
-          channelId: channelId || "academy_important_alerts",
-          sound: "default",
+          channelId: channelId || "academy_notifications_v2",
+          sound: "academy_notification",
           priority: "high",
         },
       },
       apns: {
         payload: {
-          aps: { sound: "default", badge: 1 },
+          aps: { sound: "academy_notification.wav", badge: 1 },
         },
       },
       tokens,
@@ -101,8 +101,8 @@ app.post("/send-to-class", verifyAdminAuth, async (req, res) => {
       data: data || {},
       android: {
         notification: {
-          channelId: channelId || "general_notifications",
-          sound: "default",
+          channelId: channelId || "academy_notifications_v2",
+          sound: "academy_notification",
         },
       },
     };
@@ -171,18 +171,32 @@ exports.onNotificationTriggerCreated = functions.firestore
           topic: targetTopic,
           notification: { title, body },
           data: payload || {},
-          android: { notification: { channelId: channelId || "academy_important_alerts" } },
+          android: { notification: { channelId: channelId || "academy_notifications_v2", sound: "academy_notification" } },
         });
       } else if (targetUserId) {
-        const devices = await admin.firestore().collection("devices").where("userId", "==", targetUserId).where("isActive", "==", true).get();
+        let devices = await admin.firestore().collection("devices").where("userId", "==", targetUserId).where("isActive", "==", true).get();
+        if (devices.empty) {
+          devices = await admin.firestore().collection("devices").where("studentId", "==", targetUserId).where("isActive", "==", true).get();
+        }
         const tokens = devices.docs.map((d) => d.data().fcmToken).filter(Boolean);
         if (tokens.length) {
-          await admin.messaging().sendEachForMulticast({
+          const response = await admin.messaging().sendEachForMulticast({
             tokens,
             notification: { title, body },
             data: payload || {},
-            android: { notification: { channelId: channelId || "academy_important_alerts" } },
+            android: {
+              priority: "high",
+              notification: {
+                channelId: channelId || "academy_notifications_v2",
+                sound: "academy_notification",
+                priority: "high",
+                visibility: "public",
+              },
+            },
           });
+          console.log(`[FCM SUCCESS] Sent to ${tokens.length} token(s) for ${targetUserId}. Success: ${response.successCount}, Failure: ${response.failureCount}`);
+        } else {
+          console.log(`[FCM WARN] No active devices found for user/student ${targetUserId}`);
         }
       }
       await snapshot.ref.update({ status: "processed", processedAt: admin.firestore.FieldValue.serverTimestamp() });
