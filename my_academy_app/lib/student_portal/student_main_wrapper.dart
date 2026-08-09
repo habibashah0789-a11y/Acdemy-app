@@ -116,23 +116,19 @@ class _StudentMainWrapperState extends State<StudentMainWrapper> {
 
       final linkedDeviceId = data['linkedDeviceId'] as String? ?? '';
 
-      // CASE 1: Device binding is currently empty on Firestore
+      // CASE 1: Device binding is currently empty on Firestore (Admin reset)
+      // We check !doc.metadata.isFromCache to ensure this is confirmed by the server.
+      // This prevents the local Firestore cache from emitting a stale empty state on startup
+      // and immediately logging out a student who just logged in.
       if (linkedDeviceId.isEmpty) {
-        if (_lastKnownLinkedDeviceId != null && _lastKnownLinkedDeviceId!.isNotEmpty) {
-          // Binding was transitionally cleared from a non-empty state -> Admin reset binding!
+        if (!doc.metadata.isFromCache) {
           debugPrint(
-              '[StudentMainWrapper] Device binding was reset by admin while logged in — forcing logout.');
+              '[StudentMainWrapper] Device binding is empty on Firestore server — forcing logout.');
           _handleForceLogout(
               'Your device binding has been reset by administration. Please log in again.');
         } else {
-          // Binding is empty and was not previously non-empty in this session -> Auto-bind current device!
           debugPrint(
-              '[StudentMainWrapper] Device binding is empty — auto-binding current device.');
-          StudentAuthService.ensureDeviceBound(
-            studentId: studentId,
-            currentDeviceId: currentDeviceId,
-            studentCode: studentCode,
-          );
+              '[StudentMainWrapper] Device binding is empty in cache — waiting for server snapshot.');
         }
         return;
       }
