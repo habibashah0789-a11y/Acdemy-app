@@ -12,6 +12,14 @@ import 'student_profile_screen.dart';
 import 'student_login_screen.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 
+enum DeviceBindingState {
+  checking,
+  valid,
+  unknown,
+  confirmedReset,
+  mismatch,
+}
+
 class StudentMainWrapper extends StatefulWidget {
   const StudentMainWrapper({super.key});
 
@@ -25,13 +33,10 @@ class _StudentMainWrapperState extends State<StudentMainWrapper> {
   StreamSubscription<DocumentSnapshot>? _studentStatusSubscription;
   StreamSubscription<DocumentSnapshot>? _studentAuthSubscription;
 
-  // ── Device-binding tracking fields (class-level, NOT local to method) ────
-  // These must be class fields so they persist across multiple Firestore
-  // snapshots. A local variable inside the listener would reset each call.
-
-  /// The linkedDeviceId value from the LAST processed Firestore snapshot.
-  /// null = no snapshot received yet (initial state).
+  // ── Device-binding state machine fields ──────────────────────────────────
   String? _lastKnownLinkedDeviceId;
+  DeviceBindingState _bindingState = DeviceBindingState.checking;
+  DateTime? _listenerStartTime;
 
   final List<Widget> _screens = [
     const StudentDashboardScreen(),
@@ -77,6 +82,16 @@ class _StudentMainWrapperState extends State<StudentMainWrapper> {
   }
 
   void _listenToStudentStatus(String studentId, String currentDeviceId, {String? studentCode}) {
+    // Initialize tracking state
+    _bindingState = DeviceBindingState.checking;
+    _listenerStartTime = DateTime.now();
+    _lastKnownLinkedDeviceId = currentDeviceId;
+
+    debugPrint('''
+[LOGIN PATH] student_auth/$studentId
+[LISTENER PATH] student_auth/$studentId
+[DEVICE ID SOURCE] currentDeviceId = $currentDeviceId''');
+
     // ── Student document stream (for account deletion detection) ──────────
     _studentStatusSubscription?.cancel();
     _studentStatusSubscription = FirebaseFirestore.instance
@@ -93,10 +108,6 @@ class _StudentMainWrapperState extends State<StudentMainWrapper> {
     });
 
     // ── Student auth stream (for device-binding enforcement) ──────────────
-    // Reset tracking state whenever we (re)start this listener.
-    // _lastKnownLinkedDeviceId is null until we receive a confirmed NON-EMPTY linkedDeviceId.
-    _lastKnownLinkedDeviceId = null;
-
     _studentAuthSubscription?.cancel();
     _studentAuthSubscription = FirebaseFirestore.instance
         .collection('student_auth')
@@ -105,11 +116,13 @@ class _StudentMainWrapperState extends State<StudentMainWrapper> {
         .listen((doc) {
       if (!mounted) return;
 
-      final docExists = doc.exists;
       final isFromCache = doc.metadata.isFromCache;
       final hasPendingWrites = doc.metadata.hasPendingWrites;
       final data = doc.data();
       final linkedDeviceId = data?['linkedDeviceId'] as String? ?? '';
+      final secondsSinceStart = _listenerStartTime != null
+          ? DateTime.now().difference(_listenerStartTime!).inSeconds
+          : 999;
 
       final localMasked = currentDeviceId.length > 8
           ? '${currentDeviceId.substring(0, 4)}...${currentDeviceId.substring(currentDeviceId.length - 4)}'
@@ -124,73 +137,167 @@ class _StudentMainWrapperState extends State<StudentMainWrapper> {
 studentCode = ${studentCode ?? ''}
 canonicalStudentId = $studentId
 documentPath = student_auth/$studentId
-documentExists = $docExists
+documentExists = ${doc.exists}
 snapshotFromCache = $isFromCache
 hasPendingWrites = $hasPendingWrites
 localDeviceId = $localMasked
 remoteLinkedDeviceId = $remoteMasked
+lastKnownLinkedDeviceId = $_lastKnownLinkedDeviceId
 localLength = ${currentDeviceId.length}
 remoteLength = ${linkedDeviceId.length}
 exactMatch = ${linkedDeviceId == currentDeviceId}
+secondsSinceStart = $secondsSinceStart
+currentBindingState = $_bindingState
 ==============================''');
 
-      if (!doc.exists) {
-        debugPrint('DECISION: FORCE LOGOUT\nREASON: student_auth document does not exist.');
-        _handleForceLogout(
-            'Your student authorization has been removed. Please contact admin.');
+      // RULE 1: Ignore cached / pending write snapshots
+      if (isFromCache || hasPendingWrites) {
+        debugPrint('[BINDING CHECK] Cached or pending-write snapshot ignored — keeping session active.');
+        if (linkedDeviceId == currentDeviceId) {
+          _bindingState = DeviceBindingState.valid;
+          _lastKnownLinkedDeviceId = linkedDeviceId;
+        }
         return;
       }
 
-      if (data == null) return;
+      // RULE 2: If document does not exist, perform server check
+      if (!doc.exists) {
+        _confirmServerAndEvaluate(
+          studentId: studentId,
+          currentDeviceId: currentDeviceId,
+          studentCode: studentCode,
+          reasonForEmpty: 'document_not_found',
+        );
+        return;
+      }
 
-<<<<<<< HEAD
-      final linkedDeviceId = data['linkedDeviceId'] as String? ?? '';
-
-      // CASE 1: Device binding is currently empty on Firestore (Admin reset)
-      // We check !doc.metadata.isFromCache to ensure this is confirmed by the server.
-      // This prevents the local Firestore cache from emitting a stale empty state on startup
-      // and immediately logging out a student who just logged in.
+      // RULE 3: Empty linkedDeviceId case
       if (linkedDeviceId.isEmpty) {
-        if (!doc.metadata.isFromCache) {
-          debugPrint(
-              '[StudentMainWrapper] Device binding is empty on Firestore server — forcing logout.');
-          _handleForceLogout(
-              'Your device binding has been reset by administration. Please log in again.');
-        } else {
-          debugPrint(
-              '[StudentMainWrapper] Device binding is empty in cache — waiting for server snapshot.');
-=======
-      // CASE 1: Device binding is currently empty on Firestore
-      if (linkedDeviceId.isEmpty) {
-        if (_lastKnownLinkedDeviceId != null && _lastKnownLinkedDeviceId!.isNotEmpty) {
-          debugPrint('DECISION: FORCE LOGOUT\nREASON: Device binding was reset by administration.');
-          _handleForceLogout(
-              'Your device binding has been reset by administration. Please log in again.');
-        } else {
-          debugPrint('DECISION: KEEP SESSION\nREASON: Binding is empty on initial load — auto-binding current device.');
+        if (_bindingState == DeviceBindingState.checking || secondsSinceStart < 6) {
+          debugPrint('[BINDING CHECK] Empty binding during startup grace period ($secondsSinceStart s) — auto-binding current device.');
           StudentAuthService.ensureDeviceBound(
             studentId: studentId,
             currentDeviceId: currentDeviceId,
             studentCode: studentCode,
           );
->>>>>>> c040f9abc080caaa42792e0db2309fcdc9ad4249
+          return;
         }
+
+        _confirmServerAndEvaluate(
+          studentId: studentId,
+          currentDeviceId: currentDeviceId,
+          studentCode: studentCode,
+          reasonForEmpty: 'empty_linked_device_id',
+        );
         return;
       }
 
-      // CASE 2: Device binding is non-empty on Firestore
+      // RULE 4: Non-matching device ID case
       if (linkedDeviceId != currentDeviceId) {
-        debugPrint('DECISION: FORCE LOGOUT\nREASON: Device ID mismatch ($remoteMasked vs $localMasked).');
-        _handleForceLogout('already login on another device');
+        if (_bindingState == DeviceBindingState.checking || secondsSinceStart < 6) {
+          debugPrint('[BINDING CHECK] Device ID mismatch during startup window — verifying with server.');
+        }
+
+        _confirmServerAndEvaluate(
+          studentId: studentId,
+          currentDeviceId: currentDeviceId,
+          studentCode: studentCode,
+          reasonForEmpty: 'mismatch',
+          observedRemoteId: linkedDeviceId,
+        );
         return;
       }
 
-      // CASE 3: Device binding matches currentDeviceId
+      // RULE 5: Exact match confirmed!
       _lastKnownLinkedDeviceId = linkedDeviceId;
+      _bindingState = DeviceBindingState.valid;
       debugPrint('DECISION: KEEP SESSION\nREASON: Device binding confirmed active.');
     }, onError: (e) {
       debugPrint('[StudentMainWrapper] Student auth stream error: $e');
     });
+  }
+
+  Future<void> _confirmServerAndEvaluate({
+    required String studentId,
+    required String currentDeviceId,
+    String? studentCode,
+    required String reasonForEmpty,
+    String? observedRemoteId,
+  }) async {
+    try {
+      debugPrint('[BINDING SERVER CONFIRMATION] Performing Source.server read for student_auth/$studentId...');
+      final serverDoc = await FirebaseFirestore.instance
+          .collection('student_auth')
+          .doc(studentId)
+          .get(const GetOptions(source: Source.server))
+          .timeout(const Duration(seconds: 5));
+
+      if (!mounted) return;
+
+      if (!serverDoc.exists) {
+        if (studentCode != null && studentCode.isNotEmpty && studentCode != studentId) {
+          final codeDoc = await FirebaseFirestore.instance
+              .collection('student_auth')
+              .doc(studentCode.trim().toUpperCase())
+              .get(const GetOptions(source: Source.server))
+              .timeout(const Duration(seconds: 5));
+
+          if (codeDoc.exists && codeDoc.data() != null) {
+            final codeDeviceId = codeDoc.data()?['linkedDeviceId'] as String? ?? '';
+            if (codeDeviceId == currentDeviceId) {
+              _lastKnownLinkedDeviceId = codeDeviceId;
+              _bindingState = DeviceBindingState.valid;
+              debugPrint('DECISION: KEEP SESSION\nREASON: Server confirmed valid binding under studentCode path ($studentCode).');
+              return;
+            }
+          }
+        }
+
+        if (_bindingState != DeviceBindingState.checking) {
+          _bindingState = DeviceBindingState.confirmedReset;
+          debugPrint('DECISION: FORCE LOGOUT\nREASON: Fresh server read confirmed student_auth record does not exist.');
+          _handleForceLogout('Your student authorization has been removed. Please contact admin.');
+        } else {
+          debugPrint('DECISION: KEEP SESSION\nREASON: Document missing during checking state — keeping session active.');
+        }
+        return;
+      }
+
+      final serverData = serverDoc.data() ?? {};
+      final serverDeviceId = serverData['linkedDeviceId'] as String? ?? '';
+
+      if (serverDeviceId == currentDeviceId) {
+        _lastKnownLinkedDeviceId = serverDeviceId;
+        _bindingState = DeviceBindingState.valid;
+        debugPrint('DECISION: KEEP SESSION\nREASON: Source.server confirmed active matching binding ($serverDeviceId).');
+        return;
+      }
+
+      if (serverDeviceId.isEmpty) {
+        if (_bindingState == DeviceBindingState.checking) {
+          debugPrint('DECISION: KEEP SESSION\nREASON: Server read empty binding during checking state — auto-binding device.');
+          StudentAuthService.ensureDeviceBound(
+            studentId: studentId,
+            currentDeviceId: currentDeviceId,
+            studentCode: studentCode,
+          );
+          return;
+        }
+
+        _bindingState = DeviceBindingState.confirmedReset;
+        debugPrint('DECISION: FORCE LOGOUT\nREASON: Authoritative server read confirmed empty linkedDeviceId.');
+        _handleForceLogout(
+            'Your device binding has been reset by administration. Please log in again.');
+        return;
+      }
+
+      _bindingState = DeviceBindingState.mismatch;
+      debugPrint('DECISION: FORCE LOGOUT\nREASON: Authoritative server read confirmed device mismatch ($serverDeviceId vs $currentDeviceId).');
+      _handleForceLogout('already login on another device');
+    } catch (e) {
+      _bindingState = DeviceBindingState.unknown;
+      debugPrint('[BINDING SERVER CONFIRMATION] Read failed ($e) — NETWORK ERROR DOES NOT FORCE LOGOUT. Keeping session active.');
+    }
   }
 
   Future<void> _handleForceLogout(String message) async {
@@ -345,4 +452,3 @@ $st
     );
   }
 }
-
