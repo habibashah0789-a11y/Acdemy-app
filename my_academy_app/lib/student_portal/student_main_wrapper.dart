@@ -58,7 +58,6 @@ class _StudentMainWrapperState extends State<StudentMainWrapper> {
       final session = await StudentAuthService.getLocalSession();
       if (session != null) {
         final studentId = session['studentId'] as String? ?? '';
-        final studentCode = session['studentCode'] as String? ?? '';
         final deviceId = session['deviceId'] as String? ?? '';
         if (studentId.isNotEmpty) {
           await Hive.openBox<bool>('read_notices');
@@ -122,16 +121,20 @@ class _StudentMainWrapperState extends State<StudentMainWrapper> {
 
       final linkedDeviceId = data['linkedDeviceId'] as String? ?? '';
 
-      if (linkedDeviceId.isEmpty) {
-        debugPrint(
-            '[StudentMainWrapper] Device binding is empty on server — forcing logout.');
-        _handleForceLogout(
-            'Your device binding has been reset by administration. Please log in again.');
-        return;
-      }
-
       if (_isInitialAuthSnapshot) {
         _isInitialAuthSnapshot = false;
+
+        if (linkedDeviceId.isEmpty) {
+          debugPrint(
+              '[StudentMainWrapper] First snapshot: device binding is empty on server — auto-binding current device.');
+          _lastKnownLinkedDeviceId = currentDeviceId;
+          StudentAuthService.ensureDeviceBound(
+            studentId: studentId,
+            currentDeviceId: currentDeviceId,
+          );
+          return;
+        }
+
         _lastKnownLinkedDeviceId = linkedDeviceId;
 
         if (linkedDeviceId != currentDeviceId) {
@@ -145,14 +148,28 @@ class _StudentMainWrapperState extends State<StudentMainWrapper> {
       final previousId = _lastKnownLinkedDeviceId ?? '';
       _lastKnownLinkedDeviceId = linkedDeviceId;
 
+      if (linkedDeviceId.isEmpty) {
+        if (previousId.isNotEmpty) {
+          debugPrint(
+              '[StudentMainWrapper] Device binding was reset by admin while logged in — forcing logout.');
+          _handleForceLogout(
+              'Your device binding has been reset by administration. Please log in again.');
+        } else {
+          // If previous was also empty (e.g. initial binding in progress), auto-bind
+          StudentAuthService.ensureDeviceBound(
+            studentId: studentId,
+            currentDeviceId: currentDeviceId,
+          );
+        }
+        return;
+      }
+
       if (linkedDeviceId != currentDeviceId) {
         debugPrint(
             '[StudentMainWrapper] Different device bound — forcing logout.');
         _handleForceLogout('already login on another device');
       }
-      // All other cases (linkedDeviceId is same as before, or went from
-      // empty → filled by our own binding write): no action needed.
-      // This covers: admin edits name, fees, class, phone, etc.
+      // All other cases (linkedDeviceId is same as currentDeviceId): no action needed.
     }, onError: (e) {
       debugPrint('[StudentMainWrapper] Student auth stream error: $e');
     });
