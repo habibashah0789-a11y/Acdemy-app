@@ -477,6 +477,14 @@ class NotificationService {
     return _controller.stream;
   }
 
+  static bool _isAdminNotification(NotificationModel n) {
+    // Individual fee reminders targeted to specific students are NOT shown on the admin portal
+    if (n.notificationType == 'fee_reminder' && n.studentId.isNotEmpty && n.studentId != 'admin_only') {
+      return false;
+    }
+    return true;
+  }
+
   static Future<void> _syncFromFirestoreToHive() async {
     try {
       final snapshot = await _firestore.collection(_collection).orderBy('timestamp', descending: true).get();
@@ -484,7 +492,7 @@ class NotificationService {
         final rawData = doc.data();
         final map = {...rawData, 'id': doc.id};
         return NotificationModel.fromMap(map, doc.id);
-      }).toList();
+      }).where((n) => _isAdminNotification(n)).toList();
 
       await _notificationBox.clear();
       for (final notification in notifications) {
@@ -508,7 +516,7 @@ class NotificationService {
           final rawData = doc.data();
           final map = {...rawData, 'id': doc.id};
           return NotificationModel.fromMap(map, doc.id);
-        }).toList();
+        }).where((n) => _isAdminNotification(n)).toList();
 
         // On the very first snapshot, just record what exists — don’t beep.
         if (!_firstSnapshotReceived) {
@@ -804,9 +812,9 @@ class NotificationService {
           return NotificationModel.fromMap(map, doc.id);
         }).toList();
 
-        // Filter notices for this student (broadcast or targeted to this student, excluding admin_only)
+        // Filter notices for this student (broadcast or targeted to this student, excluding admin_only & summaries)
         final filteredNotices = notifications.where((n) {
-          if (n.studentId == 'admin_only') return false;
+          if (n.studentId == 'admin_only' || n.notificationType == 'fee_reminder_summary') return false;
           return n.studentId.isEmpty || n.studentId == studentId;
         }).toList();
 
