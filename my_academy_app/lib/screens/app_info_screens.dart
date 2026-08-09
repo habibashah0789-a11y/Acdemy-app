@@ -778,17 +778,13 @@ class _HelpSupportScreenState extends State<HelpSupportScreen>
                 title: 'Official Email Support',
                 subtitle: 'quaidacademy241992@gmail.com',
                 onTap: () async {
-                  final Uri emailLaunchUri = Uri(
-                    scheme: 'mailto',
-                    path: 'quaidacademy241992@gmail.com',
-                    queryParameters: {
-                      'subject': 'Support Request - Quaid Academy Student Portal',
-                    },
+                  final Uri emailLaunchUri = Uri.parse(
+                    'mailto:quaidacademy241992@gmail.com?subject=Support%20Request%20-%20Quaid%20Academy%20Student%20Portal',
                   );
                   try {
                     await launchUrl(emailLaunchUri);
                   } catch (e) {
-                    if (context.mounted) {
+                    if (mounted) {
                       ScaffoldMessenger.of(context).showSnackBar(
                         SnackBar(content: Text('Could not open email client: $e')),
                       );
@@ -833,7 +829,7 @@ class _HelpSupportScreenState extends State<HelpSupportScreen>
             decoration: BoxDecoration(
               color: onTap != null
                   ? AppTheme.primaryBlue.withValues(alpha: 0.1)
-                  : (isDark ? Colors.grey.shade850 : Colors.grey.shade100),
+                  : (isDark ? const Color(0xFF1E293B) : Colors.grey.shade100),
               shape: BoxShape.circle,
             ),
             child: Icon(icon, size: 20, color: AppTheme.primaryBlue),
