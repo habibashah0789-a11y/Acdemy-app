@@ -364,35 +364,63 @@ Firebase projectId = ${Firebase.app().options.projectId}
     required String body,
     String? payload,
   }) async {
-    const androidDetails = AndroidNotificationDetails(
-      defaultChannelId,
-      defaultChannelName,
-      channelDescription: 'Important academy notifications and student updates',
-      importance: Importance.high,
-      priority: Priority.high,
-      visibility: NotificationVisibility.public,
-      playSound: true,
-      sound: RawResourceAndroidNotificationSound(defaultSoundName),
-      enableVibration: true,
-    );
+    try {
+      final androidDetails = AndroidNotificationDetails(
+        channelId,
+        channelId == feeReminderChannelId ? feeReminderChannelName : defaultChannelName,
+        channelDescription: channelId == feeReminderChannelId
+            ? 'Fee reminders and payment notifications from the academy'
+            : 'Important academy notifications and student updates',
+        importance: Importance.high,
+        priority: Priority.high,
+        visibility: NotificationVisibility.public,
+        playSound: true,
+        sound: const RawResourceAndroidNotificationSound(defaultSoundName),
+        enableVibration: true,
+      );
 
-    const platformDetails = NotificationDetails(
-      android: androidDetails,
-      iOS: DarwinNotificationDetails(
-        presentAlert: true,
-        presentBadge: true,
-        presentSound: true,
-        sound: 'academy_notification.wav',
-      ),
-    );
+      final platformDetails = NotificationDetails(
+        android: androidDetails,
+        iOS: const DarwinNotificationDetails(
+          presentAlert: true,
+          presentBadge: true,
+          presentSound: true,
+          sound: 'academy_notification.wav',
+        ),
+      );
 
-    await _localNotificationsPlugin.show(
-      DateTime.now().millisecondsSinceEpoch ~/ 1000,
-      title,
-      body,
-      platformDetails,
-      payload: payload,
-    );
+      await _localNotificationsPlugin.show(
+        DateTime.now().millisecondsSinceEpoch ~/ 1000,
+        title,
+        body,
+        platformDetails,
+        payload: payload,
+      );
+    } catch (e) {
+      debugPrint('[NotificationService] Local notification sound lookup failed ($e), falling back to default sound');
+      try {
+        final fallbackAndroidDetails = AndroidNotificationDetails(
+          channelId,
+          channelId == feeReminderChannelId ? feeReminderChannelName : defaultChannelName,
+          channelDescription: 'Important academy notifications',
+          importance: Importance.high,
+          priority: Priority.high,
+          visibility: NotificationVisibility.public,
+          playSound: true,
+          enableVibration: true,
+        );
+
+        await _localNotificationsPlugin.show(
+          DateTime.now().millisecondsSinceEpoch ~/ 1000,
+          title,
+          body,
+          NotificationDetails(android: fallbackAndroidDetails),
+          payload: payload,
+        );
+      } catch (fallbackError) {
+        debugPrint('[NotificationService] Fallback local notification error: $fallbackError');
+      }
+    }
   }
 
   // ── 6. Notification Payload Routing ──────────────────────────────────
@@ -734,16 +762,16 @@ Firebase project = ${Firebase.app().options.projectId}
   }
 
   static Future<void> triggerPushNotification({
-    required String targetUserId,
+    String? targetUserId,
+    String? targetTopic,
     required String title,
     required String body,
     String? channelId,
     Map<String, String>? payload,
   }) async {
-    final targetChannel = channelId ?? feeReminderChannelId;
+    final targetChannel = channelId ?? defaultChannelId;
     try {
-      final docRef = await _firestore.collection('notification_triggers').add({
-        'targetUserId': targetUserId,
+      final data = <String, dynamic>{
         'title': title,
         'body': body,
         'channelId': targetChannel,
@@ -751,18 +779,26 @@ Firebase project = ${Firebase.app().options.projectId}
         'payload': payload ?? {},
         'status': 'pending',
         'createdAt': FieldValue.serverTimestamp(),
-      });
+      };
+
+      if (targetTopic != null && targetTopic.isNotEmpty) {
+        data['targetTopic'] = targetTopic;
+      } else if (targetUserId != null && targetUserId.isNotEmpty) {
+        data['targetUserId'] = targetUserId;
+      }
+
+      final docRef = await _firestore.collection('notification_triggers').add(data);
 
       debugPrint('''
 ==============================
-[FEE PUSH CHECKPOINT 1] Creating notification trigger...
+[FCM SEND TRIGGER CREATED]
 triggerId = ${docRef.id}
-studentId = $targetUserId
-studentCode = ${payload?['studentCode'] ?? targetUserId}
+targetTopic = ${targetTopic ?? 'N/A'}
+targetUserId = ${targetUserId ?? 'N/A'}
 title = $title
-
-[FEE PUSH CHECKPOINT 1] TRIGGER CREATED SUCCESSFULLY
-Firestore Path: notification_triggers/${docRef.id}
+channelId = $targetChannel
+sound = $defaultSoundName
+status = PENDING
 ==============================''');
     } catch (e) {
       debugPrint('[FCM TRIGGER ERROR] Failed to create push trigger: $e');
@@ -783,11 +819,23 @@ Firestore Path: notification_triggers/${docRef.id}
           .set(notification.toMap())
           .catchError((_) {}));
 
-      if (notification.studentId.isNotEmpty && notification.studentId != 'admin_only') {
+      if (notification.studentId.isEmpty) {
+        unawaited(triggerPushNotification(
+          targetTopic: 'academy_all',
+          title: notification.title,
+          body: notification.message,
+          channelId: defaultChannelId,
+          payload: {
+            'type': notification.notificationType,
+            'screen': 'notifications',
+          },
+        ));
+      } else if (notification.studentId != 'admin_only') {
         unawaited(triggerPushNotification(
           targetUserId: notification.studentId,
           title: notification.title,
           body: notification.message,
+          channelId: defaultChannelId,
           payload: {
             'type': notification.notificationType,
             'studentId': notification.studentId,

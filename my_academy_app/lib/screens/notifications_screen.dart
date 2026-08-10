@@ -239,8 +239,21 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                           .doc(notification.id)
                           .set(notification.toMap());
 
+                      // Dispatch FCM push notification to topic 'academy_all' for background/terminated devices
+                      await NotificationService.triggerPushNotification(
+                        targetTopic: 'academy_all',
+                        title: '📢 ${titleController.text.trim()}',
+                        body: messageController.text.trim(),
+                        channelId: NotificationService.defaultChannelId,
+                        payload: {
+                          'type': 'announcement',
+                          'screen': 'notifications',
+                        },
+                      );
+
+                      // Safely trigger local notification without crashing on sound lookup
                       await NotificationService.showLocalNotification(
-                        channelId: 'academy_important_alerts',
+                        channelId: NotificationService.defaultChannelId,
                         title: '📢 ${titleController.text.trim()}',
                         body: messageController.text.trim(),
                         payload: '{"type": "announcement", "screen": "notifications"}',
