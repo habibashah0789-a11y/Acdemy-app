@@ -67,11 +67,12 @@ class DefaultFirebaseOptions {
   );
 
   static const FirebaseOptions windows = FirebaseOptions(
-    apiKey: 'AIzaSyC55pOlML-1-4FNVAi8MtYrHdexm0FggCc',
-    appId: '1:335773136778:web:28429229c72b1034f3fa73',
-    messagingSenderId: '335773136778',
-    projectId: 'habiba-12',
-    authDomain: 'habiba-12.firebaseapp.com',
-    storageBucket: 'habiba-12.firebasestorage.app',
+    apiKey: 'AIzaSyCfAxjVCz0wux86t_DiepAiWxA6vZYtSkY',
+    appId: '1:922952422234:web:b0d9aa20617fb18e23d963',
+    messagingSenderId: '922952422234',
+    projectId: 'quaid-academy',
+    authDomain: 'quaid-academy.firebaseapp.com',
+    storageBucket: 'quaid-academy.firebasestorage.app',
+    measurementId: 'G-WB8KH503NS',
   );
 }
