@@ -354,9 +354,13 @@ class _DashboardScreenState extends State<DashboardScreen> {
             _isMatric(s.classType) && s.grade.toLowerCase().contains('tenth'))
         .length
         .toDouble();
+    final mdcat = students
+        .where((s) => s.classType.toLowerCase().contains('mdcat') || s.grade.toLowerCase().contains('mdcat'))
+        .length
+        .toDouble();
 
     final maxVal =
-        [fsc1st, fsc2nd, matric9th, matric10th].reduce((a, b) => a > b ? a : b);
+        [fsc1st, fsc2nd, matric9th, matric10th, mdcat].reduce((a, b) => a > b ? a : b);
     final maxY = maxVal > 0 ? maxVal * 1.25 : 10.0;
 
     final isDark = Theme.of(context).brightness == Brightness.dark;
@@ -472,6 +476,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
                         title = 'Matric 10th Class';
                         classType = 'Matric';
                         grade = 'Tenth';
+                      } else if (index == 4) {
+                        title = 'MDCAT Batch';
+                        classType = 'MDCAT';
+                        grade = 'MDCAT Session';
                       }
 
                       if (title.isNotEmpty) {
@@ -516,7 +524,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
                             '1st Year',
                             '2nd Year',
                             '9th Class',
-                            '10th Class'
+                            '10th Class',
+                            'MDCAT'
                           ];
                           final label = (value >= 0 && value < labels.length)
                               ? labels[value.toInt()]
@@ -560,6 +569,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     _barGroup(1, fsc2nd, maxY, const Color(0xFF06B6D4)),
                     _barGroup(2, matric9th, maxY, const Color(0xFF8B5CF6)),
                     _barGroup(3, matric10th, maxY, const Color(0xFF10B981)),
+                    _barGroup(4, mdcat, maxY, const Color(0xFFE11D48)),
                   ],
                 ),
               ),
@@ -573,6 +583,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 _buildLegendItem('FSC 2nd Yr', const Color(0xFF06B6D4)),
                 _buildLegendItem('Matric 9th', const Color(0xFF8B5CF6)),
                 _buildLegendItem('Matric 10th', const Color(0xFF10B981)),
+                _buildLegendItem('MDCAT', const Color(0xFFE11D48)),
               ],
             ),
           ],
@@ -2518,6 +2529,10 @@ class _StudentStrengthDetailDialogState
   @override
   Widget build(BuildContext context) {
     final filtered = widget.students.where((s) {
+      final isMdcat = widget.classType.toLowerCase().contains('mdcat');
+      if (isMdcat) {
+        return s.classType.toLowerCase().contains('mdcat') || s.grade.toLowerCase().contains('mdcat');
+      }
       final isFsc = widget.classType.toLowerCase().contains('fsc');
       final isType = isFsc
           ? s.classType.toLowerCase().contains('fsc')

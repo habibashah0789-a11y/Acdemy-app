@@ -231,7 +231,9 @@ class StudentModel extends HiveObject {
     final cType = classType.trim().toLowerCase();
     final g = grade.trim().toLowerCase();
 
-    if (cType.contains('matric')) {
+    if (cType.contains('mdcat') || g.contains('mdcat')) {
+      return 'MDCAT';
+    } else if (cType.contains('matric')) {
       if (g.contains('9') || g.contains('ninth')) return '9';
       if (g.contains('10') || g.contains('tenth')) return '10';
       return '9';
@@ -242,8 +244,8 @@ class StudentModel extends HiveObject {
     }
   }
 
-  /// Generates a unique student code / roll number differentiated by class level (9, 10, 11, 12).
-  /// Format: QA-[LEVEL]-[YEAR]-[SEQ] e.g., QA-9-2026-001, QA-10-2026-001, QA-11-2026-001, QA-12-2026-001
+  /// Generates a unique student code / roll number differentiated by class level (9, 10, 11, 12, MDCAT).
+  /// Format: QA-[LEVEL]-[YEAR]-[SEQ] e.g., QA-MDCAT-2026-001, QA-9-2026-001, QA-10-2026-001, QA-11-2026-001, QA-12-2026-001
   static String generateStudentCode({
     required String classType,
     required String grade,
@@ -296,12 +298,15 @@ class StudentModel extends HiveObject {
   
   bool get isFsc => classType.toLowerCase().contains('fsc');
   bool get isMatric => classType.toLowerCase().contains('matric');
+  bool get isMdcat => classType.toLowerCase().contains('mdcat') || grade.toLowerCase().contains('mdcat');
   
   bool get isFirstYear => grade.toLowerCase().contains('first') || grade.toLowerCase().contains('ninth');
   bool get isSecondYear => grade.toLowerCase().contains('second') || grade.toLowerCase().contains('tenth');
   
   String get classLevel {
-    if (isFsc) {
+    if (isMdcat) {
+      return 'MDCAT Batch';
+    } else if (isFsc) {
       return isFirstYear ? 'FSc Part 1' : 'FSc Part 2';
     } else {
       return isFirstYear ? 'Matric 9th' : 'Matric 10th';

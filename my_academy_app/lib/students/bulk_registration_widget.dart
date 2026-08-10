@@ -124,10 +124,11 @@ class _BulkStudentRegistrationWidgetState extends State<BulkStudentRegistrationW
   int _totalToSave = 0;
   String _statusText = '';
 
-  static const List<String> _classTypes = ['FSc', 'Matric'];
+  static const List<String> _classTypes = ['FSc', 'Matric', 'MDCAT'];
   static const Map<String, List<String>> _gradeOptions = {
     'FSc': ['First Year', 'Second Year'],
     'Matric': ['Ninth', 'Tenth'],
+    'MDCAT': ['MDCAT Session'],
   };
   static const List<String> _subjects = ['Biology', 'Physics', 'Chemistry', 'English', 'Math'];
   static const List<String> _scheduleSlots = [

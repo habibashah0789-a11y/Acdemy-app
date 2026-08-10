@@ -91,10 +91,11 @@ class _AddStudentScreenState extends State<AddStudentScreen> {
   // Track selected subjects and their schedules
   Map<String, String> _selectedSubjectSchedules = {};
 
-  static const List<String> _classTypes = ['FSc', 'Matric'];
+  static const List<String> _classTypes = ['FSc', 'Matric', 'MDCAT'];
   static const Map<String, List<String>> _gradeOptions = {
     'FSc': ['First Year', 'Second Year'],
     'Matric': ['Ninth', 'Tenth'],
+    'MDCAT': ['MDCAT Session'],
   };
   static const List<String> _subjects = ['Biology', 'Physics', 'Chemistry', 'English', 'Math'];
   static const List<String> _scheduleSlots = [
@@ -953,6 +954,14 @@ class _AddStudentScreenState extends State<AddStudentScreen> {
                               setState(() {
                                 _selectedClassType = v;
                                 _selectedGrade = _gradeOptions[v]!.first;
+                                if (v == 'MDCAT') {
+                                  _selectedSubjectSchedules = {
+                                    'Biology': '7:00 AM',
+                                    'Physics': '7:00 AM',
+                                    'Chemistry': '7:00 AM',
+                                    'English': '7:00 AM',
+                                  };
+                                }
                               });
                               _gradeFocusNode.requestFocus();
                             }

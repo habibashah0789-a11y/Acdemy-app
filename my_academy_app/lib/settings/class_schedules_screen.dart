@@ -39,6 +39,7 @@ class _ClassSchedulesScreenState extends State<ClassSchedulesScreen> {
     {'value': 'Tenth', 'label': 'Class 10', 'sub': '10th Grade'},
     {'value': 'First Year', 'label': 'Class 11', 'sub': '1st Year'},
     {'value': 'Second Year', 'label': 'Class 12', 'sub': '2nd Year'},
+    {'value': 'MDCAT Session', 'label': 'MDCAT', 'sub': 'MDCAT Batch'},
   ];
 
   final List<Map<String, dynamic>> _subjectOptions = [
@@ -83,7 +84,12 @@ class _ClassSchedulesScreenState extends State<ClassSchedulesScreen> {
   // Filter students based on current selections
   List<StudentModel> get _filteredStudents {
     return _allStudents.where((s) {
-      final matchesGrade = s.grade.toLowerCase() == _selectedGrade.toLowerCase();
+      bool matchesGrade = false;
+      if (_selectedGrade == 'MDCAT Session') {
+        matchesGrade = s.classType.toLowerCase().contains('mdcat') || s.grade.toLowerCase().contains('mdcat');
+      } else {
+        matchesGrade = s.grade.toLowerCase() == _selectedGrade.toLowerCase();
+      }
       
       final subjectsList = s.subject.trim().toLowerCase().split(',').map((x) => x.trim()).toList();
       final tSub = _selectedSubject.trim().toLowerCase();
