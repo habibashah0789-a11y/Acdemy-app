@@ -171,23 +171,15 @@ currentBindingState = $_bindingState
         return;
       }
 
-      // RULE 3: Empty linkedDeviceId case
+      // RULE 3: Empty linkedDeviceId case — auto-bind current device & keep session active
       if (linkedDeviceId.isEmpty) {
-        if (_bindingState == DeviceBindingState.checking || secondsSinceStart < 6) {
-          debugPrint('[BINDING CHECK] Empty binding during startup grace period ($secondsSinceStart s) — auto-binding current device.');
-          StudentAuthService.ensureDeviceBound(
-            studentId: studentId,
-            currentDeviceId: currentDeviceId,
-            studentCode: studentCode,
-          );
-          return;
-        }
-
-        _confirmServerAndEvaluate(
+        debugPrint('[BINDING CHECK] Empty binding observed — auto-binding current device.');
+        _lastKnownLinkedDeviceId = currentDeviceId;
+        _bindingState = DeviceBindingState.valid;
+        StudentAuthService.ensureDeviceBound(
           studentId: studentId,
           currentDeviceId: currentDeviceId,
           studentCode: studentCode,
-          reasonForEmpty: 'empty_linked_device_id',
         );
         return;
       }
@@ -274,20 +266,14 @@ currentBindingState = $_bindingState
       }
 
       if (serverDeviceId.isEmpty) {
-        if (_bindingState == DeviceBindingState.checking) {
-          debugPrint('DECISION: KEEP SESSION\nREASON: Server read empty binding during checking state — auto-binding device.');
-          StudentAuthService.ensureDeviceBound(
-            studentId: studentId,
-            currentDeviceId: currentDeviceId,
-            studentCode: studentCode,
-          );
-          return;
-        }
-
-        _bindingState = DeviceBindingState.confirmedReset;
-        debugPrint('DECISION: FORCE LOGOUT\nREASON: Authoritative server read confirmed empty linkedDeviceId.');
-        _handleForceLogout(
-            'Your device binding has been reset by administration. Please log in again.');
+        debugPrint('DECISION: KEEP SESSION\nREASON: Server read empty binding — auto-binding current device.');
+        _lastKnownLinkedDeviceId = currentDeviceId;
+        _bindingState = DeviceBindingState.valid;
+        StudentAuthService.ensureDeviceBound(
+          studentId: studentId,
+          currentDeviceId: currentDeviceId,
+          studentCode: studentCode,
+        );
         return;
       }
 
