@@ -11,8 +11,8 @@ import '../services/teacher_service.dart';
 import '../theme/app_theme.dart';
 
 class TeacherNotificationsScreen extends StatefulWidget {
-  final TeacherModel teacher;
-  const TeacherNotificationsScreen({super.key, required this.teacher});
+  final TeacherModel? teacher;
+  const TeacherNotificationsScreen({super.key, this.teacher});
 
   @override
   State<TeacherNotificationsScreen> createState() =>
@@ -21,6 +21,26 @@ class TeacherNotificationsScreen extends StatefulWidget {
 
 class _TeacherNotificationsScreenState
     extends State<TeacherNotificationsScreen> {
+  TeacherModel? _currentTeacher;
+
+  @override
+  void initState() {
+    super.initState();
+    _currentTeacher = widget.teacher;
+    if (_currentTeacher == null) {
+      _loadTeacherProfile();
+    }
+  }
+
+  Future<void> _loadTeacherProfile() async {
+    final teacher = await TeacherService.getCurrentTeacher();
+    if (mounted && teacher != null) {
+      setState(() {
+        _currentTeacher = teacher;
+      });
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
@@ -70,13 +90,14 @@ class _TeacherNotificationsScreenState
                 (data['targetSubject'] as String? ?? '').toLowerCase();
             final targetSection =
                 (data['targetSection'] as String? ?? '').toLowerCase();
-            if (targetSubject.isEmpty ||
+            if (_currentTeacher == null ||
+                targetSubject.isEmpty ||
                 targetSubject == 'all' ||
                 targetSection == 'all') {
               return true;
             }
-            final mySubject = widget.teacher.subject.toLowerCase();
-            final mySection = widget.teacher.section.toLowerCase();
+            final mySubject = _currentTeacher!.subject.toLowerCase();
+            final mySection = _currentTeacher!.section.toLowerCase();
             return targetSubject == mySubject &&
                 (targetSection.isEmpty || targetSection == mySection);
           }).toList();
@@ -112,7 +133,11 @@ class _TeacherNotificationsScreenState
     final raw = data['createdAt'] ?? data['timestamp'];
 
     DateTime? dt;
-    if (raw is Timestamp) dt = raw.toDate();
+    if (raw is Timestamp) {
+      dt = raw.toDate();
+    } else if (raw is String) {
+      dt = DateTime.tryParse(raw);
+    }
 
     final color = _colorForType(type, mediaType);
     final icon = _iconForType(type, mediaType);
@@ -200,7 +225,8 @@ class _TeacherNotificationsScreenState
       return ClipRRect(
         borderRadius: BorderRadius.circular(12),
         child: Container(
-          constraints: const BoxConstraints(maxHeight: 200, width: double.infinity),
+          width: double.infinity,
+          constraints: const BoxConstraints(maxHeight: 200),
           decoration: BoxDecoration(
             color: Colors.grey.shade100,
             borderRadius: BorderRadius.circular(12),
@@ -304,11 +330,10 @@ class _TeacherNotificationsScreenState
     if (await canLaunchUrl(uri)) {
       await launchUrl(uri, mode: LaunchMode.externalApplication);
     } else {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Could not open attachment URL')),
-        );
-      }
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Could not open attachment URL')),
+      );
     }
   }
 
@@ -373,6 +398,15 @@ class _TeacherNotificationsScreenState
 
   // ── Create & Broadcast Announcement Modal ──
   void _openCreateAnnouncementModal() {
+    final teacherToUse = _currentTeacher ?? widget.teacher;
+    if (teacherToUse == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Teacher profile is loading. Please try again in a moment.'),
+        ),
+      );
+      return;
+    }
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -381,7 +415,7 @@ class _TeacherNotificationsScreenState
         padding: EdgeInsets.only(
           bottom: MediaQuery.of(ctx).viewInsets.bottom,
         ),
-        child: _CreateAnnouncementModal(teacher: widget.teacher),
+        child: _CreateAnnouncementModal(teacher: teacherToUse),
       ),
     );
   }
@@ -435,18 +469,21 @@ class __CreateAnnouncementModalState extends State<_CreateAnnouncementModal> {
 
       if (result != null && result.files.isNotEmpty) {
         final file = result.files.first;
-        setState(() {
-          _fileBytes = file.bytes;
-          _fileName = file.name;
-          _mediaType = type;
-        });
+        final bytes = file.bytes;
+
+        if (bytes != null) {
+          setState(() {
+            _fileBytes = bytes;
+            _fileName = file.name;
+            _mediaType = type;
+          });
+        }
       }
     } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to select file: $e')),
-        );
-      }
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Failed to select file: $e')),
+      );
     }
   }
 
@@ -482,36 +519,34 @@ class __CreateAnnouncementModalState extends State<_CreateAnnouncementModal> {
         mediaType: _mediaType,
       );
 
-      if (mounted) {
-        Navigator.of(context).pop();
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            backgroundColor: AppTheme.secondaryGreen,
-            content: Row(
-              children: [
-                const Icon(Icons.check_circle_rounded, color: Colors.white),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: Text(
-                    'Announcement successfully published to ${widget.teacher.subject} students!',
-                    style: GoogleFonts.poppins(fontWeight: FontWeight.w500),
-                  ),
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          backgroundColor: AppTheme.secondaryGreen,
+          content: Row(
+            children: [
+              const Icon(Icons.check_circle_rounded, color: Colors.white),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  'Announcement successfully published to ${widget.teacher.subject} students!',
+                  style: GoogleFonts.poppins(fontWeight: FontWeight.w500),
                 ),
-              ],
-            ),
+              ),
+            ],
           ),
-        );
-      }
+        ),
+      );
+      Navigator.of(context).pop();
     } catch (e) {
-      if (mounted) {
-        setState(() => _isUploading = false);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            backgroundColor: AppTheme.warningRed,
-            content: Text('Error publishing announcement: $e'),
-          ),
-        );
-      }
+      if (!context.mounted) return;
+      setState(() => _isUploading = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          backgroundColor: AppTheme.warningRed,
+          content: Text('Error publishing announcement: $e'),
+        ),
+      );
     }
   }
 
