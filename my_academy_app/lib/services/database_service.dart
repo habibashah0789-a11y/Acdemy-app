@@ -38,7 +38,7 @@ class DatabaseService {
           .collection('students')
           .doc(student.id)
           .set(student.toMap())
-          .then((_) => NotificationService.createStudentRegistrationNotification(student))
+          .then((_) => NotificationService.createStudentRegistrationNotification(student: student))
           .catchError((e) => debugPrint('Firestore add student failed: $e')));
     }
     return true;
@@ -67,7 +67,7 @@ class DatabaseService {
             await batch.commit();
           }
           for (final s in students) {
-            await NotificationService.createStudentRegistrationNotification(s);
+            await NotificationService.createStudentRegistrationNotification(student: s);
           }
         } catch (e) {
           debugPrint('Firestore bulk add failed: $e');

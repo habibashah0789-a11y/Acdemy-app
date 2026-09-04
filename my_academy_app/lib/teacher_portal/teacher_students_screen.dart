@@ -206,7 +206,7 @@ class _TeacherStudentsScreenState extends State<TeacherStudentsScreen> {
   Widget _buildStudentTile(StudentModel student, int idx) {
     final isPaid = student.isSubjectPaid(widget.teacher.subject);
     final remaining = student.getSubjectRemaining(widget.teacher.subject);
-    final isDark = Theme.of(context).brightness == Brightness.dark;
+
 
     return Card(
       margin: const EdgeInsets.only(bottom: 8),

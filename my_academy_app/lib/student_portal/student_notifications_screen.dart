@@ -469,7 +469,7 @@ class _StudentNotificationsScreenState extends State<StudentNotificationsScreen>
       return ClipRRect(
         borderRadius: BorderRadius.circular(14),
         child: Container(
-          constraints: const BoxConstraints(maxHeight: 250, width: double.infinity),
+          constraints: const BoxConstraints(maxHeight: 250, maxWidth: double.infinity),
           color: Colors.black12,
           child: Image.network(
             mediaUrl,

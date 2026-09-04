@@ -200,7 +200,7 @@ class _TeacherNotificationsScreenState
       return ClipRRect(
         borderRadius: BorderRadius.circular(12),
         child: Container(
-          constraints: const BoxConstraints(maxHeight: 200, width: double.infinity),
+          constraints: const BoxConstraints(maxHeight: 200, maxWidth: double.infinity),
           decoration: BoxDecoration(
             color: Colors.grey.shade100,
             borderRadius: BorderRadius.circular(12),
@@ -427,7 +427,7 @@ class __CreateAnnouncementModalState extends State<_CreateAnnouncementModal> {
         fileType = FileType.audio;
       }
 
-      final result = await FilePicker.platform.pickFiles(
+      final result = await FilePicker.pickFiles(
         type: fileType,
         allowedExtensions: allowedExtensions,
         withData: true,

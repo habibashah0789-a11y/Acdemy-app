@@ -613,6 +613,63 @@ Firebase projectId = ${Firebase.app().options.projectId}
       title: notification.title,
       body: notification.message,
     );
+
+    try {
+      final subjects = student.subject
+          .split(',')
+          .map((s) => s.trim())
+          .where((s) => s.isNotEmpty)
+          .toList();
+
+      if (subjects.isEmpty) {
+        subjects.add('all');
+      }
+
+      for (final sub in subjects) {
+        final notifId = 'reg_${student.id}_${sub}_${DateTime.now().millisecondsSinceEpoch}';
+        final title = '🎓 New Student Registered: ${student.name}';
+        final body =
+            'Student ${student.name} (Code: ${student.studentCode}, Grade: ${student.grade} - ${student.classType}) has been enrolled in $sub.';
+
+        final data = {
+          'id': notifId,
+          'title': title,
+          'body': body,
+          'message': body,
+          'studentName': student.name,
+          'studentId': student.id,
+          'studentCode': student.studentCode,
+          'class': student.classType,
+          'targetSection': student.classType,
+          'subject': sub,
+          'targetSubject': sub,
+          'registeredBy': registeredBy ?? 'Administration',
+          'timestamp': FieldValue.serverTimestamp(),
+          'createdAt': FieldValue.serverTimestamp(),
+          'type': 'student_registered',
+          'notificationType': 'student_registered',
+          'isRead': false,
+        };
+
+        await _firestore.collection(_collection).doc(notifId).set(data);
+
+        final topicName = 'class_${student.classType.toLowerCase().replaceAll(RegExp(r'[^a-z0-9]'), '_')}';
+        unawaited(triggerPushNotification(
+          targetTopic: topicName,
+          title: title,
+          body: body,
+          channelId: defaultChannelId,
+          payload: {
+            'type': 'student_registered',
+            'studentId': student.id,
+            'subject': sub,
+          },
+        ));
+      }
+      debugPrint('[NotificationService] Registration notification dispatched for ${student.name}');
+    } catch (e) {
+      debugPrint('[NotificationService] createStudentRegistrationNotification error: $e');
+    }
   }
 
   static Future<void> createFeePaymentNotification({
@@ -761,65 +818,7 @@ Firebase project = ${Firebase.app().options.projectId}
     );
   }
 
-  /// Creates notifications for teachers when a new student is registered/enrolled.
-  static Future<void> createStudentRegistrationNotification(StudentModel student) async {
-    try {
-      final subjects = student.subject
-          .split(',')
-          .map((s) => s.trim())
-          .where((s) => s.isNotEmpty)
-          .toList();
 
-      if (subjects.isEmpty) {
-        subjects.add('all');
-      }
-
-      for (final sub in subjects) {
-        final notifId = 'reg_${student.id}_${sub}_${DateTime.now().millisecondsSinceEpoch}';
-        final title = '🎓 New Student Registered: ${student.name}';
-        final body =
-            'Student ${student.name} (Code: ${student.studentCode}, Grade: ${student.grade} - ${student.classType}) has been enrolled in $sub.';
-
-        final data = {
-          'id': notifId,
-          'title': title,
-          'body': body,
-          'message': body,
-          'studentName': student.name,
-          'studentId': student.id,
-          'studentCode': student.studentCode,
-          'class': student.classType,
-          'targetSection': student.classType,
-          'subject': sub,
-          'targetSubject': sub,
-          'registeredBy': 'Administration',
-          'timestamp': FieldValue.serverTimestamp(),
-          'createdAt': FieldValue.serverTimestamp(),
-          'type': 'student_registered',
-          'notificationType': 'student_registered',
-          'isRead': false,
-        };
-
-        await _firestore.collection(_collection).doc(notifId).set(data);
-
-        final topicName = 'class_${student.classType.toLowerCase().replaceAll(RegExp(r'[^a-z0-9]'), '_')}';
-        unawaited(triggerPushNotification(
-          targetTopic: topicName,
-          title: title,
-          body: body,
-          channelId: defaultChannelId,
-          payload: {
-            'type': 'student_registered',
-            'studentId': student.id,
-            'subject': sub,
-          },
-        ));
-      }
-      debugPrint('[NotificationService] Registration notification dispatched for ${student.name}');
-    } catch (e) {
-      debugPrint('[NotificationService] createStudentRegistrationNotification error: $e');
-    }
-  }
 
   static Future<void> triggerPushNotification({
     String? targetUserId,

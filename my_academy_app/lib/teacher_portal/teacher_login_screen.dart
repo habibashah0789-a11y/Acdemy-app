@@ -6,7 +6,7 @@ import 'package:google_fonts/google_fonts.dart';
 import '../theme/app_theme.dart';
 import '../services/teacher_service.dart';
 import 'teacher_main_wrapper.dart';
-import '../models/teacher_model.dart';
+
 
 class TeacherLoginScreen extends StatefulWidget {
   const TeacherLoginScreen({super.key});
