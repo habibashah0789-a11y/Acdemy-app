@@ -5,6 +5,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 import '../../models/teacher_model.dart';
 import '../../services/teacher_service.dart';
 import '../../theme/app_theme.dart';
+import '../../widgets/teacher_avatar.dart';
 import 'add_edit_teacher_screen.dart';
 
 class TeacherManagementScreen extends StatelessWidget {
@@ -79,21 +80,10 @@ class TeacherManagementScreen extends StatelessWidget {
             Row(
               children: [
                 // Avatar
-                CircleAvatar(
-                  radius: 26,
-                  backgroundColor: subjectColor.withValues(alpha: 0.1),
-                  child: teacher.profilePicUrl.isNotEmpty
-                      ? ClipOval(
-                          child: CachedNetworkImage(
-                            imageUrl: teacher.profilePicUrl,
-                            width: 52,
-                            height: 52,
-                            fit: BoxFit.cover,
-                            errorWidget: (_, __, ___) =>
-                                _initialsWidget(teacher, subjectColor),
-                          ),
-                        )
-                      : _initialsWidget(teacher, subjectColor),
+                TeacherAvatar(
+                  teacher: teacher,
+                  size: 52,
+                  backgroundColor: subjectColor.withValues(alpha: 0.15),
                 ),
                 const SizedBox(width: 14),
 

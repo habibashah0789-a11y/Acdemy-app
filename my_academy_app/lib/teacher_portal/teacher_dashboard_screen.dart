@@ -7,8 +7,9 @@ import '../models/teacher_model.dart';
 import '../services/teacher_service.dart';
 import '../theme/app_theme.dart';
 
-import '../widgets/about_developers_widget.dart';
 import '../screens/app_info_screens.dart';
+import '../widgets/teacher_avatar.dart';
+import 'teacher_daily_records_screen.dart';
 
 class TeacherDashboardScreen extends StatefulWidget {
   final TeacherModel teacher;
@@ -60,6 +61,17 @@ class _TeacherDashboardScreenState extends State<TeacherDashboardScreen> {
           style: GoogleFonts.poppins(fontWeight: FontWeight.bold),
         ),
         actions: [
+          IconButton(
+            icon: const Icon(Icons.receipt_long_rounded),
+            tooltip: 'Daily Payment Records',
+            onPressed: () {
+              Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (_) => TeacherDailyRecordsScreen(teacher: _teacher),
+                ),
+              );
+            },
+          ),
           IconButton(
             icon: const Icon(Icons.info_outline_rounded),
             tooltip: 'About App',
@@ -118,15 +130,109 @@ class _TeacherDashboardScreenState extends State<TeacherDashboardScreen> {
 
               const SizedBox(height: 24),
 
-              // ── About App Card ──
-              _buildAboutAppTile(context, isDark),
-
-              const SizedBox(height: 24),
+              // ── Daily Financial & Registration Records Card ──
+              _buildDailyRecordsTile(context, isDark, subjectColor),
             ],
           ),
         ),
       ),
     );
+  }
+
+  Widget _buildDailyRecordsTile(
+      BuildContext context, bool isDark, Color subjectColor) {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: isDark ? AppTheme.darkCard : Colors.white,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(
+          color: isDark ? AppTheme.darkBorder : AppTheme.lightBorder,
+        ),
+        boxShadow: isDark
+            ? null
+            : [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.04),
+                  blurRadius: 12,
+                  offset: const Offset(0, 4),
+                )
+              ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: AppTheme.secondaryGreen.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: const Icon(
+                  Icons.today_rounded,
+                  color: AppTheme.secondaryGreen,
+                  size: 22,
+                ),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Daily Financial & Payment Records',
+                      style: GoogleFonts.poppins(
+                        fontSize: 15,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    Text(
+                      'View new registrations & installment payments for ${_teacher.subject}',
+                      style: GoogleFonts.poppins(
+                        fontSize: 12,
+                        color: AppTheme.lightTextSecondary,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton.icon(
+              onPressed: () {
+                Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (_) =>
+                        TeacherDailyRecordsScreen(teacher: _teacher),
+                  ),
+                );
+              },
+              icon: const Icon(Icons.receipt_long_rounded, size: 18),
+              label: Text(
+                'VIEW DAILY PAYMENT RECORDS',
+                style: GoogleFonts.poppins(
+                  fontWeight: FontWeight.w700,
+                  fontSize: 12,
+                  color: Colors.white,
+                ),
+              ),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppTheme.secondaryGreen,
+                padding: const EdgeInsets.symmetric(vertical: 14),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    ).animate().fadeIn(delay: 400.ms).slideY(begin: 0.05);
   }
 
   Widget _buildWelcomeBanner(Color subjectColor, bool isDark, bool isWide) {
@@ -199,105 +305,6 @@ class _TeacherDashboardScreenState extends State<TeacherDashboardScreen> {
     ).animate().fadeIn(duration: 600.ms).slideY(begin: 0.08);
   }
 
-  Widget _buildAboutAppTile(BuildContext context, bool isDark) {
-    return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: isDark ? AppTheme.darkCard : Colors.white,
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(
-          color: isDark ? AppTheme.darkBorder : AppTheme.lightBorder,
-        ),
-        boxShadow: isDark
-            ? null
-            : [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.04),
-                  blurRadius: 12,
-                  offset: const Offset(0, 4),
-                )
-              ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(10),
-                decoration: BoxDecoration(
-                  color: AppTheme.primaryBlue.withValues(alpha: 0.12),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: const Icon(
-                  Icons.school_rounded,
-                  color: AppTheme.primaryBlue,
-                  size: 22,
-                ),
-              ),
-              const SizedBox(width: 14),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'About Quaid Academy',
-                      style: GoogleFonts.poppins(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    Text(
-                      'Management System v1.0.0',
-                      style: GoogleFonts.poppins(
-                        fontSize: 12,
-                        color: AppTheme.lightTextSecondary,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          Text(
-            'Empowering education with student registration, roll number management, instant announcement dispatches, and push notifications.',
-            style: GoogleFonts.poppins(
-              fontSize: 12,
-              color: isDark ? Colors.grey.shade300 : const Color(0xFF475569),
-              height: 1.4,
-            ),
-          ),
-          const SizedBox(height: 14),
-          SizedBox(
-            width: double.infinity,
-            child: OutlinedButton.icon(
-              onPressed: () {
-                Navigator.of(context).push(
-                  MaterialPageRoute(builder: (_) => const AboutAppScreen()),
-                );
-              },
-              icon: const Icon(Icons.info_outline_rounded, size: 18),
-              label: Text(
-                'LEARN MORE ABOUT APP',
-                style: GoogleFonts.poppins(
-                  fontWeight: FontWeight.w600,
-                  fontSize: 12,
-                ),
-              ),
-              style: OutlinedButton.styleFrom(
-                padding: const EdgeInsets.symmetric(vertical: 12),
-                side: const BorderSide(color: AppTheme.primaryBlue),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-              ),
-            ),
-          ),
-        ],
-      ),
-    ).animate().fadeIn(delay: 200.ms).slideY(begin: 0.06);
-  }
 
   Widget _buildStatsGrid(bool isWide, Color subjectColor) {
     final stats = _stats ?? const TeacherStats();
@@ -491,22 +498,11 @@ class _TeacherDashboardScreenState extends State<TeacherDashboardScreen> {
   }
 
   Widget _buildTeacherAvatar({double size = 60}) {
-    if (_teacher.profilePicUrl.isNotEmpty) {
-      return CircleAvatar(
-        radius: size / 2,
-        backgroundColor: Colors.white.withValues(alpha: 0.2),
-        child: ClipOval(
-          child: CachedNetworkImage(
-            imageUrl: _teacher.profilePicUrl,
-            width: size,
-            height: size,
-            fit: BoxFit.cover,
-            errorWidget: (_, __, ___) => _buildInitialsAvatar(size),
-          ),
-        ),
-      );
-    }
-    return _buildInitialsAvatar(size);
+    return TeacherAvatar(
+      teacher: _teacher,
+      size: size,
+      backgroundColor: Colors.white.withValues(alpha: 0.25),
+    );
   }
 
   Widget _buildInitialsAvatar(double size) {

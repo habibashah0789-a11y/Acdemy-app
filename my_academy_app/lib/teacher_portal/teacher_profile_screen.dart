@@ -1,14 +1,19 @@
+import 'dart:convert';
+import 'dart:typed_data';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:cached_network_image/cached_network_image.dart';
+import 'package:image_picker/image_picker.dart';
 import '../models/teacher_model.dart';
 import '../services/teacher_service.dart';
 import '../theme/app_theme.dart';
 import '../screens/role_selection_screen.dart';
 import '../widgets/about_developers_widget.dart';
 import '../screens/app_info_screens.dart';
+import '../utils/image_utils.dart';
+import '../widgets/crop_image_dialog.dart';
+import '../widgets/teacher_avatar.dart';
 
 class TeacherProfileScreen extends StatelessWidget {
   final TeacherModel teacher;
@@ -77,7 +82,7 @@ class TeacherProfileScreen extends StatelessWidget {
                   ),
                   child: Column(
                     children: [
-                      _buildAvatar(80, currentTeacher),
+                      _buildAvatar(context, 84, currentTeacher),
                       const SizedBox(height: 16),
                       Text(
                         currentTeacher.name.isNotEmpty
@@ -359,46 +364,151 @@ class TeacherProfileScreen extends StatelessWidget {
     ).animate().fadeIn(delay: 300.ms);
   }
 
-  Widget _buildAvatar(double size, TeacherModel currentTeacher) {
-    if (currentTeacher.profilePicUrl.isNotEmpty) {
-      return CircleAvatar(
-        radius: size / 2,
-        backgroundColor: Colors.white.withValues(alpha: 0.2),
-        child: ClipOval(
-          child: CachedNetworkImage(
-            imageUrl: currentTeacher.profilePicUrl,
-            width: size,
-            height: size,
-            fit: BoxFit.cover,
-            errorWidget: (_, __, ___) =>
-                _buildInitialsAvatar(size, currentTeacher),
+  Widget _buildAvatar(BuildContext context, double size, TeacherModel currentTeacher) {
+    return Stack(
+      children: [
+        GestureDetector(
+          onTap: () => _changeTeacherPhoto(context, currentTeacher),
+          child: Container(
+            padding: const EdgeInsets.all(3),
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              border: Border.all(color: Colors.white, width: 2),
+            ),
+            child: TeacherAvatar(
+              teacher: currentTeacher,
+              size: size,
+              backgroundColor: Colors.white.withValues(alpha: 0.25),
+            ),
           ),
         ),
-      );
-    }
-    return _buildInitialsAvatar(size, currentTeacher);
+        Positioned(
+          bottom: 0,
+          right: 0,
+          child: GestureDetector(
+            onTap: () => _changeTeacherPhoto(context, currentTeacher),
+            child: Container(
+              padding: const EdgeInsets.all(6),
+              decoration: const BoxDecoration(
+                color: Colors.white,
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(
+                Icons.camera_alt_rounded,
+                color: AppTheme.primaryBlue,
+                size: 16,
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
   }
 
-  Widget _buildInitialsAvatar(double size, TeacherModel currentTeacher) {
-    final initials = currentTeacher.name.isNotEmpty
-        ? currentTeacher.name
-            .split(' ')
-            .take(2)
-            .map((w) => w.isNotEmpty ? w[0].toUpperCase() : '')
-            .join()
-        : 'T';
-    return CircleAvatar(
-      radius: size / 2,
-      backgroundColor: Colors.white.withValues(alpha: 0.25),
-      child: Text(
-        initials,
-        style: TextStyle(
-          fontSize: size * 0.32,
-          fontWeight: FontWeight.bold,
-          color: Colors.white,
+  Future<void> _changeTeacherPhoto(
+      BuildContext context, TeacherModel currentTeacher) async {
+    final picker = ImagePicker();
+    final source = await showModalBottomSheet<ImageSource>(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (ctx) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                'Update Profile Picture',
+                style: GoogleFonts.poppins(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: AppTheme.primaryBlue,
+                ),
+              ),
+              const SizedBox(height: 16),
+              ListTile(
+                leading: CircleAvatar(
+                  backgroundColor: Colors.blue.shade50,
+                  child: const Icon(Icons.camera_alt,
+                      color: AppTheme.primaryBlue),
+                ),
+                title: const Text('Camera'),
+                onTap: () => Navigator.pop(ctx, ImageSource.camera),
+              ),
+              ListTile(
+                leading: CircleAvatar(
+                  backgroundColor: Colors.green.shade50,
+                  child: const Icon(Icons.photo_library, color: Colors.green),
+                ),
+                title: const Text('Gallery'),
+                onTap: () => Navigator.pop(ctx, ImageSource.gallery),
+              ),
+            ],
+          ),
         ),
       ),
     );
+
+    if (source == null) return;
+
+    try {
+      final pickedFile =
+          await picker.pickImage(source: source, imageQuality: 75);
+      if (pickedFile != null && context.mounted) {
+        final bytes = await pickedFile.readAsBytes();
+        final cropped = await showDialog<Uint8List>(
+          context: context,
+          barrierDismissible: false,
+          builder: (_) => CropImageDialog(imageBytes: bytes),
+        );
+
+        final imageBytesToUpload = cropped ?? bytes;
+        final compressed = await ImageUtils.compressAndResizeImage(
+          imageBytesToUpload,
+          targetWidth: 512,
+          targetHeight: 512,
+        );
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Uploading profile picture...'),
+            duration: Duration(seconds: 2),
+          ),
+        );
+
+        final uploadedUrl = await TeacherService.uploadTeacherProfileImage(
+          compressed,
+          currentTeacher.id,
+        );
+
+        final picUrl = (uploadedUrl != null && uploadedUrl.isNotEmpty)
+            ? uploadedUrl
+            : 'data:image/jpeg;base64,${base64Encode(compressed)}';
+
+        final updatedTeacher = currentTeacher.copyWith(profilePicUrl: picUrl);
+        await TeacherService.updateTeacher(updatedTeacher);
+
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Profile picture updated successfully!'),
+              backgroundColor: AppTheme.secondaryGreen,
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to update picture: $e'),
+            backgroundColor: AppTheme.warningRed,
+          ),
+        );
+      }
+    }
   }
 
   Future<void> _confirmLogout(BuildContext context) async {

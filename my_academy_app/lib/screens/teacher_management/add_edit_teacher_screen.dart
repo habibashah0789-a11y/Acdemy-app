@@ -1,10 +1,16 @@
+import 'dart:convert';
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:image_picker/image_picker.dart';
 import '../../models/teacher_model.dart';
 import '../../services/teacher_service.dart';
 import '../../theme/app_theme.dart';
+import '../../utils/image_utils.dart';
+import '../../widgets/crop_image_dialog.dart';
+import '../../widgets/teacher_avatar.dart';
 
 class AddEditTeacherScreen extends StatefulWidget {
   final TeacherModel? teacher;
@@ -22,6 +28,10 @@ class _AddEditTeacherScreenState extends State<AddEditTeacherScreen> {
   final _emailCtrl = TextEditingController();
   final _uidCtrl = TextEditingController();
   final _teacherIdCtrl = TextEditingController();
+  final _profilePicUrlCtrl = TextEditingController();
+
+  Uint8List? _imageBytes;
+  String _profilePicUrl = '';
 
   String _selectedSection = 'FSc';
   String _selectedSubject = 'Biology';
@@ -64,6 +74,8 @@ class _AddEditTeacherScreenState extends State<AddEditTeacherScreen> {
       _selectedSubject = t.subject;
       _selectedClasses.addAll(t.assignedClasses);
       _isActive = t.isActive;
+      _profilePicUrl = t.profilePicUrl;
+      _profilePicUrlCtrl.text = t.profilePicUrl;
     }
   }
 
@@ -73,7 +85,107 @@ class _AddEditTeacherScreenState extends State<AddEditTeacherScreen> {
     _emailCtrl.dispose();
     _uidCtrl.dispose();
     _teacherIdCtrl.dispose();
+    _profilePicUrlCtrl.dispose();
     super.dispose();
+  }
+
+  void _showImageSheet() {
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (ctx) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                'Select Teacher Profile Picture',
+                style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                      color: AppTheme.primaryBlue,
+                      fontWeight: FontWeight.bold,
+                    ),
+              ),
+              const SizedBox(height: 16),
+              ListTile(
+                leading: CircleAvatar(
+                  backgroundColor: Colors.blue.shade50,
+                  child: const Icon(Icons.camera_alt, color: AppTheme.primaryBlue),
+                ),
+                title: const Text('Camera'),
+                onTap: () {
+                  Navigator.pop(ctx);
+                  _pickImage(ImageSource.camera);
+                },
+              ),
+              ListTile(
+                leading: CircleAvatar(
+                  backgroundColor: Colors.green.shade50,
+                  child: const Icon(Icons.photo_library, color: Colors.green),
+                ),
+                title: const Text('Gallery'),
+                onTap: () {
+                  Navigator.pop(ctx);
+                  _pickImage(ImageSource.gallery);
+                },
+              ),
+              if (_imageBytes != null || _profilePicUrlCtrl.text.trim().isNotEmpty)
+                ListTile(
+                  leading: CircleAvatar(
+                    backgroundColor: Colors.red.shade50,
+                    child: const Icon(Icons.delete_outline_rounded, color: Colors.red),
+                  ),
+                  title: const Text('Remove Photo', style: TextStyle(color: Colors.red)),
+                  onTap: () {
+                    Navigator.pop(ctx);
+                    setState(() {
+                      _imageBytes = null;
+                      _profilePicUrl = '';
+                      _profilePicUrlCtrl.clear();
+                    });
+                  },
+                ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _pickImage(ImageSource src) async {
+    try {
+      final f = await ImagePicker().pickImage(source: src, imageQuality: 75);
+      if (f != null) {
+        final bytes = await f.readAsBytes();
+        if (mounted) {
+          final cropped = await showDialog<Uint8List>(
+            context: context,
+            barrierDismissible: false,
+            builder: (_) => CropImageDialog(imageBytes: bytes),
+          );
+          if (cropped != null) {
+            final compressed = await ImageUtils.compressAndResizeImage(
+              cropped,
+              targetWidth: 512,
+              targetHeight: 512,
+            );
+            setState(() {
+              _imageBytes = compressed;
+            });
+          }
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+              content: Text('Failed to pick image: $e'),
+              backgroundColor: AppTheme.warningRed),
+        );
+      }
+    }
   }
 
   List<String> get _availableClasses =>
@@ -109,16 +221,36 @@ class _AddEditTeacherScreenState extends State<AddEditTeacherScreen> {
     setState(() => _isLoading = true);
 
     try {
+      final teacherUid =
+          widget.isEditing ? widget.teacher!.id : _uidCtrl.text.trim();
+      String finalPicUrl = _profilePicUrlCtrl.text.trim();
+
+      if (_imageBytes != null) {
+        final uploadedUrl = await TeacherService.uploadTeacherProfileImage(
+          _imageBytes!,
+          teacherUid.isNotEmpty
+              ? teacherUid
+              : DateTime.now().millisecondsSinceEpoch.toString(),
+        );
+
+        if (uploadedUrl != null && uploadedUrl.isNotEmpty) {
+          finalPicUrl = uploadedUrl;
+        } else {
+          finalPicUrl = 'data:image/jpeg;base64,${base64Encode(_imageBytes!)}';
+        }
+      } else if (finalPicUrl.isEmpty && widget.isEditing) {
+        finalPicUrl = widget.teacher?.profilePicUrl ?? '';
+      }
+
       final teacher = TeacherModel(
-        id: widget.isEditing ? widget.teacher!.id : _uidCtrl.text.trim(),
+        id: teacherUid,
         name: _nameCtrl.text.trim(),
         email: _emailCtrl.text.trim(),
         teacherId: _teacherIdCtrl.text.trim(),
         subject: _selectedSubject,
         section: _selectedSection,
         assignedClasses: List.from(_selectedClasses),
-        profilePicUrl:
-            widget.isEditing ? (widget.teacher?.profilePicUrl ?? '') : '',
+        profilePicUrl: finalPicUrl,
         isActive: _isActive,
         createdAt: widget.isEditing
             ? widget.teacher!.createdAt
@@ -129,7 +261,7 @@ class _AddEditTeacherScreenState extends State<AddEditTeacherScreen> {
         await TeacherService.updateTeacher(teacher);
       } else {
         await TeacherService.createTeacherRecord(
-          uid: _uidCtrl.text.trim(),
+          uid: teacherUid,
           teacher: teacher,
         );
       }
@@ -141,8 +273,8 @@ class _AddEditTeacherScreenState extends State<AddEditTeacherScreen> {
           SnackBar(
             content: Text(
               widget.isEditing
-                  ? '${_nameCtrl.text.trim()} updated successfully.'
-                  : '${_nameCtrl.text.trim()} has been added as a teacher. They can now log in with their email and password.',
+                  ? '${_nameCtrl.text.trim()}\'s profile & picture updated successfully.'
+                  : '${_nameCtrl.text.trim()} has been registered as a teacher with profile photo. They can now log in with their email and password.',
             ),
             backgroundColor: AppTheme.secondaryGreen,
             behavior: SnackBarBehavior.floating,
@@ -182,6 +314,95 @@ class _AddEditTeacherScreenState extends State<AddEditTeacherScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              // ── Profile Photo Picker Widget ──
+              Center(
+                child: Column(
+                  children: [
+                    Stack(
+                      children: [
+                        GestureDetector(
+                          onTap: _showImageSheet,
+                          child: Container(
+                            width: 104,
+                            height: 104,
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              color: AppTheme.primaryBlue.withValues(alpha: 0.1),
+                              border: Border.all(
+                                color: AppTheme.primaryBlue,
+                                width: 2.5,
+                              ),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: AppTheme.primaryBlue.withValues(alpha: 0.15),
+                                  blurRadius: 10,
+                                  offset: const Offset(0, 4),
+                                ),
+                              ],
+                            ),
+                            child: ClipOval(
+                              child: _imageBytes != null
+                                  ? Image.memory(_imageBytes!, fit: BoxFit.cover)
+                                  : (_profilePicUrlCtrl.text.trim().isNotEmpty
+                                      ? TeacherAvatar(
+                                          teacher: TeacherModel.empty().copyWith(
+                                            name: _nameCtrl.text,
+                                            profilePicUrl:
+                                                _profilePicUrlCtrl.text.trim(),
+                                          ),
+                                          size: 104,
+                                        )
+                                      : Center(
+                                          child: Icon(
+                                            Icons.person_rounded,
+                                            size: 50,
+                                            color: AppTheme.primaryBlue
+                                                .withValues(alpha: 0.7),
+                                          ),
+                                        )),
+                            ),
+                          ),
+                        ),
+                        Positioned(
+                          bottom: 0,
+                          right: 0,
+                          child: GestureDetector(
+                            onTap: _showImageSheet,
+                            child: Container(
+                              padding: const EdgeInsets.all(8),
+                              decoration: BoxDecoration(
+                                color: AppTheme.primaryBlue,
+                                shape: BoxShape.circle,
+                                border: Border.all(color: Colors.white, width: 2),
+                              ),
+                              child: const Icon(
+                                Icons.camera_alt_rounded,
+                                color: Colors.white,
+                                size: 18,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    TextButton.icon(
+                      onPressed: _showImageSheet,
+                      icon: const Icon(Icons.add_a_photo_outlined, size: 16),
+                      label: Text(
+                        _imageBytes != null ||
+                                _profilePicUrlCtrl.text.trim().isNotEmpty
+                            ? 'Change Profile Picture'
+                            : 'Upload Profile Picture',
+                        style: GoogleFonts.poppins(
+                            fontSize: 12, fontWeight: FontWeight.w600),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 20),
+
               // ── Section: Basic Info ──
               _sectionHeader('Basic Information', Icons.person_rounded),
               const SizedBox(height: 12),
@@ -189,6 +410,7 @@ class _AddEditTeacherScreenState extends State<AddEditTeacherScreen> {
               TextFormField(
                 controller: _nameCtrl,
                 textCapitalization: TextCapitalization.words,
+                onChanged: (_) => setState(() {}),
                 decoration: const InputDecoration(
                   labelText: 'Full Name *',
                   prefixIcon: Icon(Icons.person_outline_rounded,
@@ -196,6 +418,18 @@ class _AddEditTeacherScreenState extends State<AddEditTeacherScreen> {
                 ),
                 validator: (v) =>
                     (v == null || v.trim().isEmpty) ? 'Name is required' : null,
+              ),
+              const SizedBox(height: 14),
+
+              TextFormField(
+                controller: _profilePicUrlCtrl,
+                onChanged: (v) => setState(() {}),
+                decoration: const InputDecoration(
+                  labelText: 'Profile Picture URL (Optional)',
+                  prefixIcon: Icon(Icons.link_rounded,
+                      color: AppTheme.primaryBlue),
+                  helperText: 'Or tap avatar above to upload/capture photo',
+                ),
               ),
               const SizedBox(height: 14),
 
