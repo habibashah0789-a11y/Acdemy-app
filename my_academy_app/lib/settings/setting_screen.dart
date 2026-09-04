@@ -8,6 +8,7 @@ import '../theme/app_theme.dart';
 import '../widgets/about_developers_widget.dart';
 import 'appearance_screen.dart';
 import 'recycle_bin_screen.dart';
+import '../screens/teacher_management/teacher_management_screen.dart';
 
 class SettingsScreen extends StatelessWidget {
   const SettingsScreen({super.key});
@@ -39,6 +40,13 @@ class SettingsScreen extends StatelessWidget {
             Icons.delete_outline_rounded,
             "Recycle Bin",
             const RecycleBinScreen(),
+          ),
+          _tile(
+            context,
+            Icons.people_rounded,
+            "Teacher Management",
+            const TeacherManagementScreen(),
+            color: AppTheme.primaryBlue,
           ),
           _tile(
             context,
@@ -92,11 +100,18 @@ class SettingsScreen extends StatelessWidget {
     BuildContext context,
     IconData icon,
     String title,
-    Widget screen,
-  ) {
+    Widget screen, {
+    Color? color,
+  }) {
     return ListTile(
-      leading: Icon(icon),
-      title: Text(title),
+      leading: Icon(icon, color: color),
+      title: Text(
+        title,
+        style: TextStyle(
+          fontWeight: FontWeight.w600,
+          color: color,
+        ),
+      ),
       trailing: const Icon(Icons.arrow_forward_ios),
       onTap: () {
         Navigator.push(

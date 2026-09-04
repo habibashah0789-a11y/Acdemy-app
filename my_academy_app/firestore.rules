@@ -2,8 +2,7 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // ── Admin helper ────────────────────────────────────────────────
-    // Only Firebase-authenticated admins may write data.
+    // ── Helpers ─────────────────────────────────────────────────────
     function isSignedIn() {
       return request.auth != null;
     }
@@ -14,36 +13,45 @@ service cloud.firestore {
              get(/databases/$(database)/documents/roles/$(request.auth.uid)).data.role == 'admin';
     }
 
+    function isTeacher() {
+      return isSignedIn() &&
+             exists(/databases/$(database)/documents/roles/$(request.auth.uid)) &&
+             get(/databases/$(database)/documents/roles/$(request.auth.uid)).data.role == 'teacher';
+    }
+
     // ── Roles ───────────────────────────────────────────────────────
-    // Admin-only: role documents are never read by student portal.
     match /roles/{uid} {
-      allow read, create: if isSignedIn() && request.auth.uid == uid;
-      allow update, delete: if isAdmin();
+      allow read: if isSignedIn() && (request.auth.uid == uid || isAdmin());
+      allow create, update, delete: if isAdmin() || (isSignedIn() && request.auth.uid == uid);
+    }
+
+    // ── Teachers ────────────────────────────────────────────────────
+    // Admin can read/write all. A teacher can only read their own doc.
+    match /teachers/{teacherId} {
+      allow read: if isAdmin() || (isTeacher() && request.auth.uid == teacherId);
+      allow create, update, delete: if isAdmin();
     }
 
     // ── Students ────────────────────────────────────────────────────
-    // Public read: student portal uses Firestore-only login (no Firebase Auth).
-    // All writes remain admin-only.
+    // Public read (student portal has no Firebase Auth).
+    // Teachers also read students; client-side filtering scopes to their subject.
     match /students/{studentId} {
       allow read: if true;
       allow create, update, delete: if isAdmin();
     }
 
     // ── Student Auth ─────────────────────────────────────────────────
-    // Public read: used during QR-code login to verify the token hash.
-    // Allow student devices to update binding fields (linkedDeviceId, deviceLinkedAt).
     match /student_auth/{studentId} {
       allow read: if true;
       allow create, delete: if isAdmin();
       allow update: if isAdmin() || (
-        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['linkedDeviceId', 'deviceLinkedAt', 'accountStatus', 'studentId', 'studentCode'])
+        request.resource.data.diff(resource.data).affectedKeys()
+          .hasOnly(['linkedDeviceId', 'deviceLinkedAt', 'accountStatus', 'studentId', 'studentCode'])
       );
     }
 
-    // ── Notifications / Announcements ────────────────────────────────
-    // Public read: student portal displays admin-created announcements.
-    // Client-side filtering handles per-student vs. broadcast notices.
-    // All writes remain admin-only.
+    // ── Notifications ────────────────────────────────────────────────
+    // Public read; teacher portal filters client-side by subject.
     match /notifications/{notifId} {
       allow read: if true;
       allow create, update, delete: if isAdmin();

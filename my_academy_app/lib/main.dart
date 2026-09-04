@@ -25,8 +25,13 @@ import 'provider/theme_provider.dart';
 // Screens
 import 'login/login_screen.dart';
 import 'screens/main_wrapper.dart';
+import 'screens/role_selection_screen.dart';
 import 'student_portal/student_main_wrapper.dart';
 import 'student_portal/student_login_screen.dart';
+
+// Teacher portal
+import 'teacher_portal/teacher_main_wrapper.dart';
+import 'services/teacher_service.dart';
 
 
 import 'package:firebase_messaging/firebase_messaging.dart';
@@ -212,9 +217,8 @@ class _StudentPortalEntryWrapperState extends State<StudentPortalEntryWrapper> {
       return const StudentMainWrapper();
     }
 
-    // Default unauthenticated entry: Student portal login.
-    // Admins can reach their login via the link inside StudentLoginScreen.
-    return const StudentLoginScreen();
+    // No session: show Role Selection so user can choose Student / Teacher / Admin.
+    return const RoleSelectionScreen();
   }
 }
 
@@ -230,6 +234,7 @@ class _RoleRoutingWrapperState extends State<RoleRoutingWrapper> {
   String? _role;
   bool _isLoading = true;
   String? _error;
+  dynamic _teacherModel; // TeacherModel? — stored as dynamic to avoid circular dep at this level
 
   @override
   void initState() {
@@ -286,7 +291,21 @@ class _RoleRoutingWrapperState extends State<RoleRoutingWrapper> {
       }
 
       final roleData = roleDoc?.data();
+      // For authenticated users: role is 'admin' or 'teacher'. Default to 'admin' for backward compat.
       final role = roleData?['role'] as String? ?? 'admin';
+
+      // For 'teacher' role, pre-load the teacher profile before building the wrapper.
+      if (role == 'teacher' && mounted) {
+        final teacher = await TeacherService.getCurrentTeacher();
+        if (mounted) {
+          setState(() {
+            _role = role;
+            _teacherModel = teacher;
+            _isLoading = false;
+          });
+        }
+        return;
+      }
 
       if (mounted) {
         setState(() {
@@ -366,6 +385,16 @@ class _RoleRoutingWrapperState extends State<RoleRoutingWrapper> {
       return const MainWrapper();
     }
 
-    return const LoginScreen();
+    if (_role == 'teacher') {
+      if (_teacherModel != null) {
+        return TeacherMainWrapper(teacher: _teacherModel!);
+      }
+      // Teacher model not loaded yet — show role selection as fallback
+      return const RoleSelectionScreen();
+    }
+
+    // Unknown role — sign out and show role selection
+    FirebaseAuth.instance.signOut();
+    return const RoleSelectionScreen();
   }
 }
