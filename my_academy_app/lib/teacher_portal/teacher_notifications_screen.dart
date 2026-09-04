@@ -449,7 +449,6 @@ class __CreateAnnouncementModalState extends State<_CreateAnnouncementModal> {
   }
 
   Future<void> _pickAttachment(String type) async {
-    final messenger = ScaffoldMessenger.of(context);
     try {
       FileType fileType = FileType.any;
       List<String>? allowedExtensions;
@@ -465,9 +464,11 @@ class __CreateAnnouncementModalState extends State<_CreateAnnouncementModal> {
 
       final result = await FilePicker.platform.pickFiles(
         type: fileType,
-        allowedExtensions: allowedExtensions,
+        allowedExtensions: fileType == FileType.custom ? allowedExtensions : null,
         withData: true,
       );
+
+      if (!mounted) return;
 
       if (result != null && result.files.isNotEmpty) {
         final file = result.files.first;
@@ -483,7 +484,7 @@ class __CreateAnnouncementModalState extends State<_CreateAnnouncementModal> {
       }
     } catch (e) {
       if (!mounted) return;
-      messenger.showSnackBar(
+      ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Failed to select file: $e')),
       );
     }
@@ -491,9 +492,6 @@ class __CreateAnnouncementModalState extends State<_CreateAnnouncementModal> {
 
   Future<void> _submitAnnouncement() async {
     if (!_formKey.currentState!.validate()) return;
-
-    final messenger = ScaffoldMessenger.of(context);
-    final navigator = Navigator.of(context);
 
     setState(() => _isUploading = true);
 
@@ -507,6 +505,8 @@ class __CreateAnnouncementModalState extends State<_CreateAnnouncementModal> {
           fileName: _fileName!,
           mediaType: _mediaType,
         );
+
+        if (!mounted) return;
 
         if (url != null) {
           uploadedUrl = url;
@@ -525,7 +525,8 @@ class __CreateAnnouncementModalState extends State<_CreateAnnouncementModal> {
       );
 
       if (!mounted) return;
-      messenger.showSnackBar(
+
+      ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           backgroundColor: AppTheme.secondaryGreen,
           content: Row(
@@ -542,11 +543,11 @@ class __CreateAnnouncementModalState extends State<_CreateAnnouncementModal> {
           ),
         ),
       );
-      navigator.pop();
+      Navigator.of(context).pop();
     } catch (e) {
       if (!mounted) return;
       setState(() => _isUploading = false);
-      messenger.showSnackBar(
+      ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           backgroundColor: AppTheme.warningRed,
           content: Text('Error publishing announcement: $e'),

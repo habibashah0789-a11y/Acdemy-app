@@ -7,6 +7,9 @@ import '../models/teacher_model.dart';
 import '../services/teacher_service.dart';
 import '../theme/app_theme.dart';
 
+import '../widgets/about_developers_widget.dart';
+import '../screens/app_info_screens.dart';
+
 class TeacherDashboardScreen extends StatefulWidget {
   final TeacherModel teacher;
   const TeacherDashboardScreen({super.key, required this.teacher});
@@ -58,6 +61,15 @@ class _TeacherDashboardScreenState extends State<TeacherDashboardScreen> {
         ),
         actions: [
           IconButton(
+            icon: const Icon(Icons.info_outline_rounded),
+            tooltip: 'About App',
+            onPressed: () {
+              Navigator.of(context).push(
+                MaterialPageRoute(builder: (_) => const AboutAppScreen()),
+              );
+            },
+          ),
+          IconButton(
             icon: const Icon(Icons.refresh_rounded),
             onPressed: _loadStats,
             tooltip: 'Refresh',
@@ -74,10 +86,6 @@ class _TeacherDashboardScreenState extends State<TeacherDashboardScreen> {
             children: [
               // ── Welcome Header ──
               _buildWelcomeBanner(subjectColor, isDark, isWide),
-              const SizedBox(height: 24),
-
-              // ── Teacher Info Card ──
-              _buildTeacherInfoCard(subjectColor, isDark),
               const SizedBox(height: 24),
 
               // ── Stats Section ──
@@ -107,6 +115,16 @@ class _TeacherDashboardScreenState extends State<TeacherDashboardScreen> {
 
               // ── Assigned Classes ──
               _buildAssignedClassesBanner(subjectColor),
+
+              const SizedBox(height: 24),
+
+              // ── About App Card ──
+              _buildAboutAppTile(context, isDark),
+
+              const SizedBox(height: 20),
+
+              // ── About Developers Card ──
+              const AboutDevelopersCard(),
 
               const SizedBox(height: 24),
             ],
