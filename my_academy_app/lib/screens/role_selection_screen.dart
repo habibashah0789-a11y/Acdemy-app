@@ -1,9 +1,16 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../student_portal/student_login_screen.dart';
 import '../teacher_portal/teacher_login_screen.dart';
 import '../login/login_screen.dart';
+import '../student_portal/student_auth_service.dart';
+import '../student_portal/student_main_wrapper.dart';
+import '../teacher_portal/teacher_main_wrapper.dart';
+import '../services/teacher_service.dart';
+import 'main_wrapper.dart';
 import '../theme/app_theme.dart';
 
 class RoleSelectionScreen extends StatefulWidget {
@@ -32,24 +39,129 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen>
     super.dispose();
   }
 
-  void _navigateToStudent(BuildContext context) {
-    Navigator.push(
-      context,
-      MaterialPageRoute(builder: (_) => const StudentLoginScreen()),
-    );
+  Future<void> _checkAndNavigate(BuildContext context, String targetRole) async {
+    final firebaseUser = FirebaseAuth.instance.currentUser;
+    final studentSession = await StudentAuthService.getLocalSession();
+
+    if (!mounted) return;
+
+    // 1. Check if user is logged in as a Student
+    if (studentSession != null) {
+      if (targetRole == 'student') {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (_) => const StudentMainWrapper()),
+        );
+      } else {
+        _showAccessRestrictedDialog(
+          context,
+          activeRole: 'Student',
+          targetRoleName: targetRole == 'teacher' ? 'Teacher' : 'Administration',
+        );
+      }
+      return;
+    }
+
+    // 2. Check if user is logged in with Firebase Auth (Teacher or Admin)
+    if (firebaseUser != null) {
+      String userRole = 'admin';
+      try {
+        final roleDoc = await FirebaseFirestore.instance
+            .collection('roles')
+            .doc(firebaseUser.uid)
+            .get()
+            .timeout(const Duration(seconds: 4));
+        userRole = roleDoc.data()?['role'] as String? ?? 'admin';
+      } catch (_) {}
+
+      if (!mounted) return;
+
+      if (userRole == targetRole) {
+        if (targetRole == 'teacher') {
+          final teacher = await TeacherService.getCurrentTeacher();
+          if (mounted && teacher != null) {
+            Navigator.pushReplacement(
+              context,
+              MaterialPageRoute(builder: (_) => TeacherMainWrapper(teacher: teacher)),
+            );
+            return;
+          }
+        } else if (targetRole == 'admin') {
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(builder: (_) => const MainWrapper()),
+          );
+          return;
+        }
+      } else {
+        _showAccessRestrictedDialog(
+          context,
+          activeRole: userRole == 'teacher' ? 'Teacher' : 'Administration',
+          targetRoleName: targetRole == 'teacher'
+              ? 'Teacher'
+              : targetRole == 'admin'
+                  ? 'Administration'
+                  : 'Student',
+        );
+        return;
+      }
+    }
+
+    // 3. No active session — navigate to target login screen
+    if (targetRole == 'student') {
+      Navigator.push(
+        context,
+        MaterialPageRoute(builder: (_) => const StudentLoginScreen()),
+      );
+    } else if (targetRole == 'teacher') {
+      Navigator.push(
+        context,
+        MaterialPageRoute(builder: (_) => const TeacherLoginScreen()),
+      );
+    } else if (targetRole == 'admin') {
+      Navigator.push(
+        context,
+        MaterialPageRoute(builder: (_) => const LoginScreen()),
+      );
+    }
   }
 
-  void _navigateToTeacher(BuildContext context) {
-    Navigator.push(
-      context,
-      MaterialPageRoute(builder: (_) => const TeacherLoginScreen()),
-    );
-  }
-
-  void _navigateToAdmin(BuildContext context) {
-    Navigator.push(
-      context,
-      MaterialPageRoute(builder: (_) => const LoginScreen()),
+  void _showAccessRestrictedDialog(
+    BuildContext context, {
+    required String activeRole,
+    required String targetRoleName,
+  }) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: Row(
+          children: [
+            const Icon(Icons.gpp_maybe_rounded, color: AppTheme.warningRed, size: 28),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Text(
+                'Access Restricted',
+                style: GoogleFonts.poppins(fontWeight: FontWeight.bold, fontSize: 18),
+              ),
+            ),
+          ],
+        ),
+        content: Text(
+          'You are currently signed in as $activeRole. You can only access your $activeRole Portal.\n\nPlease log out from your profile settings first if you need to switch to the $targetRoleName Portal.',
+          style: GoogleFonts.poppins(fontSize: 13, height: 1.5),
+        ),
+        actions: [
+          ElevatedButton(
+            onPressed: () => Navigator.pop(ctx),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppTheme.primaryBlue,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            ),
+            child: Text('OK, Got It', style: GoogleFonts.poppins(color: Colors.white)),
+          ),
+        ],
+      ),
     );
   }
 
@@ -263,13 +375,13 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen>
       onTap: () {
         switch (data) {
           case _RoleCardData.student:
-            _navigateToStudent(context);
+            _checkAndNavigate(context, 'student');
             break;
           case _RoleCardData.teacher:
-            _navigateToTeacher(context);
+            _checkAndNavigate(context, 'teacher');
             break;
           case _RoleCardData.admin:
-            _navigateToAdmin(context);
+            _checkAndNavigate(context, 'admin');
             break;
         }
       },

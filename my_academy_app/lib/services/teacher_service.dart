@@ -268,6 +268,14 @@ class TeacherService {
     });
   }
 
+  // ── ADMIN: Delete teacher (removes Firestore doc + role doc) ──
+  static Future<void> deleteTeacher(String teacherId) async {
+    final batch = _firestore.batch();
+    batch.delete(_firestore.collection('teachers').doc(teacherId));
+    batch.delete(_firestore.collection('roles').doc(teacherId));
+    await batch.commit();
+  }
+
   // ── ADMIN: Generate next available teacher ID ──
   static Future<String> generateTeacherId({
     required String section,
@@ -327,12 +335,19 @@ class TeacherService {
   }) async {
     if (FirebaseAuth.instance.currentUser == null) return null;
     try {
+      Uint8List bytesToUpload = fileBytes;
       String extension = 'bin';
       String contentType = 'application/octet-stream';
 
       if (mediaType == 'image') {
         extension = 'jpg';
         contentType = 'image/jpeg';
+        // Compress announcement images to crisp 800x800 (~80KB-120KB instead of 10MB+) for 2-3s ultra-fast upload
+        bytesToUpload = await ImageUtils.compressAndResizeImage(
+          fileBytes,
+          targetWidth: 800,
+          targetHeight: 800,
+        );
       } else if (mediaType == 'pdf') {
         extension = 'pdf';
         contentType = 'application/pdf';
@@ -352,12 +367,14 @@ class TeacherService {
       final path = 'announcements/announcement_${timestamp}_$fileName';
       final ref = _storage.ref().child(path);
 
-      await ref.putData(
-        fileBytes,
-        SettableMetadata(contentType: contentType),
-      );
+      await ref
+          .putData(
+            bytesToUpload,
+            SettableMetadata(contentType: contentType),
+          )
+          .timeout(const Duration(seconds: 20));
 
-      return await ref.getDownloadURL();
+      return await ref.getDownloadURL().timeout(const Duration(seconds: 10));
     } catch (e) {
       debugPrint('[TeacherService] uploadAnnouncementAttachment error: $e');
       return null;

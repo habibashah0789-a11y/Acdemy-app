@@ -134,16 +134,18 @@ class _AddEditTeacherScreenState extends State<AddEditTeacherScreen> {
       }
 
       if (mounted) {
+        setState(() => _isLoading = false);
         Navigator.of(context).pop();
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
               widget.isEditing
-                  ? 'Teacher updated successfully.'
-                  : 'Teacher record created. Remember to create their Firebase Auth account.',
+                  ? '${_nameCtrl.text.trim()} updated successfully.'
+                  : '${_nameCtrl.text.trim()} has been added as a teacher. They can now log in with their email and password.',
             ),
             backgroundColor: AppTheme.secondaryGreen,
             behavior: SnackBarBehavior.floating,
+            duration: const Duration(seconds: 4),
           ),
         );
       }

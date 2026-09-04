@@ -492,13 +492,22 @@ class __CreateAnnouncementModalState extends State<_CreateAnnouncementModal> {
     }
   }
 
+  String _uploadStatusText = 'Publishing Announcement...';
+
   Future<void> _submitAnnouncement() async {
     if (!_formKey.currentState!.validate()) return;
 
     final messenger = ScaffoldMessenger.of(context);
     final navigator = Navigator.of(context);
 
-    setState(() => _isUploading = true);
+    setState(() {
+      _isUploading = true;
+      _uploadStatusText = _mediaType == 'image'
+          ? 'Compressing & uploading photo...'
+          : _mediaType != 'none'
+              ? 'Uploading attachment...'
+              : 'Publishing Announcement...';
+    });
 
     try {
       String uploadedUrl = '';
@@ -516,9 +525,13 @@ class __CreateAnnouncementModalState extends State<_CreateAnnouncementModal> {
         if (url != null) {
           uploadedUrl = url;
         } else {
-          throw Exception('Failed to upload attachment to storage.');
+          throw Exception('Failed to upload attachment to storage. Please check connection.');
         }
       }
+
+      setState(() {
+        _uploadStatusText = 'Publishing Announcement...';
+      });
 
       // Publish announcement doc to Firestore
       await TeacherService.createTeacherAnnouncement(
@@ -804,7 +817,7 @@ class __CreateAnnouncementModalState extends State<_CreateAnnouncementModal> {
                       : const Icon(Icons.send_rounded),
                   label: Text(
                     _isUploading
-                        ? 'Publishing Announcement...'
+                        ? _uploadStatusText
                         : 'PUBLISH ANNOUNCEMENT',
                     style: GoogleFonts.poppins(
                       fontWeight: FontWeight.bold,

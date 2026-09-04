@@ -244,6 +244,26 @@ class TeacherManagementScreen extends StatelessWidget {
                 ),
               ],
             ),
+
+            const SizedBox(height: 8),
+
+            // Delete action
+            SizedBox(
+              width: double.infinity,
+              child: OutlinedButton.icon(
+                onPressed: () => _deleteTeacher(context, teacher),
+                icon: const Icon(Icons.delete_forever_rounded,
+                    size: 16, color: Colors.red),
+                label: const Text(
+                  'Delete Teacher',
+                  style: TextStyle(color: Colors.red),
+                ),
+                style: OutlinedButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(vertical: 8),
+                  side: const BorderSide(color: Colors.red),
+                ),
+              ),
+            ),
           ],
         ),
       ),
@@ -266,6 +286,86 @@ class TeacherManagementScreen extends StatelessWidget {
         fontSize: 18,
       ),
     );
+  }
+
+  Future<void> _deleteTeacher(
+      BuildContext context, TeacherModel teacher) async {
+    // First confirmation
+    final firstConfirm = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Delete Teacher?'),
+        content: Text(
+          'Are you sure you want to permanently delete "${teacher.name}"?\n\n'
+          'This will remove their profile and login access. This action cannot be undone.',
+        ),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.of(ctx).pop(false),
+              child: const Text('Cancel')),
+          ElevatedButton(
+            onPressed: () => Navigator.of(ctx).pop(true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.red,
+              foregroundColor: Colors.white,
+            ),
+            child: const Text('Yes, Delete'),
+          ),
+        ],
+      ),
+    );
+
+    if (firstConfirm != true) return;
+
+    // Second confirmation
+    final secondConfirm = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Last Warning'),
+        content: Text(
+          'This will permanently delete "${teacher.name}" and cannot be undone.\n\n'
+          'Press "Permanently Delete" to confirm.',
+        ),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.of(ctx).pop(false),
+              child: const Text('Cancel')),
+          ElevatedButton(
+            onPressed: () => Navigator.of(ctx).pop(true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.red.shade800,
+              foregroundColor: Colors.white,
+            ),
+            child: const Text('Permanently Delete'),
+          ),
+        ],
+      ),
+    );
+
+    if (secondConfirm != true) return;
+
+    try {
+      await TeacherService.deleteTeacher(teacher.id);
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('"${teacher.name}" has been deleted.'),
+            behavior: SnackBarBehavior.floating,
+            backgroundColor: Colors.red.shade700,
+          ),
+        );
+      }
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to delete: $e'),
+            backgroundColor: Colors.red,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    }
   }
 
   Future<void> _toggleActive(

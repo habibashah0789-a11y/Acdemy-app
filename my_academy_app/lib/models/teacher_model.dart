@@ -111,6 +111,7 @@ class TeacherModel {
   Map<String, dynamic> toUpdateMap() {
     return {
       'name': name,
+      'teacherId': teacherId,
       'subject': subject,
       'section': section,
       'assignedClasses': assignedClasses,

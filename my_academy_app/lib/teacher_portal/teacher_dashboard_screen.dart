@@ -121,11 +121,6 @@ class _TeacherDashboardScreenState extends State<TeacherDashboardScreen> {
               // ── About App Card ──
               _buildAboutAppTile(context, isDark),
 
-              const SizedBox(height: 20),
-
-              // ── About Developers Card ──
-              const AboutDevelopersCard(),
-
               const SizedBox(height: 24),
             ],
           ),

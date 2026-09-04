@@ -1,3 +1,5 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -33,10 +35,24 @@ class _LoginScreenState extends State<LoginScreen> {
     if (!_formKey.currentState!.validate()) return;
     setState(() => _isLoading = true);
     try {
-      await AuthService.loginWithEmailPassword(
+      final user = await AuthService.loginWithEmailPassword(
         _emailController.text,
         _passwordController.text,
       );
+
+      // Verify user has admin role
+      final roleDoc = await FirebaseFirestore.instance
+          .collection('roles')
+          .doc(user.uid)
+          .get()
+          .timeout(const Duration(seconds: 5));
+
+      final role = roleDoc.data()?['role'] as String? ?? 'admin';
+      if (role != 'admin') {
+        await FirebaseAuth.instance.signOut();
+        throw Exception('This account is registered as a $role. Please use your designated portal.');
+      }
+
       if (mounted) {
         Navigator.of(context).pushAndRemoveUntil(
           MaterialPageRoute(builder: (_) => const AuthWrapper()),
