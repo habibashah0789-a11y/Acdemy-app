@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../models/teacher_model.dart';
 import '../../services/teacher_service.dart';
 import '../../theme/app_theme.dart';
@@ -216,18 +217,44 @@ class _AddEditTeacherScreenState extends State<AddEditTeacherScreen> {
               const SizedBox(height: 14),
 
               if (!widget.isEditing) ...[
-                TextFormField(
-                  controller: _uidCtrl,
-                  decoration: const InputDecoration(
-                    labelText: 'Firebase Auth UID *',
-                    prefixIcon: Icon(Icons.fingerprint_rounded,
-                        color: AppTheme.primaryBlue),
-                    helperText:
-                        'Copy from Firebase Console → Authentication after creating the auth user',
-                    helperMaxLines: 2,
-                  ),
-                  validator: (v) =>
-                      (v == null || v.trim().isEmpty) ? 'UID is required' : null,
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(
+                      child: TextFormField(
+                        controller: _uidCtrl,
+                        decoration: const InputDecoration(
+                          labelText: 'Firebase Auth UID *',
+                          prefixIcon: Icon(Icons.fingerprint_rounded,
+                              color: AppTheme.primaryBlue),
+                          helperText:
+                              'Paste from Firebase Auth or tap button to auto-generate',
+                          helperMaxLines: 2,
+                        ),
+                        validator: (v) =>
+                            (v == null || v.trim().isEmpty) ? 'UID is required' : null,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Tooltip(
+                      message: 'Auto-generate UID',
+                      child: ElevatedButton(
+                        onPressed: () {
+                          setState(() {
+                            _uidCtrl.text = FirebaseFirestore.instance
+                                .collection('teachers')
+                                .doc()
+                                .id;
+                          });
+                        },
+                        style: ElevatedButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 12, vertical: 18),
+                        ),
+                        child: const Icon(Icons.auto_fix_high_rounded, size: 18),
+                      ),
+                    ),
+                  ],
                 ),
                 const SizedBox(height: 14),
               ],
