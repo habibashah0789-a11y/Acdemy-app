@@ -271,7 +271,7 @@ class _RoleRoutingWrapperState extends State<RoleRoutingWrapper> {
         roleDoc = await roleDocRef.get(const GetOptions(source: Source.cache));
       } catch (_) {}
 
-      // 2. If not in cache, fetch from server with a fast 2-second timeout
+      // 2. If not in cache, fetch from server with a 2-second timeout
       if (roleDoc == null || !roleDoc.exists) {
         try {
           roleDoc = await roleDocRef.get().timeout(const Duration(seconds: 2));
@@ -280,37 +280,39 @@ class _RoleRoutingWrapperState extends State<RoleRoutingWrapper> {
         }
       }
 
-      // 3. Auto-bootstrap for admin user if role document is missing
-      if (roleDoc == null || !roleDoc.exists) {
+      String role = roleDoc?.data()?['role'] as String? ?? '';
+
+      // 3. Check if current authenticated user has a Teacher profile
+      if (role == 'teacher' || role.isEmpty) {
+        final teacher = await TeacherService.getCurrentTeacher();
+        if (teacher != null) {
+          role = 'teacher';
+          try {
+            await roleDocRef.set({'role': 'teacher'}, SetOptions(merge: true));
+          } catch (_) {}
+
+          if (mounted) {
+            setState(() {
+              _role = 'teacher';
+              _teacherModel = teacher;
+              _isLoading = false;
+            });
+          }
+          return;
+        }
+      }
+
+      // 4. Default to admin role if not a teacher
+      if (role.isEmpty) {
+        role = 'admin';
         try {
           await roleDocRef.set({
             'role': 'admin',
             'createdAt': FieldValue.serverTimestamp(),
-          }).timeout(const Duration(seconds: 4));
+          }, SetOptions(merge: true)).timeout(const Duration(seconds: 3));
         } catch (e) {
-          debugPrint('[RoleRoutingWrapper] Role set timed out or failed: $e');
+          debugPrint('[RoleRoutingWrapper] Role set failed: $e');
         }
-
-        try {
-          roleDoc = await roleDocRef.get().timeout(const Duration(seconds: 4));
-        } catch (_) {}
-      }
-
-      final roleData = roleDoc?.data();
-      // For authenticated users: role is 'admin' or 'teacher'. Default to 'admin' for backward compat.
-      final role = roleData?['role'] as String? ?? 'admin';
-
-      // For 'teacher' role, pre-load the teacher profile before building the wrapper.
-      if (role == 'teacher' && mounted) {
-        final teacher = await TeacherService.getCurrentTeacher();
-        if (mounted) {
-          setState(() {
-            _role = role;
-            _teacherModel = teacher;
-            _isLoading = false;
-          });
-        }
-        return;
       }
 
       if (mounted) {

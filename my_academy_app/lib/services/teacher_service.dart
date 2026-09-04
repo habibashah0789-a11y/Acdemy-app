@@ -31,15 +31,19 @@ class TeacherService {
 
   // ── Get the currently authenticated teacher's Firestore document ──
   static Future<TeacherModel?> getCurrentTeacher() async {
-    final uid = FirebaseAuth.instance.currentUser?.uid;
-    if (uid == null) return null;
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) return null;
+    final uid = user.uid;
+    final email = user.email?.trim().toLowerCase() ?? '';
 
-    if (_cachedCurrentTeacher != null && _cachedCurrentTeacher!.id == uid) {
+    if (_cachedCurrentTeacher != null &&
+        (_cachedCurrentTeacher!.id == uid ||
+            _cachedCurrentTeacher!.email.toLowerCase() == email)) {
       return _cachedCurrentTeacher;
     }
 
     try {
-      // 1. Try local cache first for instant loading (< 20ms)
+      // 1. Try local cache by UID
       try {
         final cacheDoc = await _firestore
             .collection('teachers')
@@ -52,16 +56,51 @@ class TeacherService {
         }
       } catch (_) {}
 
-      // 2. Fetch from server with 2s timeout
-      final doc = await _firestore
-          .collection('teachers')
-          .doc(uid)
-          .get()
-          .timeout(const Duration(seconds: 2));
-      if (doc.exists) {
-        _cachedCurrentTeacher = TeacherModel.fromFirestore(doc);
-        return _cachedCurrentTeacher;
+      // 2. Fetch doc by UID from server
+      try {
+        final doc = await _firestore
+            .collection('teachers')
+            .doc(uid)
+            .get()
+            .timeout(const Duration(seconds: 3));
+        if (doc.exists && doc.data() != null) {
+          _cachedCurrentTeacher = TeacherModel.fromFirestore(doc);
+          return _cachedCurrentTeacher;
+        }
+      } catch (e) {
+        debugPrint('[TeacherService] doc(uid) fetch error: $e');
       }
+
+      // 3. Fallback: Search teacher by email if doc(uid) wasn't found directly
+      if (email.isNotEmpty) {
+        final query = await _firestore
+            .collection('teachers')
+            .where('email', isEqualTo: user.email?.trim())
+            .limit(1)
+            .get()
+            .timeout(const Duration(seconds: 4));
+
+        if (query.docs.isNotEmpty) {
+          final teacherDoc = query.docs.first;
+          final teacher = TeacherModel.fromFirestore(teacherDoc);
+          _cachedCurrentTeacher = teacher;
+
+          // Self-heal: ensure doc(uid) and roles(uid) are linked properly
+          try {
+            await _firestore
+                .collection('teachers')
+                .doc(uid)
+                .set(teacher.toMap(), SetOptions(merge: true));
+            await _firestore
+                .collection('roles')
+                .doc(uid)
+                .set({'role': 'teacher'}, SetOptions(merge: true));
+          } catch (_) {}
+
+          return _cachedCurrentTeacher;
+        }
+      }
+
       return null;
     } catch (e) {
       debugPrint('[TeacherService] getCurrentTeacher error: $e');

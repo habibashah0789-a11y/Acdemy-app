@@ -4,9 +4,9 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import '../models/teacher_model.dart';
+import '../services/teacher_service.dart';
 import '../theme/app_theme.dart';
 import '../screens/role_selection_screen.dart';
-
 import '../widgets/about_developers_widget.dart';
 import '../screens/app_info_screens.dart';
 
@@ -14,14 +14,21 @@ class TeacherProfileScreen extends StatelessWidget {
   final TeacherModel teacher;
   const TeacherProfileScreen({super.key, required this.teacher});
 
-  Color get _subjectColor {
-    switch (teacher.subject.toLowerCase()) {
-      case 'biology': return const Color(0xFF059669);
-      case 'physics': return const Color(0xFF2563EB);
-      case 'chemistry': return const Color(0xFFD97706);
-      case 'mathematics': case 'math': return const Color(0xFF0891B2);
-      case 'english': return const Color(0xFF7C3AED);
-      default: return AppTheme.primaryBlue;
+  Color _getSubjectColor(String subject) {
+    switch (subject.toLowerCase()) {
+      case 'biology':
+        return const Color(0xFF059669);
+      case 'physics':
+        return const Color(0xFF2563EB);
+      case 'chemistry':
+        return const Color(0xFFD97706);
+      case 'mathematics':
+      case 'math':
+        return const Color(0xFF0891B2);
+      case 'english':
+        return const Color(0xFF7C3AED);
+      default:
+        return AppTheme.primaryBlue;
     }
   }
 
@@ -36,182 +43,208 @@ class TeacherProfileScreen extends StatelessWidget {
           style: GoogleFonts.poppins(fontWeight: FontWeight.bold),
         ),
       ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          children: [
-            const SizedBox(height: 8),
+      body: StreamBuilder<TeacherModel?>(
+        stream: TeacherService.getCurrentTeacherStream(),
+        initialData: teacher,
+        builder: (context, snapshot) {
+          final currentTeacher = snapshot.data ?? teacher;
+          final subjectColor = _getSubjectColor(currentTeacher.subject);
 
-            // ── Profile Header ──
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(24),
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [AppTheme.primaryDarkBlue, _subjectColor],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                ),
-                borderRadius: BorderRadius.circular(20),
-                boxShadow: [
-                  BoxShadow(
-                    color: _subjectColor.withValues(alpha: 0.25),
-                    blurRadius: 16,
-                    offset: const Offset(0, 6),
-                  ),
-                ],
-              ),
-              child: Column(
-                children: [
-                  _buildAvatar(80),
-                  const SizedBox(height: 16),
-                  Text(
-                    teacher.name,
-                    style: GoogleFonts.poppins(
-                      fontSize: 20,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.white,
+          return SingleChildScrollView(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              children: [
+                const SizedBox(height: 8),
+
+                // ── Profile Header ──
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(24),
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [AppTheme.primaryDarkBlue, subjectColor],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
                     ),
-                    textAlign: TextAlign.center,
+                    borderRadius: BorderRadius.circular(20),
+                    boxShadow: [
+                      BoxShadow(
+                        color: subjectColor.withValues(alpha: 0.25),
+                        blurRadius: 16,
+                        offset: const Offset(0, 6),
+                      ),
+                    ],
                   ),
-                  const SizedBox(height: 4),
-                  Text(
-                    teacher.tagLine,
-                    style: TextStyle(
-                      fontSize: 13,
-                      color: Colors.white.withValues(alpha: 0.8),
+                  child: Column(
+                    children: [
+                      _buildAvatar(80, currentTeacher),
+                      const SizedBox(height: 16),
+                      Text(
+                        currentTeacher.name.isNotEmpty
+                            ? currentTeacher.name
+                            : 'Faculty Member',
+                        style: GoogleFonts.poppins(
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        currentTeacher.tagLine,
+                        style: TextStyle(
+                          fontSize: 13,
+                          color: Colors.white.withValues(alpha: 0.8),
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 14, vertical: 6),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withValues(alpha: 0.15),
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: Text(
+                          currentTeacher.teacherId.isNotEmpty
+                              ? currentTeacher.teacherId
+                              : 'ID-TEACHER',
+                          style: GoogleFonts.poppins(
+                            fontSize: 13,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.white,
+                            letterSpacing: 1.0,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ).animate().fadeIn(duration: 500.ms).slideY(begin: 0.06),
+
+                const SizedBox(height: 20),
+
+                // ── Info Card ──
+                _buildInfoCard(isDark, currentTeacher, subjectColor),
+                const SizedBox(height: 20),
+
+                // ── Assigned Classes ──
+                _buildClassesCard(isDark, currentTeacher, subjectColor),
+                const SizedBox(height: 20),
+
+                // ── About App & Manual ──
+                Container(
+                  width: double.infinity,
+                  decoration: BoxDecoration(
+                    color: isDark ? AppTheme.darkCard : Colors.white,
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(
+                      color:
+                          isDark ? AppTheme.darkBorder : AppTheme.lightBorder,
                     ),
                   ),
-                  const SizedBox(height: 12),
-                  Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
-                    decoration: BoxDecoration(
-                      color: Colors.white.withValues(alpha: 0.15),
-                      borderRadius: BorderRadius.circular(10),
+                  child: ListTile(
+                    leading: Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: AppTheme.primaryBlue.withValues(alpha: 0.12),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: const Icon(Icons.info_outline_rounded,
+                          color: AppTheme.primaryBlue, size: 20),
                     ),
-                    child: Text(
-                      teacher.teacherId,
+                    title: Text(
+                      'About Quaid Academy App',
                       style: GoogleFonts.poppins(
-                        fontSize: 13,
+                        fontSize: 14,
                         fontWeight: FontWeight.bold,
-                        color: Colors.white,
-                        letterSpacing: 1.0,
+                      ),
+                    ),
+                    subtitle: Text(
+                      'Features, version details & manual',
+                      style: GoogleFonts.poppins(
+                          fontSize: 11, color: Colors.grey),
+                    ),
+                    trailing:
+                        const Icon(Icons.arrow_forward_ios_rounded, size: 16),
+                    onTap: () {
+                      Navigator.of(context).push(
+                        MaterialPageRoute(
+                            builder: (_) => const AboutAppScreen()),
+                      );
+                    },
+                  ),
+                ).animate().fadeIn(delay: 350.ms),
+
+                const SizedBox(height: 20),
+
+                const AboutDevelopersCard().animate().fadeIn(delay: 380.ms),
+
+                const SizedBox(height: 32),
+
+                // ── Logout Button ──
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton.icon(
+                    onPressed: () => _confirmLogout(context),
+                    icon: const Icon(Icons.logout_rounded),
+                    label: Text(
+                      'LOG OUT',
+                      style: GoogleFonts.poppins(
+                        fontWeight: FontWeight.w700,
+                        letterSpacing: 0.5,
+                      ),
+                    ),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppTheme.warningRed,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(14),
                       ),
                     ),
                   ),
-                ],
-              ),
-            ).animate().fadeIn(duration: 500.ms).slideY(begin: 0.06),
+                ).animate().fadeIn(delay: 400.ms),
 
-            const SizedBox(height: 20),
+                const SizedBox(height: 32),
 
-            // ── Info Card ──
-            _buildInfoCard(isDark),
-            const SizedBox(height: 20),
-
-            // ── Assigned Classes ──
-            _buildClassesCard(isDark),
-            const SizedBox(height: 20),
-
-            // ── About App & Developers ──
-            Container(
-              width: double.infinity,
-              decoration: BoxDecoration(
-                color: isDark ? AppTheme.darkCard : Colors.white,
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(
-                  color: isDark ? AppTheme.darkBorder : AppTheme.lightBorder,
-                ),
-              ),
-              child: ListTile(
-                leading: Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: AppTheme.primaryBlue.withValues(alpha: 0.12),
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: const Icon(Icons.info_outline_rounded,
-                      color: AppTheme.primaryBlue, size: 20),
-                ),
-                title: Text(
-                  'About Quaid Academy App',
+                Text(
+                  '© 2026 Quaid Academy Pro Management',
                   style: GoogleFonts.poppins(
-                    fontSize: 14,
-                    fontWeight: FontWeight.bold,
+                    fontSize: 11,
+                    color: AppTheme.lightTextSecondary,
                   ),
                 ),
-                subtitle: Text(
-                  'Features, version details & manual',
-                  style: GoogleFonts.poppins(fontSize: 11, color: Colors.grey),
-                ),
-                trailing: const Icon(Icons.arrow_forward_ios_rounded, size: 16),
-                onTap: () {
-                  Navigator.of(context).push(
-                    MaterialPageRoute(builder: (_) => const AboutAppScreen()),
-                  );
-                },
-              ),
-            ).animate().fadeIn(delay: 350.ms),
-
-            const SizedBox(height: 20),
-
-            const AboutDevelopersCard().animate().fadeIn(delay: 380.ms),
-
-            const SizedBox(height: 32),
-
-            // ── Logout ──
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton.icon(
-                onPressed: () => _confirmLogout(context),
-                icon: const Icon(Icons.logout_rounded),
-                label: Text(
-                  'LOG OUT',
-                  style: GoogleFonts.poppins(
-                    fontWeight: FontWeight.w700,
-                    letterSpacing: 0.5,
-                  ),
-                ),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppTheme.warningRed,
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(vertical: 16),
-                  shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(14)),
-                ),
-              ),
-            ).animate().fadeIn(delay: 400.ms),
-
-            const SizedBox(height: 32),
-
-            Text(
-              '© 2026 Quaid Academy Pro Management',
-              style: GoogleFonts.poppins(
-                fontSize: 11,
-                color: AppTheme.lightTextSecondary,
-              ),
+                const SizedBox(height: 16),
+              ],
             ),
-            const SizedBox(height: 16),
-          ],
-        ),
+          );
+        },
       ),
     );
   }
 
-  Widget _buildInfoCard(bool isDark) {
+  Widget _buildInfoCard(
+      bool isDark, TeacherModel currentTeacher, Color subjectColor) {
     final rows = [
-      _Row(Icons.email_rounded, 'Email', teacher.email),
-      _Row(Icons.auto_stories_rounded, 'Subject', teacher.subject),
-      _Row(Icons.school_rounded, 'Section', teacher.section),
+      _Row(Icons.email_rounded, 'Email', currentTeacher.email),
+      _Row(Icons.auto_stories_rounded, 'Subject', currentTeacher.subject),
+      _Row(Icons.school_rounded, 'Section', currentTeacher.section),
       _Row(
-        teacher.isActive ? Icons.verified_rounded : Icons.block_rounded,
+        currentTeacher.isActive
+            ? Icons.verified_rounded
+            : Icons.block_rounded,
         'Status',
-        teacher.isActive ? 'Active' : 'Inactive',
-        valueColor: teacher.isActive ? AppTheme.secondaryGreen : AppTheme.warningRed,
+        currentTeacher.isActive ? 'Active' : 'Inactive',
+        valueColor: currentTeacher.isActive
+            ? AppTheme.secondaryGreen
+            : AppTheme.warningRed,
       ),
-      _Row(Icons.calendar_today_rounded, 'Joined',
-          '${teacher.createdAt.day}/${teacher.createdAt.month}/${teacher.createdAt.year}'),
+      _Row(
+        Icons.calendar_today_rounded,
+        'Joined',
+        '${currentTeacher.createdAt.day}/${currentTeacher.createdAt.month}/${currentTeacher.createdAt.year}',
+      ),
     ];
 
     return Container(
@@ -228,7 +261,7 @@ class TeacherProfileScreen extends StatelessWidget {
         children: [
           Row(
             children: [
-              Icon(Icons.badge_rounded, color: _subjectColor, size: 18),
+              Icon(Icons.badge_rounded, color: subjectColor, size: 18),
               const SizedBox(width: 8),
               Text(
                 'Account Details',
@@ -271,27 +304,29 @@ class TeacherProfileScreen extends StatelessWidget {
     ).animate().fadeIn(delay: 200.ms).slideY(begin: 0.04);
   }
 
-  Widget _buildClassesCard(bool isDark) {
+  Widget _buildClassesCard(
+      bool isDark, TeacherModel currentTeacher, Color subjectColor) {
     return Container(
+      width: double.infinity,
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
-        color: _subjectColor.withValues(alpha: 0.06),
+        color: subjectColor.withValues(alpha: 0.06),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: _subjectColor.withValues(alpha: 0.2)),
+        border: Border.all(color: subjectColor.withValues(alpha: 0.2)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
-              Icon(Icons.class_rounded, color: _subjectColor, size: 18),
+              Icon(Icons.class_rounded, color: subjectColor, size: 18),
               const SizedBox(width: 8),
               Text(
                 'Assigned Classes',
                 style: GoogleFonts.poppins(
                   fontSize: 14,
                   fontWeight: FontWeight.bold,
-                  color: _subjectColor,
+                  color: subjectColor,
                 ),
               ),
             ],
@@ -300,19 +335,22 @@ class TeacherProfileScreen extends StatelessWidget {
           Wrap(
             spacing: 8,
             runSpacing: 8,
-            children: teacher.assignedClasses.isEmpty
+            children: currentTeacher.assignedClasses.isEmpty
                 ? [
                     Chip(
                       label: const Text('All Classes'),
-                      backgroundColor: _subjectColor.withValues(alpha: 0.15),
-                      labelStyle: TextStyle(color: _subjectColor, fontSize: 12),
+                      backgroundColor: subjectColor.withValues(alpha: 0.15),
+                      labelStyle:
+                          TextStyle(color: subjectColor, fontSize: 12),
                     )
                   ]
-                : teacher.assignedClasses
+                : currentTeacher.assignedClasses
                     .map((cls) => Chip(
                           label: Text(cls),
-                          backgroundColor: _subjectColor.withValues(alpha: 0.15),
-                          labelStyle: TextStyle(color: _subjectColor, fontSize: 12),
+                          backgroundColor:
+                              subjectColor.withValues(alpha: 0.15),
+                          labelStyle:
+                              TextStyle(color: subjectColor, fontSize: 12),
                         ))
                     .toList(),
           ),
@@ -321,28 +359,29 @@ class TeacherProfileScreen extends StatelessWidget {
     ).animate().fadeIn(delay: 300.ms);
   }
 
-  Widget _buildAvatar(double size) {
-    if (teacher.profilePicUrl.isNotEmpty) {
+  Widget _buildAvatar(double size, TeacherModel currentTeacher) {
+    if (currentTeacher.profilePicUrl.isNotEmpty) {
       return CircleAvatar(
         radius: size / 2,
         backgroundColor: Colors.white.withValues(alpha: 0.2),
         child: ClipOval(
           child: CachedNetworkImage(
-            imageUrl: teacher.profilePicUrl,
+            imageUrl: currentTeacher.profilePicUrl,
             width: size,
             height: size,
             fit: BoxFit.cover,
-            errorWidget: (_, __, ___) => _buildInitialsAvatar(size),
+            errorWidget: (_, __, ___) =>
+                _buildInitialsAvatar(size, currentTeacher),
           ),
         ),
       );
     }
-    return _buildInitialsAvatar(size);
+    return _buildInitialsAvatar(size, currentTeacher);
   }
 
-  Widget _buildInitialsAvatar(double size) {
-    final initials = teacher.name.isNotEmpty
-        ? teacher.name
+  Widget _buildInitialsAvatar(double size, TeacherModel currentTeacher) {
+    final initials = currentTeacher.name.isNotEmpty
+        ? currentTeacher.name
             .split(' ')
             .take(2)
             .map((w) => w.isNotEmpty ? w[0].toUpperCase() : '')
@@ -377,8 +416,9 @@ class TeacherProfileScreen extends StatelessWidget {
           ),
           ElevatedButton(
             style: ElevatedButton.styleFrom(
-                backgroundColor: AppTheme.warningRed,
-                foregroundColor: Colors.white),
+              backgroundColor: AppTheme.warningRed,
+              foregroundColor: Colors.white,
+            ),
             onPressed: () => Navigator.of(ctx).pop(true),
             child: const Text('Log Out'),
           ),
@@ -387,13 +427,13 @@ class TeacherProfileScreen extends StatelessWidget {
     );
 
     if (confirmed == true) {
-      await FirebaseAuth.instance.signOut();
       if (context.mounted) {
         Navigator.of(context).pushAndRemoveUntil(
           MaterialPageRoute(builder: (_) => const RoleSelectionScreen()),
           (_) => false,
         );
       }
+      await FirebaseAuth.instance.signOut();
     }
   }
 }

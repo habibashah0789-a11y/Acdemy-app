@@ -4,6 +4,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import 'fsc_teacher_screen.dart';
 import 'matric_teacher_screen.dart';
+import '../screens/teacher_management/teacher_management_screen.dart';
 import '../services/database_service.dart';
 import '../services/sync_service.dart';
 import '../theme/app_theme.dart';
@@ -200,6 +201,22 @@ class _TeacherFolderScreenState extends State<TeacherFolderScreen> {
                 ),
               ],
             ),
+          ),
+        ),
+        floatingActionButton: FloatingActionButton.extended(
+          heroTag: null,
+          onPressed: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const TeacherManagementScreen()),
+            );
+          },
+          backgroundColor: AppTheme.primaryBlue,
+          foregroundColor: Colors.white,
+          icon: const Icon(Icons.manage_accounts_rounded),
+          label: Text(
+            'Manage Teachers',
+            style: GoogleFonts.poppins(fontWeight: FontWeight.w600),
           ),
         ),
         body: TabBarView(

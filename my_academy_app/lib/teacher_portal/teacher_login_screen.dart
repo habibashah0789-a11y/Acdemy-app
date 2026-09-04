@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../theme/app_theme.dart';
+import '../models/teacher_model.dart';
 import '../services/teacher_service.dart';
 import 'teacher_main_wrapper.dart';
 
@@ -46,37 +47,41 @@ class _TeacherLoginScreenState extends State<TeacherLoginScreen> {
 
       final uid = credential.user!.uid;
 
-      // 2. Verify role == 'teacher'
-      final roleDoc = await FirebaseFirestore.instance
-          .collection('roles')
-          .doc(uid)
-          .get()
-          .timeout(const Duration(seconds: 5));
+      // 2. Load teacher data with fallback email matching and auto-linking
+      TeacherModel? teacher = await TeacherService.getCurrentTeacher();
 
-      final role = roleDoc.data()?['role'] as String? ?? '';
-
-      if (role != 'teacher') {
-        await FirebaseAuth.instance.signOut();
-        setState(() {
-          _errorMessage =
-              'This account is not registered as a teacher. Please use the correct portal.';
-          _isLoading = false;
-        });
-        return;
+      if (teacher == null) {
+        // Double check role document in case profile load was delayed
+        try {
+          final roleDoc = await FirebaseFirestore.instance
+              .collection('roles')
+              .doc(uid)
+              .get()
+              .timeout(const Duration(seconds: 3));
+          final role = roleDoc.data()?['role'] as String? ?? '';
+          if (role == 'teacher') {
+            teacher = await TeacherService.getCurrentTeacher();
+          }
+        } catch (_) {}
       }
-
-      // 3. Load teacher data
-      final teacher = await TeacherService.getCurrentTeacher();
 
       if (teacher == null) {
         await FirebaseAuth.instance.signOut();
         setState(() {
           _errorMessage =
-              'Teacher profile not found. Please contact administration.';
+              'Teacher profile not found for ${_emailController.text.trim()}. Please contact administration.';
           _isLoading = false;
         });
         return;
       }
+
+      // Ensure roles document is synced
+      try {
+        await FirebaseFirestore.instance
+            .collection('roles')
+            .doc(uid)
+            .set({'role': 'teacher'}, SetOptions(merge: true));
+      } catch (_) {}
 
       if (!teacher.isActive) {
         await FirebaseAuth.instance.signOut();
@@ -88,11 +93,11 @@ class _TeacherLoginScreenState extends State<TeacherLoginScreen> {
         return;
       }
 
-      // 4. Navigate to teacher portal
+      // 3. Navigate to teacher portal
       if (mounted) {
         Navigator.of(context).pushAndRemoveUntil(
           MaterialPageRoute(
-            builder: (_) => TeacherMainWrapper(teacher: teacher),
+            builder: (_) => TeacherMainWrapper(teacher: teacher!),
           ),
           (_) => false,
         );
