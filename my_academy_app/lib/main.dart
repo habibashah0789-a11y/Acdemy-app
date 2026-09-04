@@ -264,6 +264,7 @@ class _RoleRoutingWrapperState extends State<RoleRoutingWrapper> {
     try {
       final firestore = FirebaseFirestore.instance;
       final roleDocRef = firestore.collection('roles').doc(widget.user.uid);
+      DocumentSnapshot<Map<String, dynamic>>? roleDoc;
 
       // 1. Try local offline cache first for instant startup (< 20ms)
       try {
