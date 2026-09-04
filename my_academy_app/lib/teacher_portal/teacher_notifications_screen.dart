@@ -449,6 +449,7 @@ class __CreateAnnouncementModalState extends State<_CreateAnnouncementModal> {
   }
 
   Future<void> _pickAttachment(String type) async {
+    final messenger = ScaffoldMessenger.of(context);
     try {
       FileType fileType = FileType.any;
       List<String>? allowedExtensions;
@@ -484,7 +485,7 @@ class __CreateAnnouncementModalState extends State<_CreateAnnouncementModal> {
       }
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
+      messenger.showSnackBar(
         SnackBar(content: Text('Failed to select file: $e')),
       );
     }
@@ -492,6 +493,9 @@ class __CreateAnnouncementModalState extends State<_CreateAnnouncementModal> {
 
   Future<void> _submitAnnouncement() async {
     if (!_formKey.currentState!.validate()) return;
+
+    final messenger = ScaffoldMessenger.of(context);
+    final navigator = Navigator.of(context);
 
     setState(() => _isUploading = true);
 
@@ -526,7 +530,7 @@ class __CreateAnnouncementModalState extends State<_CreateAnnouncementModal> {
 
       if (!mounted) return;
 
-      ScaffoldMessenger.of(context).showSnackBar(
+      messenger.showSnackBar(
         SnackBar(
           backgroundColor: AppTheme.secondaryGreen,
           content: Row(
@@ -543,11 +547,11 @@ class __CreateAnnouncementModalState extends State<_CreateAnnouncementModal> {
           ),
         ),
       );
-      Navigator.of(context).pop();
+      navigator.pop();
     } catch (e) {
       if (!mounted) return;
       setState(() => _isUploading = false);
-      ScaffoldMessenger.of(context).showSnackBar(
+      messenger.showSnackBar(
         SnackBar(
           backgroundColor: AppTheme.warningRed,
           content: Text('Error publishing announcement: $e'),
