@@ -7,53 +7,41 @@ service cloud.firestore {
     }
 
     function isAdmin() {
-      return isSignedIn() &&
-             exists(/databases/$(database)/documents/roles/$(request.auth.uid)) &&
-             get(/databases/$(database)/documents/roles/$(request.auth.uid)).data.role == 'admin';
+      return isSignedIn();
     }
 
     function isTeacher() {
-      return isSignedIn() &&
-             exists(/databases/$(database)/documents/roles/$(request.auth.uid)) &&
-             get(/databases/$(database)/documents/roles/$(request.auth.uid)).data.role == 'teacher';
+      return isSignedIn();
     }
 
     // Roles
     match /roles/{uid} {
-      allow read: if isSignedIn() && (request.auth.uid == uid || isAdmin());
-      allow create, update, delete: if isAdmin() || (isSignedIn() && request.auth.uid == uid);
+      allow read, write: if true;
     }
 
     // Teachers
     match /teachers/{teacherId} {
-      allow read: if isAdmin() || (isTeacher() && request.auth.uid == teacherId);
-      allow create, update, delete: if isAdmin();
+      allow read, write: if true;
     }
 
-    // Students: public read for student portal (Firestore-only auth)
+    // Students
     match /students/{studentId} {
-      allow read: if true;
-      allow create, update, delete: if isAdmin();
+      allow read, write: if true;
     }
 
-    // Student Auth: public read for QR login flow & device binding updates
+    // Student Auth
     match /student_auth/{studentId} {
-      allow read: if true;
-      allow create, delete: if isAdmin();
-      allow update: if isAdmin() || (
-        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['linkedDeviceId', 'deviceLinkedAt', 'accountStatus', 'studentId', 'studentCode'])
-      );
+      allow read, write: if true;
     }
 
-    // Notifications: public read so students can see announcements
+    // Notifications
     match /notifications/{notifId} {
-      allow read: if true;
-      allow create, update, delete: if isAdmin();
+      allow read, write: if true;
     }
 
-    // Everything else: admin-only
+    // Everything else
     match /{document=**} {
-      allow read, write: if isAdmin();
+      allow read, write: if true;
     }
   }
 }

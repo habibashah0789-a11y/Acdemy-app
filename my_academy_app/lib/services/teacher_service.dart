@@ -27,18 +27,54 @@ class TeacherService {
   static final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   static final FirebaseStorage _storage = FirebaseStorage.instance;
 
+  static TeacherModel? _cachedCurrentTeacher;
+
   // ── Get the currently authenticated teacher's Firestore document ──
   static Future<TeacherModel?> getCurrentTeacher() async {
     final uid = FirebaseAuth.instance.currentUser?.uid;
     if (uid == null) return null;
+
+    if (_cachedCurrentTeacher != null && _cachedCurrentTeacher!.id == uid) {
+      return _cachedCurrentTeacher;
+    }
+
     try {
-      final doc = await _firestore.collection('teachers').doc(uid).get();
-      if (doc.exists) return TeacherModel.fromFirestore(doc);
+      // 1. Try local cache first for instant loading (< 20ms)
+      try {
+        final cacheDoc = await _firestore
+            .collection('teachers')
+            .doc(uid)
+            .get(const GetOptions(source: Source.cache));
+        if (cacheDoc.exists && cacheDoc.data() != null) {
+          _cachedCurrentTeacher = TeacherModel.fromFirestore(cacheDoc);
+          _refreshCurrentTeacherInBackground(uid);
+          return _cachedCurrentTeacher;
+        }
+      } catch (_) {}
+
+      // 2. Fetch from server with 2s timeout
+      final doc = await _firestore
+          .collection('teachers')
+          .doc(uid)
+          .get()
+          .timeout(const Duration(seconds: 2));
+      if (doc.exists) {
+        _cachedCurrentTeacher = TeacherModel.fromFirestore(doc);
+        return _cachedCurrentTeacher;
+      }
       return null;
     } catch (e) {
       debugPrint('[TeacherService] getCurrentTeacher error: $e');
       return null;
     }
+  }
+
+  static void _refreshCurrentTeacherInBackground(String uid) {
+    _firestore.collection('teachers').doc(uid).get().then((doc) {
+      if (doc.exists) {
+        _cachedCurrentTeacher = TeacherModel.fromFirestore(doc);
+      }
+    }).catchError((_) {});
   }
 
   // ── Stream of the current teacher doc (auto-refresh on Firestore changes) ──

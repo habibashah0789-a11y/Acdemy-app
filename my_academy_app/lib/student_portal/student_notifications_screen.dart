@@ -7,6 +7,7 @@ import '../services/notification_service.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 import '../models/notification_model.dart';
+import '../models/student_model.dart';
 import '../theme/app_theme.dart';
 import '../widgets/custom_card.dart';
 import '../widgets/empty_state_widget.dart';
@@ -22,6 +23,7 @@ class StudentNotificationsScreen extends StatefulWidget {
 
 class _StudentNotificationsScreenState extends State<StudentNotificationsScreen> {
   String? _studentId;
+  StudentModel? _student;
   bool _isLoading = true;
   String? _errorMessage;
   List<NotificationModel> _notices = [];
@@ -44,6 +46,51 @@ class _StudentNotificationsScreenState extends State<StudentNotificationsScreen>
     super.dispose();
   }
 
+  bool _isNoticeTargetedForStudent(NotificationModel n, StudentModel? student, String studentId) {
+    // 1. Direct personal notification to student
+    if (n.studentId.isNotEmpty) {
+      return n.studentId == studentId || (student != null && n.studentId == student.studentCode);
+    }
+
+    if (student == null) return true; // Fallback if student profile not yet loaded
+
+    // 2. Target Class / Grade Check
+    final targetClass = n.className.trim().toLowerCase();
+    final studentGrade = student.grade.trim().toLowerCase();
+
+    if (targetClass.isNotEmpty && targetClass != 'all') {
+      bool classMatches = targetClass == studentGrade ||
+          studentGrade.contains(targetClass) ||
+          targetClass.contains(studentGrade);
+      if (!classMatches) return false;
+    }
+
+    // 3. Target Subject Check (Teacher announcement vs Admin announcement)
+    final targetSubject = n.subject.trim().toLowerCase();
+    final isGeneralAdmin = targetSubject.isEmpty ||
+        targetSubject == 'general' ||
+        targetSubject == 'all' ||
+        n.registeredBy.toLowerCase().contains('admin');
+
+    if (!isGeneralAdmin) {
+      // Teacher announcement for specific subject (e.g. 'Physics')
+      final studentSubjects = student.subject
+          .split(',')
+          .map((s) => s.trim().toLowerCase())
+          .where((s) => s.isNotEmpty)
+          .toList();
+
+      bool subjectMatches = studentSubjects.any((sub) =>
+          sub == targetSubject ||
+          sub.contains(targetSubject) ||
+          targetSubject.contains(sub));
+
+      if (!subjectMatches) return false;
+    }
+
+    return true;
+  }
+
   void _initRealTimeNotices() async {
     setState(() {
       _isLoading = true;
@@ -58,6 +105,9 @@ class _StudentNotificationsScreenState extends State<StudentNotificationsScreen>
       }
       _studentId = session['studentId'] as String;
 
+      // Load student profile for grade & subject matching
+      _student = await StudentAuthService.fetchCurrentStudent(studentId: _studentId!);
+
       _noticesSubscription?.cancel();
       _noticesSubscription = FirebaseFirestore.instance
           .collection('notifications')
@@ -69,7 +119,7 @@ class _StudentNotificationsScreenState extends State<StudentNotificationsScreen>
             .toList();
 
         final filteredNotices = allNotices.where((n) {
-          return n.studentId.isEmpty || n.studentId == _studentId;
+          return _isNoticeTargetedForStudent(n, _student, _studentId!);
         }).toList();
 
         if (mounted) {

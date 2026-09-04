@@ -109,6 +109,45 @@ class _StudentDashboardScreenState extends State<StudentDashboardScreen> {
         }
       });
 
+  bool _isNoticeTargeted(NotificationModel n, StudentModel student) {
+    if (n.studentId.isNotEmpty) {
+      return n.studentId == student.id || n.studentId == student.studentCode;
+    }
+
+    final targetClass = n.className.trim().toLowerCase();
+    final studentGrade = student.grade.trim().toLowerCase();
+
+    if (targetClass.isNotEmpty && targetClass != 'all') {
+      bool classMatches = targetClass == studentGrade ||
+          studentGrade.contains(targetClass) ||
+          targetClass.contains(studentGrade);
+      if (!classMatches) return false;
+    }
+
+    final targetSubject = n.subject.trim().toLowerCase();
+    final isGeneralAdmin = targetSubject.isEmpty ||
+        targetSubject == 'general' ||
+        targetSubject == 'all' ||
+        n.registeredBy.toLowerCase().contains('admin');
+
+    if (!isGeneralAdmin) {
+      final studentSubjects = student.subject
+          .split(',')
+          .map((s) => s.trim().toLowerCase())
+          .where((s) => s.isNotEmpty)
+          .toList();
+
+      bool subjectMatches = studentSubjects.any((sub) =>
+          sub == targetSubject ||
+          sub.contains(targetSubject) ||
+          targetSubject.contains(sub));
+
+      if (!subjectMatches) return false;
+    }
+
+    return true;
+  }
+
       // Listen to notifications in real-time
       _noticesSubscription = FirebaseFirestore.instance
           .collection('notifications')
@@ -117,7 +156,7 @@ class _StudentDashboardScreenState extends State<StudentDashboardScreen> {
           .listen((noticesSnapshot) {
         final noticesList = noticesSnapshot.docs
             .map((doc) => NotificationModel.fromMap(doc.data(), doc.id))
-            .where((n) => n.studentId.isEmpty || n.studentId == student.id || n.studentId == studentId)
+            .where((n) => _isNoticeTargeted(n, student))
             .toList();
 
         if (mounted) {

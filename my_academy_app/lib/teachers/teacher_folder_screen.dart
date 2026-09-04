@@ -4,7 +4,6 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import 'fsc_teacher_screen.dart';
 import 'matric_teacher_screen.dart';
-import '../screens/fee_reminders_screen.dart';
 import '../services/database_service.dart';
 import '../services/sync_service.dart';
 import '../theme/app_theme.dart';
@@ -202,19 +201,6 @@ class _TeacherFolderScreenState extends State<TeacherFolderScreen> {
               ],
             ),
           ),
-        ),
-        floatingActionButton: FloatingActionButton(
-          heroTag: null,
-          onPressed: () {
-            Navigator.push(
-              context,
-              MaterialPageRoute(builder: (_) => const FeeRemindersScreen()),
-            );
-          },
-          backgroundColor: const Color(0xFF25D366),
-          foregroundColor: Colors.white,
-          tooltip: 'Fee Reminders',
-          child: const Icon(Icons.message_rounded),
         ),
         body: TabBarView(
           children: [

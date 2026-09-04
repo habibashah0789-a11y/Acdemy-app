@@ -13,6 +13,7 @@ import '../services/database_service.dart';
 import '../services/notification_service.dart';
 import '../screens/notifications_screen.dart';
 import '../screens/daily_records/daily_records_screen.dart';
+import '../screens/fee_reminders_screen.dart';
 import '../settings/class_schedules_screen.dart';
 
 class _ActivityItem {
@@ -248,6 +249,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
         Navigator.push(
           context,
           MaterialPageRoute(builder: (_) => const DailyRecordsScreen()),
+        );
+      },
+      onPendingTap: () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (_) => const FeeRemindersScreen()),
         );
       },
       onClassSchedulesTap: () {
@@ -2784,6 +2791,7 @@ class DashboardStatSlider extends StatefulWidget {
   final double pendingAmount;
   final VoidCallback? onTotalStudentsTap;
   final VoidCallback? onCollectedTap;
+  final VoidCallback? onPendingTap;
   final VoidCallback? onClassSchedulesTap;
 
   const DashboardStatSlider({
@@ -2793,6 +2801,7 @@ class DashboardStatSlider extends StatefulWidget {
     required this.pendingAmount,
     this.onTotalStudentsTap,
     this.onCollectedTap,
+    this.onPendingTap,
     this.onClassSchedulesTap,
   });
 
@@ -2854,14 +2863,14 @@ class _DashboardStatSliderState extends State<DashboardStatSlider> {
         context: context,
         title: 'Fee Pending Dues',
         value: _fmt.format(widget.pendingAmount),
-        subtitle: 'Outstanding student balance',
+        subtitle: 'Tap to send fee reminders',
         icon: Icons.warning_amber_rounded,
         iconColor: AppTheme.warningRed,
         gradientColors: isDark
             ? [const Color(0xFF1E293B), const Color(0xFF0F172A)]
             : [const Color(0xFFFEF2F2), const Color(0xFFFEE2E2)],
         borderColor: AppTheme.warningRed,
-        onTap: null,
+        onTap: widget.onPendingTap,
       ),
       // Slide 4: View Class Schedules
       _buildSliderCard(

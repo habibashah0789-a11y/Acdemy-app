@@ -265,17 +265,18 @@ class _RoleRoutingWrapperState extends State<RoleRoutingWrapper> {
       final firestore = FirebaseFirestore.instance;
       final roleDocRef = firestore.collection('roles').doc(widget.user.uid);
 
-      DocumentSnapshot<Map<String, dynamic>>? roleDoc;
-
-      // 1. Try server fetch with a 4-second timeout
+      // 1. Try local offline cache first for instant startup (< 20ms)
       try {
-        roleDoc = await roleDocRef.get().timeout(const Duration(seconds: 4));
-      } catch (e) {
-        debugPrint('[RoleRoutingWrapper] Server role lookup failed or timed out: $e');
-        // 2. Try offline cache fetch
+        roleDoc = await roleDocRef.get(const GetOptions(source: Source.cache));
+      } catch (_) {}
+
+      // 2. If not in cache, fetch from server with a fast 2-second timeout
+      if (roleDoc == null || !roleDoc.exists) {
         try {
-          roleDoc = await roleDocRef.get(const GetOptions(source: Source.cache));
-        } catch (_) {}
+          roleDoc = await roleDocRef.get().timeout(const Duration(seconds: 2));
+        } catch (e) {
+          debugPrint('[RoleRoutingWrapper] Server role lookup timed out: $e');
+        }
       }
 
       // 3. Auto-bootstrap for admin user if role document is missing
