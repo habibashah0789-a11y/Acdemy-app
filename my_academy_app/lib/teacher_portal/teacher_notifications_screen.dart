@@ -326,12 +326,13 @@ class _TeacherNotificationsScreenState
   }
 
   Future<void> _openUrl(String url) async {
+    final messenger = ScaffoldMessenger.of(context);
     final uri = Uri.parse(url);
     if (await canLaunchUrl(uri)) {
       await launchUrl(uri, mode: LaunchMode.externalApplication);
     } else {
-      if (!context.mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
+      if (!mounted) return;
+      messenger.showSnackBar(
         const SnackBar(content: Text('Could not open attachment URL')),
       );
     }
@@ -448,6 +449,7 @@ class __CreateAnnouncementModalState extends State<_CreateAnnouncementModal> {
   }
 
   Future<void> _pickAttachment(String type) async {
+    final messenger = ScaffoldMessenger.of(context);
     try {
       FileType fileType = FileType.any;
       List<String>? allowedExtensions;
@@ -480,8 +482,8 @@ class __CreateAnnouncementModalState extends State<_CreateAnnouncementModal> {
         }
       }
     } catch (e) {
-      if (!context.mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
+      if (!mounted) return;
+      messenger.showSnackBar(
         SnackBar(content: Text('Failed to select file: $e')),
       );
     }
@@ -489,6 +491,9 @@ class __CreateAnnouncementModalState extends State<_CreateAnnouncementModal> {
 
   Future<void> _submitAnnouncement() async {
     if (!_formKey.currentState!.validate()) return;
+
+    final messenger = ScaffoldMessenger.of(context);
+    final navigator = Navigator.of(context);
 
     setState(() => _isUploading = true);
 
@@ -519,8 +524,8 @@ class __CreateAnnouncementModalState extends State<_CreateAnnouncementModal> {
         mediaType: _mediaType,
       );
 
-      if (!context.mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
+      if (!mounted) return;
+      messenger.showSnackBar(
         SnackBar(
           backgroundColor: AppTheme.secondaryGreen,
           content: Row(
@@ -537,11 +542,11 @@ class __CreateAnnouncementModalState extends State<_CreateAnnouncementModal> {
           ),
         ),
       );
-      Navigator.of(context).pop();
+      navigator.pop();
     } catch (e) {
-      if (!context.mounted) return;
+      if (!mounted) return;
       setState(() => _isUploading = false);
-      ScaffoldMessenger.of(context).showSnackBar(
+      messenger.showSnackBar(
         SnackBar(
           backgroundColor: AppTheme.warningRed,
           content: Text('Error publishing announcement: $e'),
