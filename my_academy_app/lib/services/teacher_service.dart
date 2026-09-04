@@ -318,4 +318,86 @@ class TeacherService {
       return null;
     }
   }
+
+  // ── Upload Announcement Media (Picture, PDF, Voice Note) ──
+  static Future<String?> uploadAnnouncementAttachment({
+    required Uint8List fileBytes,
+    required String fileName,
+    required String mediaType, // 'image' | 'pdf' | 'audio'
+  }) async {
+    if (FirebaseAuth.instance.currentUser == null) return null;
+    try {
+      String extension = 'bin';
+      String contentType = 'application/octet-stream';
+
+      if (mediaType == 'image') {
+        extension = 'jpg';
+        contentType = 'image/jpeg';
+      } else if (mediaType == 'pdf') {
+        extension = 'pdf';
+        contentType = 'application/pdf';
+      } else if (mediaType == 'audio') {
+        extension = 'mp3';
+        contentType = 'audio/mpeg';
+        if (fileName.endsWith('.wav')) {
+          extension = 'wav';
+          contentType = 'audio/wav';
+        } else if (fileName.endsWith('.m4a')) {
+          extension = 'm4a';
+          contentType = 'audio/mp4';
+        }
+      }
+
+      final timestamp = DateTime.now().millisecondsSinceEpoch;
+      final path = 'announcements/announcement_${timestamp}_$fileName';
+      final ref = _storage.ref().child(path);
+
+      await ref.putData(
+        fileBytes,
+        SettableMetadata(contentType: contentType),
+      );
+
+      return await ref.getDownloadURL();
+    } catch (e) {
+      debugPrint('[TeacherService] uploadAnnouncementAttachment error: $e');
+      return null;
+    }
+  }
+
+  // ── Create and Publish Teacher Announcement ──
+  static Future<void> createTeacherAnnouncement({
+    required TeacherModel teacher,
+    required String title,
+    required String message,
+    String mediaUrl = '',
+    String mediaType = 'none', // 'none' | 'image' | 'pdf' | 'audio'
+    String targetClass = 'All',
+  }) async {
+    final notifDocRef = _firestore.collection('notifications').doc();
+
+    final data = {
+      'id': notifDocRef.id,
+      'title': title,
+      'body': message,
+      'message': message,
+      'registeredBy': teacher.name,
+      'senderId': teacher.id,
+      'subject': teacher.subject,
+      'targetSubject': teacher.subject,
+      'targetSection': teacher.section,
+      'class': targetClass == 'All' ? teacher.section : targetClass,
+      'timestamp': FieldValue.serverTimestamp(),
+      'createdAt': FieldValue.serverTimestamp(),
+      'type': 'announcement',
+      'notificationType': 'teacher_announcement',
+      'isRead': false,
+      'mediaUrl': mediaUrl,
+      'attachmentUrl': mediaUrl,
+      'mediaType': mediaType,
+      'attachmentType': mediaType,
+    };
+
+    await notifDocRef.set(data);
+  }
 }
+

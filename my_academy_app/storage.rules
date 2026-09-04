@@ -1,0 +1,26 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+    
+    // Teacher profile picture uploads
+    match /teacher_profiles/{fileName} {
+      allow read: if true;
+      allow write: if request.auth != null
+                   && request.resource.size < 5 * 1024 * 1024
+                   && request.resource.contentType.matches('image/.*');
+    }
+
+    // Announcement attachment uploads (Pictures, PDFs, Audio Voice Notes)
+    match /announcements/{fileName} {
+      allow read: if true;
+      allow write: if request.auth != null
+                   && request.resource.size < 25 * 1024 * 1024;
+    }
+
+    // Student profile pictures
+    match /student_profiles/{fileName} {
+      allow read: if true;
+      allow write: if request.auth != null;
+    }
+  }
+}

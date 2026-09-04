@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../services/notification_service.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
@@ -419,6 +420,10 @@ class _StudentNotificationsScreenState extends State<StudentNotificationsScreen>
                           color: isDark ? AppTheme.darkTextPrimary : AppTheme.lightTextPrimary,
                         ),
                       ),
+                      if (item.mediaUrl.isNotEmpty && item.mediaType != 'none') ...[
+                        const SizedBox(height: 16),
+                        _buildStudentAttachment(item.mediaUrl, item.mediaType),
+                      ],
                       const SizedBox(height: 24),
                       // Footer — issued by
                       Container(
@@ -432,7 +437,7 @@ class _StudentNotificationsScreenState extends State<StudentNotificationsScreen>
                         ),
                         child: Row(
                           children: [
-                            Icon(Icons.admin_panel_settings_rounded, size: 16, color: themeColor),
+                            Icon(Icons.badge_rounded, size: 16, color: themeColor),
                             const SizedBox(width: 8),
                             Expanded(
                               child: Text(
@@ -458,4 +463,101 @@ class _StudentNotificationsScreenState extends State<StudentNotificationsScreen>
       ),
     );
   }
+
+  Widget _buildStudentAttachment(String mediaUrl, String mediaType) {
+    if (mediaType == 'image') {
+      return ClipRRect(
+        borderRadius: BorderRadius.circular(14),
+        child: Container(
+          constraints: const BoxConstraints(maxHeight: 250, width: double.infinity),
+          color: Colors.black12,
+          child: Image.network(
+            mediaUrl,
+            fit: BoxFit.cover,
+            errorBuilder: (_, __, ___) => const Padding(
+              padding: EdgeInsets.all(16),
+              child: Center(child: Text('Failed to load image attachment')),
+            ),
+          ),
+        ),
+      );
+    } else if (mediaType == 'pdf') {
+      return Container(
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: Colors.red.withValues(alpha: 0.1),
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: Colors.red.withValues(alpha: 0.3)),
+        ),
+        child: Row(
+          children: [
+            const Icon(Icons.picture_as_pdf_rounded, color: Colors.red, size: 28),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                'PDF Document Attached',
+                style: GoogleFonts.poppins(
+                  fontSize: 13,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.red.shade900,
+                ),
+              ),
+            ),
+            ElevatedButton.icon(
+              onPressed: () => _launchAttachmentUrl(mediaUrl),
+              icon: const Icon(Icons.open_in_new_rounded, size: 14),
+              label: const Text('Open PDF'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.red,
+                foregroundColor: Colors.white,
+              ),
+            ),
+          ],
+        ),
+      );
+    } else if (mediaType == 'audio') {
+      return Container(
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: AppTheme.accentIndigo.withValues(alpha: 0.1),
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: AppTheme.accentIndigo.withValues(alpha: 0.3)),
+        ),
+        child: Row(
+          children: [
+            const Icon(Icons.graphic_eq_rounded, color: AppTheme.accentIndigo, size: 28),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                'Voice Note / Audio Attachment',
+                style: GoogleFonts.poppins(
+                  fontSize: 13,
+                  fontWeight: FontWeight.bold,
+                  color: AppTheme.primaryDarkBlue,
+                ),
+              ),
+            ),
+            ElevatedButton.icon(
+              onPressed: () => _launchAttachmentUrl(mediaUrl),
+              icon: const Icon(Icons.play_arrow_rounded, size: 18),
+              label: const Text('Listen'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppTheme.accentIndigo,
+                foregroundColor: Colors.white,
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+    return const SizedBox.shrink();
+  }
+
+  Future<void> _launchAttachmentUrl(String url) async {
+    final uri = Uri.parse(url);
+    if (await canLaunchUrl(uri)) {
+      await launchUrl(uri, mode: LaunchMode.externalApplication);
+    }
+  }
 }
+

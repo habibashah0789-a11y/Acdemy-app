@@ -8,6 +8,7 @@ import 'package:hive/hive.dart';
 import '../models/student_model.dart';
 import '../models/recycled_student.dart';
 import '../utils/image_utils.dart';
+import 'notification_service.dart';
 
 class DatabaseService {
   static final FirebaseFirestore _firestore = FirebaseFirestore.instance;
@@ -31,12 +32,13 @@ class DatabaseService {
     // 1. Instant local Hive put (<1ms)
     await _studentBox.put(student.id, student);
 
-    // 2. Non-blocking background Firestore write
+    // 2. Non-blocking background Firestore write & Teacher Notification Dispatch
     if (FirebaseAuth.instance.currentUser != null) {
       unawaited(_firestore
           .collection('students')
           .doc(student.id)
           .set(student.toMap())
+          .then((_) => NotificationService.createStudentRegistrationNotification(student))
           .catchError((e) => debugPrint('Firestore add student failed: $e')));
     }
     return true;
@@ -51,7 +53,7 @@ class DatabaseService {
     };
     await _studentBox.putAll(map);
 
-    // 2. Fast background WriteBatch for cloud Firestore
+    // 2. Fast background WriteBatch for cloud Firestore & Teacher Notification Dispatch
     if (FirebaseAuth.instance.currentUser != null) {
       unawaited(() async {
         try {
@@ -63,6 +65,9 @@ class DatabaseService {
               batch.set(_firestore.collection('students').doc(s.id), s.toMap());
             }
             await batch.commit();
+          }
+          for (final s in students) {
+            await NotificationService.createStudentRegistrationNotification(s);
           }
         } catch (e) {
           debugPrint('Firestore bulk add failed: $e');

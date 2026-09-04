@@ -12,6 +12,8 @@ class NotificationModel {
   final String notificationType;
   bool isRead;
   final String studentId; 
+  final String mediaUrl;
+  final String mediaType; // 'image', 'pdf', 'audio', 'none'
 
   NotificationModel({
     required this.id,
@@ -25,6 +27,8 @@ class NotificationModel {
     required this.notificationType,
     required this.isRead,
     this.studentId = '',
+    this.mediaUrl = '',
+    this.mediaType = 'none',
   });
 
   String get studentClass => className;
@@ -42,6 +46,8 @@ class NotificationModel {
       'notificationType': notificationType,
       'isRead': isRead,
       'studentId': studentId,
+      'mediaUrl': mediaUrl,
+      'mediaType': mediaType,
     };
   }
 
@@ -58,6 +64,8 @@ class NotificationModel {
       'notificationType': notificationType,
       'isRead': isRead,
       'studentId': studentId,
+      'mediaUrl': mediaUrl,
+      'mediaType': mediaType,
     };
   }
 
@@ -79,13 +87,15 @@ class NotificationModel {
       title: map['title']?.toString() ?? 'Notification',
       message: map['message']?.toString() ?? '',
       studentName: map['studentName']?.toString() ?? '',
-      className: map['class']?.toString() ?? '',
-      subject: map['subject']?.toString() ?? '',
+      className: map['class']?.toString() ?? map['targetSection']?.toString() ?? '',
+      subject: map['subject']?.toString() ?? map['targetSubject']?.toString() ?? '',
       registeredBy: map['registeredBy']?.toString() ?? '',
       timestamp: parsedTimestamp,
-      notificationType: map['notificationType']?.toString() ?? 'general',
+      notificationType: map['notificationType']?.toString() ?? map['type']?.toString() ?? 'general',
       isRead: map['isRead'] == true,
       studentId: map['studentId']?.toString() ?? '',
+      mediaUrl: map['mediaUrl']?.toString() ?? map['attachmentUrl']?.toString() ?? '',
+      mediaType: map['mediaType']?.toString() ?? map['attachmentType']?.toString() ?? 'none',
     );
   }
 
