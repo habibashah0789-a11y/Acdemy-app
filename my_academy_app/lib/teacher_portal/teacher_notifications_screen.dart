@@ -1,3 +1,4 @@
+import 'dart:typed_data';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/foundation.dart';
@@ -528,7 +529,10 @@ class __CreateAnnouncementModalState extends State<_CreateAnnouncementModal> {
         mediaType: _mediaType,
       );
 
-      if (!mounted) return;
+      if (!mounted) {
+        setState(() => _isUploading = false);
+        return;
+      }
 
       messenger.showSnackBar(
         SnackBar(

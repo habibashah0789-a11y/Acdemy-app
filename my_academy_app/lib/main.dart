@@ -39,6 +39,8 @@ import 'package:firebase_messaging/firebase_messaging.dart';
 // Firebase options
 import 'firebase_options.dart';
 
+import 'config/supabase_config.dart';
+
 Future<void> main() async {
   WidgetsBinding widgetsBinding = WidgetsFlutterBinding.ensureInitialized();
   FlutterNativeSplash.preserve(widgetsBinding: widgetsBinding);
@@ -46,6 +48,8 @@ Future<void> main() async {
   final app = await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   );
+
+  await SupabaseConfig.init();
 
   FirebaseMessaging.onBackgroundMessage(firebaseMessagingBackgroundHandler);
 

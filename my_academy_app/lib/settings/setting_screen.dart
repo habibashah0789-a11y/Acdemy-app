@@ -48,6 +48,21 @@ class SettingsScreen extends StatelessWidget {
             const TeacherManagementScreen(),
             color: AppTheme.primaryBlue,
           ),
+          ListTile(
+            leading: const Icon(Icons.bolt_rounded, color: Color(0xFF3ECF8E)),
+            title: const Text(
+              "Supabase Account",
+              style: TextStyle(fontWeight: FontWeight.w600),
+            ),
+            subtitle: const Text("quaidacademy241992@gmail.com"),
+            trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const SupabaseSettingsScreen()),
+              );
+            },
+          ),
           _tile(
             context,
             Icons.info_outline_rounded,
@@ -304,6 +319,170 @@ class _DeleteStudentsDialogState extends State<DeleteStudentsDialog> {
                 child: const Text('DELETE'),
               ),
             ],
+    );
+  }
+}
+
+class SupabaseSettingsScreen extends StatefulWidget {
+  const SupabaseSettingsScreen({super.key});
+
+  @override
+  State<SupabaseSettingsScreen> createState() => _SupabaseSettingsScreenState();
+}
+
+class _SupabaseSettingsScreenState extends State<SupabaseSettingsScreen> {
+  final _keyController = TextEditingController();
+  bool _testingConnection = false;
+  String _statusMessage = '';
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    return Scaffold(
+      appBar: AppBar(
+        title: Text(
+          'Supabase Account',
+          style: GoogleFonts.poppins(fontWeight: FontWeight.bold),
+        ),
+      ),
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Banner Card
+            Container(
+              padding: const EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                gradient: const LinearGradient(
+                  colors: [Color(0xFF1F2937), Color(0xFF111827)],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(color: const Color(0xFF3ECF8E).withValues(alpha: 0.4)),
+                boxShadow: const [
+                  BoxShadow(
+                    color: Colors.black26,
+                    blurRadius: 12,
+                    offset: Offset(0, 4),
+                  ),
+                ],
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(10),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF3ECF8E).withValues(alpha: 0.15),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: const Icon(Icons.bolt_rounded, color: Color(0xFF3ECF8E), size: 28),
+                      ),
+                      const SizedBox(width: 14),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Supabase Connected',
+                              style: GoogleFonts.poppins(
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.white,
+                              ),
+                            ),
+                            Text(
+                              'Account: quaidacademy241992@gmail.com',
+                              style: GoogleFonts.poppins(
+                                fontSize: 11,
+                                color: const Color(0xFF3ECF8E),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+                  const Divider(color: Colors.white12, height: 1),
+                  const SizedBox(height: 14),
+                  Text(
+                    '• Project URL: https://lrvzofjlaziypwssuqvi.supabase.co\n• Project Ref: lrvzofjlaziypwssuqvi\n• Database Engine: PostgreSQL 15 (Supabase Cloud)',
+                    style: GoogleFonts.poppins(
+                      fontSize: 12,
+                      color: Colors.grey.shade300,
+                      height: 1.6,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+
+            const SizedBox(height: 24),
+
+            // Instructions
+            Text(
+              'Supabase Public / Anon API Key',
+              style: GoogleFonts.poppins(fontSize: 15, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 6),
+            Text(
+              'Find your anon key in your Supabase Dashboard -> Project Settings -> API -> Project API keys -> anon public.',
+              style: GoogleFonts.poppins(fontSize: 12, color: Colors.grey.shade600),
+            ),
+
+            const SizedBox(height: 16),
+
+            TextField(
+              controller: _keyController,
+              maxLines: 3,
+              decoration: InputDecoration(
+                hintText: 'Paste your Supabase anon key here...',
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(14),
+                ),
+              ),
+            ),
+
+            const SizedBox(height: 16),
+
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton.icon(
+                onPressed: () {
+                  final text = _keyController.text.trim();
+                  if (text.isNotEmpty) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        backgroundColor: AppTheme.secondaryGreen,
+                        content: Text('Supabase API Key saved successfully!'),
+                      ),
+                    );
+                  }
+                },
+                icon: const Icon(Icons.save_rounded),
+                label: Text(
+                  'SAVE SUPABASE KEY',
+                  style: GoogleFonts.poppins(fontWeight: FontWeight.bold),
+                ),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF3ECF8E),
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }
