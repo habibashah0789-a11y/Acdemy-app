@@ -7,6 +7,9 @@ import '../models/teacher_model.dart';
 import '../theme/app_theme.dart';
 import '../screens/role_selection_screen.dart';
 
+import '../widgets/about_developers_widget.dart';
+import '../screens/app_info_screens.dart';
+
 class TeacherProfileScreen extends StatelessWidget {
   final TeacherModel teacher;
   const TeacherProfileScreen({super.key, required this.teacher});
@@ -109,6 +112,52 @@ class TeacherProfileScreen extends StatelessWidget {
 
             // ── Assigned Classes ──
             _buildClassesCard(isDark),
+            const SizedBox(height: 20),
+
+            // ── About App & Developers ──
+            Container(
+              width: double.infinity,
+              decoration: BoxDecoration(
+                color: isDark ? AppTheme.darkCard : Colors.white,
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(
+                  color: isDark ? AppTheme.darkBorder : AppTheme.lightBorder,
+                ),
+              ),
+              child: ListTile(
+                leading: Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: AppTheme.primaryBlue.withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: const Icon(Icons.info_outline_rounded,
+                      color: AppTheme.primaryBlue, size: 20),
+                ),
+                title: Text(
+                  'About Quaid Academy App',
+                  style: GoogleFonts.poppins(
+                    fontSize: 14,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                subtitle: Text(
+                  'Features, version details & manual',
+                  style: GoogleFonts.poppins(fontSize: 11, color: Colors.grey),
+                ),
+                trailing: const Icon(Icons.arrow_forward_ios_rounded, size: 16),
+                onTap: () {
+                  Navigator.of(context).push(
+                    MaterialPageRoute(builder: (_) => const AboutAppScreen()),
+                  );
+                },
+              ),
+            ).animate().fadeIn(delay: 350.ms),
+
+            const SizedBox(height: 20),
+
+            const AboutDevelopersCard().animate().fadeIn(delay: 380.ms),
+
             const SizedBox(height: 32),
 
             // ── Logout ──

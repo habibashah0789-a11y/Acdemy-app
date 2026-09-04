@@ -26,7 +26,14 @@ class _TeacherMainWrapperState extends State<TeacherMainWrapper> {
     _screens = [
       TeacherDashboardScreen(teacher: widget.teacher),
       TeacherStudentsScreen(teacher: widget.teacher),
-      TeacherNotificationsScreen(teacher: widget.teacher),
+
+
+
+      
+
+
+
+    TeacherNotificationsScreen(teacher: widget.teacher), 
       TeacherProfileScreen(teacher: widget.teacher),
     ];
   }
