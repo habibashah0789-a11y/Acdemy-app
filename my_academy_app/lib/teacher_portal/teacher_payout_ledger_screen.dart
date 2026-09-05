@@ -58,7 +58,11 @@ class _TeacherPayoutLedgerScreenState
         ],
       ),
       body: StreamBuilder<List<TeacherPayoutModel>>(
-        stream: TeacherPayoutService.getTeacherPayoutsStream(widget.teacher.id),
+        stream: TeacherPayoutService.getTeacherPayoutsStream(
+          widget.teacher.id,
+          teacherEmail: widget.teacher.email,
+          teacherName: widget.teacher.name,
+        ),
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
             return const Center(child: CircularProgressIndicator());

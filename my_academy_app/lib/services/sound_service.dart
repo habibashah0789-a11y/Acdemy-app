@@ -19,22 +19,32 @@ class SoundService {
     return _audioPlayer!;
   }
 
+  static Future<void> _safePlayChime() async {
+    try {
+      final player = _getPlayer();
+      if (player.state == PlayerState.playing) {
+        await player.stop().catchError((_) {});
+      }
+      await player.play(AssetSource('sound/notification_chime.mp3')).catchError((e) {
+        debugPrint('[SoundService] Web audio play suppressed: $e');
+      });
+    } catch (e) {
+      debugPrint('[SoundService] Notice playing custom notification sound: $e');
+      try {
+        await SystemSound.play(SystemSoundType.alert);
+      } catch (_) {}
+    }
+  }
+
   // ── Standard notification ─────────────────────────────────────────────────
 
   /// Plays the custom chime sound plus a light haptic tap.
   /// Use for everyday notifications (new student, fee update, attendance…).
   static Future<void> playNotification() async {
     try {
-      await HapticFeedback.lightImpact();
-      final player = _getPlayer();
-      await player.stop();
-      await player.play(AssetSource('sound/notification_chime.mp3'));
-    } catch (e) {
-      debugPrint('Notice playing custom notification sound: $e');
-      try {
-        await SystemSound.play(SystemSoundType.alert);
-      } catch (_) {}
-    }
+      await HapticFeedback.lightImpact().catchError((_) {});
+    } catch (_) {}
+    await _safePlayChime();
   }
 
   // ── Important / urgent alert ──────────────────────────────────────────────
@@ -42,16 +52,9 @@ class SoundService {
   /// Plays the custom chime sound with a medium haptic for high-priority events.
   static Future<void> playImportantAlert() async {
     try {
-      await HapticFeedback.mediumImpact();
-      final player = _getPlayer();
-      await player.stop();
-      await player.play(AssetSource('sound/notification_chime.mp3'));
-    } catch (e) {
-      debugPrint('Notice playing custom notification sound: $e');
-      try {
-        await SystemSound.play(SystemSoundType.alert);
-      } catch (_) {}
-    }
+      await HapticFeedback.mediumImpact().catchError((_) {});
+    } catch (_) {}
+    await _safePlayChime();
   }
 
   // ── Success confirmation ──────────────────────────────────────────────────
@@ -66,6 +69,7 @@ class SoundService {
     } catch (_) {}
   }
 }
+
 
 
 

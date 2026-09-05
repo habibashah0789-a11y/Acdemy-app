@@ -44,7 +44,7 @@ class TeacherPayoutModel {
       teacherSubject: map['teacherSubject'] ?? '',
       teacherSection: map['teacherSection'] ?? '',
       amount: (map['amount'] as num?)?.toDouble() ?? 0.0,
-      reason: map['reason'] ?? '',
+      reason: map['reason'] ?? map['note'] ?? map['paymentNote'] ?? map['details'] ?? 'Payout Recorded',
       paymentDate: parseDate(map['paymentDate']),
       adminName: map['adminName'] ?? 'Admin',
       status: map['status'] ?? 'COMPLETED',

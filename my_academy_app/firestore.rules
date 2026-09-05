@@ -13,6 +13,7 @@ service cloud.firestore {
         get(/databases/$(database)/documents/roles/$(request.auth.uid)).data.role == 'admin'
       );
     }
+    
 
     function isTeacher() {
       return isSignedIn() &&

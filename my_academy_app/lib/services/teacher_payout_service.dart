@@ -123,19 +123,25 @@ class TeacherPayoutService {
     }
   }
 
-  /// Stream payouts specifically targeted to a given teacherId
-  static Stream<List<TeacherPayoutModel>> getTeacherPayoutsStream(String teacherId) {
-    if (teacherId.isEmpty) {
-      return Stream.value([]);
-    }
+  /// Stream payouts specifically targeted to a given teacherId / email / name
+  static Stream<List<TeacherPayoutModel>> getTeacherPayoutsStream(
+    String teacherId, {
+    String? teacherEmail,
+    String? teacherName,
+  }) {
+    final cleanId = teacherId.trim();
+    final cleanEmail = (teacherEmail ?? '').trim().toLowerCase();
+    final cleanName = (teacherName ?? '').trim().toLowerCase();
 
-    return _firestore
-        .collection(_collection)
-        .where('teacherId', isEqualTo: teacherId)
-        .snapshots()
-        .map((snapshot) {
+    return _firestore.collection(_collection).snapshots().map((snapshot) {
       final list = snapshot.docs
           .map((doc) => TeacherPayoutModel.fromFirestore(doc))
+          .where((p) {
+            if (cleanId.isNotEmpty && p.teacherId == cleanId) return true;
+            if (cleanEmail.isNotEmpty && p.teacherId.toLowerCase() == cleanEmail) return true;
+            if (cleanName.isNotEmpty && p.teacherName.trim().toLowerCase() == cleanName) return true;
+            return false;
+          })
           .toList();
       // Sort descending by paymentDate
       list.sort((a, b) => b.paymentDate.compareTo(a.paymentDate));
