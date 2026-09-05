@@ -249,6 +249,40 @@ class TeacherService {
     }
   }
 
+  // ── Compute subject-specific stats stream for dashboard ──
+  static Stream<TeacherStats> getSubjectStatsStream(TeacherModel teacher) {
+    return getTeacherStudentsStream(teacher).map((students) {
+      final subject = teacher.subject;
+      final now = DateTime.now();
+      final thirtyDaysAgo = now.subtract(const Duration(days: 30));
+
+      double feesCollected = 0;
+      double feesPending = 0;
+      int newRegistrations = 0;
+
+      for (final s in students) {
+        final paid = s.getSubjectPaid(subject);
+        final total = s.getSubjectTotalFee(subject);
+        final remaining = (total - paid).clamp(0.0, double.infinity);
+
+        feesCollected += paid;
+        feesPending += remaining;
+
+        if (s.createdAt.isAfter(thirtyDaysAgo)) {
+          newRegistrations++;
+        }
+      }
+
+      return TeacherStats(
+        totalStudents: students.length,
+        activeStudents: students.where((s) => s.isActive).length,
+        feesCollected: feesCollected,
+        feesPending: feesPending,
+        newRegistrations: newRegistrations,
+      );
+    });
+  }
+
   // ── Group students by their grade ──
   static Map<String, List<StudentModel>> groupStudentsByClass(
       List<StudentModel> students, TeacherModel teacher) {

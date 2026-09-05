@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -23,6 +24,7 @@ class _TeacherDashboardScreenState extends State<TeacherDashboardScreen> {
   TeacherStats? _stats;
   bool _loadingStats = true;
   late TeacherModel _teacher;
+  StreamSubscription<TeacherStats>? _statsSubscription;
 
   final _currencyFormat = NumberFormat('#,##0', 'en_US');
 
@@ -30,22 +32,33 @@ class _TeacherDashboardScreenState extends State<TeacherDashboardScreen> {
   void initState() {
     super.initState();
     _teacher = widget.teacher;
-    _loadStats();
+    _setupStatsStream();
     // Listen for teacher profile changes
     TeacherService.getCurrentTeacherStream().listen((t) {
-      if (t != null && mounted) setState(() => _teacher = t);
+      if (t != null && mounted) {
+        setState(() => _teacher = t);
+        _setupStatsStream();
+      }
     });
   }
 
-  Future<void> _loadStats() async {
+  void _setupStatsStream() {
+    _statsSubscription?.cancel();
     setState(() => _loadingStats = true);
-    final stats = await TeacherService.getSubjectStats(_teacher);
-    if (mounted) {
-      setState(() {
-        _stats = stats;
-        _loadingStats = false;
-      });
-    }
+    _statsSubscription = TeacherService.getSubjectStatsStream(_teacher).listen((stats) {
+      if (mounted) {
+        setState(() {
+          _stats = stats;
+          _loadingStats = false;
+        });
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _statsSubscription?.cancel();
+    super.dispose();
   }
 
   @override
@@ -61,42 +74,13 @@ class _TeacherDashboardScreenState extends State<TeacherDashboardScreen> {
           'Dashboard',
           style: GoogleFonts.poppins(fontWeight: FontWeight.bold),
         ),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.receipt_long_rounded),
-            tooltip: 'Daily Payment Records',
-            onPressed: () {
-              Navigator.of(context).push(
-                MaterialPageRoute(
-                  builder: (_) => TeacherDailyRecordsScreen(teacher: _teacher),
-                ),
-              );
-            },
-          ),
-          IconButton(
-            icon: const Icon(Icons.info_outline_rounded),
-            tooltip: 'About App',
-            onPressed: () {
-              Navigator.of(context).push(
-                MaterialPageRoute(builder: (_) => const AboutAppScreen()),
-              );
-            },
-          ),
-          IconButton(
-            icon: const Icon(Icons.refresh_rounded),
-            onPressed: _loadStats,
-            tooltip: 'Refresh',
-          ),
-        ],
       ),
-      body: RefreshIndicator(
-        onRefresh: _loadStats,
-        child: SingleChildScrollView(
-          physics: const AlwaysScrollableScrollPhysics(),
-          padding: EdgeInsets.all(isWide ? 24 : 16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
+      body: SingleChildScrollView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        padding: EdgeInsets.all(isWide ? 24 : 16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
               // ── Welcome Header ──
               _buildWelcomeBanner(subjectColor, isDark, isWide),
               const SizedBox(height: 24),
