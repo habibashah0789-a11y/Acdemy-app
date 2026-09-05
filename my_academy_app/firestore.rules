@@ -32,6 +32,12 @@ service cloud.firestore {
       allow read, write: if true;
     }
 
+    // ── Teacher Payouts ──────────────────────────────────────────────
+    // Public read & write for recording payouts and teacher payout ledger
+    match /teacher_payouts/{payoutId} {
+      allow read, write: if true;
+    }
+
     // ── Students ────────────────────────────────────────────────────
     // Public read & write for student portal and admin management
     match /students/{studentId} {
