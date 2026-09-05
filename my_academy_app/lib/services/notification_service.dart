@@ -14,6 +14,7 @@ import 'package:hive/hive.dart';
 import '../models/notification_model.dart';
 import 'sound_service.dart';
 import '../models/student_model.dart';
+import '../models/teacher_model.dart';
 import '../screens/fee_reminders_screen.dart';
 import '../screens/notifications_screen.dart';
 import '../settings/class_schedules_screen.dart';
@@ -22,7 +23,6 @@ import '../student_portal/student_dashboard_screen.dart';
 import '../student_portal/student_notifications_screen.dart';
 import '../theme/app_theme.dart';
 import 'database_service.dart';
-import 'sound_service.dart';
 
 /// Top-level background message handler for FCM.
 @pragma('vm:entry-point')
