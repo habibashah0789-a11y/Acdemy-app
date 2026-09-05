@@ -7,19 +7,39 @@ import '../../theme/app_theme.dart';
 import '../../widgets/shimmer_loading_widget.dart';
 import 'daily_record_detail_screen.dart';
 
+import 'dart:convert';
+
+class AdminStudentPaymentEvent {
+  final StudentModel student;
+  final double amount;
+  final DateTime date;
+  final String note;
+  final int installmentNumber;
+
+  AdminStudentPaymentEvent({
+    required this.student,
+    required this.amount,
+    required this.date,
+    required this.note,
+    required this.installmentNumber,
+  });
+}
+
 class DailyRecordData {
   final DateTime date;
-  final int studentCount;
+  final List<StudentModel> newRegistrations;
+  final List<AdminStudentPaymentEvent> installmentPayments;
+  final List<StudentModel> defaulters;
   final double totalCollected;
   final double totalRegistrationAmount;
-  final List<StudentModel> students;
 
   DailyRecordData({
     required this.date,
-    required this.studentCount,
+    required this.newRegistrations,
+    required this.installmentPayments,
+    required this.defaulters,
     required this.totalCollected,
-    required this.students,
-    this.totalRegistrationAmount = 0,
+    required this.totalRegistrationAmount,
   });
 }
 
@@ -34,31 +54,79 @@ class _DailyRecordsScreenState extends State<DailyRecordsScreen> {
   DateTime? _selectedSearchDate;
 
   List<DailyRecordData> _groupAndFilterStudents(List<StudentModel> allStudents) {
-    // Group by date
-    final Map<DateTime, List<StudentModel>> grouped = {};
-    for (var student in allStudents) {
-      // Normalize to date only
-      final dateOnly = DateTime(student.createdAt.year, student.createdAt.month, student.createdAt.day);
-      grouped.putIfAbsent(dateOnly, () => []).add(student);
+    final Map<DateTime, List<StudentModel>> registrationsByDate = {};
+    final Map<DateTime, List<AdminStudentPaymentEvent>> installmentsByDate = {};
+    final Set<DateTime> allDates = {};
+
+    for (final s in allStudents) {
+      final regDate = DateTime(s.createdAt.year, s.createdAt.month, s.createdAt.day);
+      registrationsByDate.putIfAbsent(regDate, () => []).add(s);
+      allDates.add(regDate);
+
+      if (s.paymentHistoryJson != null && s.paymentHistoryJson!.isNotEmpty) {
+        try {
+          final List<dynamic> history = jsonDecode(s.paymentHistoryJson!);
+          for (int i = 0; i < history.length; i++) {
+            final entry = history[i] as Map<String, dynamic>;
+            final rawDate = DateTime.tryParse(entry['date'] ?? '');
+            if (rawDate != null) {
+              final pDate = DateTime(rawDate.year, rawDate.month, rawDate.day);
+              final amt = (entry['amount'] as num?)?.toDouble() ?? 0;
+              final note = entry['note']?.toString() ?? 'Payment';
+
+              final event = AdminStudentPaymentEvent(
+                student: s,
+                amount: amt,
+                date: rawDate,
+                note: note,
+                installmentNumber: i + 1,
+              );
+
+              installmentsByDate.putIfAbsent(pDate, () => []).add(event);
+              allDates.add(pDate);
+            }
+          }
+        } catch (_) {}
+      }
     }
 
     List<DailyRecordData> records = [];
-    grouped.forEach((date, students) {
-      double totalCollected = students.fold(0.0, (total, s) => total + s.feeSubmitted);
-      double totalRegistrationAmount = students.fold(0.0, (total, s) => total + s.totalFee);
+    for (final date in allDates) {
+      final regList = registrationsByDate[date] ?? [];
+      final instList = installmentsByDate[date] ?? [];
+
+      double totalCollected = 0;
+      
+      for (final event in instList) {
+        totalCollected += event.amount;
+      }
+
+      for (final s in regList) {
+        if (s.paymentHistoryJson == null || s.paymentHistoryJson!.isEmpty) {
+          totalCollected += s.feeSubmitted;
+        }
+      }
+
+      double totalRegistrationAmount = regList.fold(0.0, (total, s) => total + s.totalFee);
+
+      final defaulters = allStudents.where((s) {
+        final sRegDate = DateTime(s.createdAt.year, s.createdAt.month, s.createdAt.day);
+        if (sRegDate.isAfter(date)) return false;
+        return s.feeRemaining > 0;
+      }).toList();
+
       records.add(DailyRecordData(
         date: date,
-        studentCount: students.length,
+        newRegistrations: regList,
+        installmentPayments: instList.where((e) => e.installmentNumber > 1).toList(),
+        defaulters: defaulters,
         totalCollected: totalCollected,
         totalRegistrationAmount: totalRegistrationAmount,
-        students: students,
       ));
-    });
+    }
 
-    // Sort newest first
     records.sort((a, b) => b.date.compareTo(a.date));
 
-    // Filter by search date if any
     if (_selectedSearchDate != null) {
       final searchDateOnly = DateTime(_selectedSearchDate!.year, _selectedSearchDate!.month, _selectedSearchDate!.day);
       records = records.where((r) => r.date == searchDateOnly).toList();
@@ -200,9 +268,13 @@ class _DailyRecordsScreenState extends State<DailyRecordsScreen> {
                           padding: const EdgeInsets.only(top: 4.0),
                           child: Row(
                             children: [
-                              Icon(Icons.group_rounded, size: 14, color: isDark ? Colors.grey[400] : Colors.grey[600]),
+                              Icon(Icons.person_add_alt_1_rounded, size: 14, color: isDark ? Colors.grey[400] : Colors.grey[600]),
                               const SizedBox(width: 4),
-                              Text('${record.studentCount} Students'),
+                              Text('${record.newRegistrations.length} Regs'),
+                              const SizedBox(width: 12),
+                              Icon(Icons.receipt_long_rounded, size: 14, color: isDark ? Colors.grey[400] : Colors.grey[600]),
+                              const SizedBox(width: 4),
+                              Text('${record.installmentPayments.length} Installs'),
                             ],
                           ),
                         ),

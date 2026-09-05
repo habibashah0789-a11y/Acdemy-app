@@ -27,58 +27,9 @@ class _DailyRecordDetailScreenState extends State<DailyRecordDetailScreen>
 
   // ── derived lists ──────────────────────────────────────────────────────────
 
-  /// All students registered on this date (they are all in record.students)
-  List<StudentModel> get _allStudents => widget.record.students;
-
-  /// Students who still have remaining fee (defaulters)
-  List<StudentModel> get _defaulters =>
-      _allStudents.where((s) => s.feeRemaining > 0).toList();
-
-  /// Students who have a payment entry on this specific date
-  List<StudentModel> get _paidOnDate {
-    final targetDate = widget.record.date;
-    return _allStudents.where((s) {
-      if (s.paymentHistoryJson == null || s.paymentHistoryJson!.isEmpty) {
-        return false;
-      }
-      try {
-        final List<dynamic> history = jsonDecode(s.paymentHistoryJson!);
-        return history.any((entry) {
-          final map = entry as Map<String, dynamic>;
-          final date = DateTime.tryParse(map['date'] ?? '');
-          return date != null &&
-              date.year == targetDate.year &&
-              date.month == targetDate.month &&
-              date.day == targetDate.day;
-        });
-      } catch (_) {
-        return false;
-      }
-    }).toList();
-  }
-
-  /// Sum of amounts paid by [student] on this specific date (from history)
-  double _amountPaidOnDate(StudentModel student) {
-    final targetDate = widget.record.date;
-    if (student.paymentHistoryJson == null ||
-        student.paymentHistoryJson!.isEmpty) return 0;
-    try {
-      final List<dynamic> history = jsonDecode(student.paymentHistoryJson!);
-      return history.fold<double>(0, (sum, entry) {
-        final map = entry as Map<String, dynamic>;
-        final date = DateTime.tryParse(map['date'] ?? '');
-        if (date != null &&
-            date.year == targetDate.year &&
-            date.month == targetDate.month &&
-            date.day == targetDate.day) {
-          return sum + ((map['amount'] as num?)?.toDouble() ?? 0);
-        }
-        return sum;
-      });
-    } catch (_) {
-      return 0;
-    }
-  }
+  List<StudentModel> get _registrations => widget.record.newRegistrations;
+  List<StudentModel> get _defaulters => widget.record.defaulters;
+  List<AdminStudentPaymentEvent> get _installments => widget.record.installmentPayments;
 
   @override
   void initState() {
@@ -122,9 +73,19 @@ class _DailyRecordDetailScreenState extends State<DailyRecordDetailScreen>
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  const Icon(Icons.people_rounded, size: 16),
+                  const Icon(Icons.person_add_alt_1_rounded, size: 16),
                   const SizedBox(width: 6),
-                  Text('All (${_allStudents.length})'),
+                  Text('Regs (${_registrations.length})'),
+                ],
+              ),
+            ),
+            Tab(
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const Icon(Icons.receipt_long_rounded, size: 16),
+                  const SizedBox(width: 6),
+                  Text('Installs (${_installments.length})'),
                 ],
               ),
             ),
@@ -139,35 +100,25 @@ class _DailyRecordDetailScreenState extends State<DailyRecordDetailScreen>
                 ],
               ),
             ),
-            Tab(
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  const Icon(Icons.check_circle_rounded, size: 16, color: Colors.green),
-                  const SizedBox(width: 6),
-                  Text('Collected (${_paidOnDate.length})'),
-                ],
-              ),
-            ),
           ],
         ),
       ),
       body: TabBarView(
         controller: _tabController,
         children: [
-          _buildAllTab(isDark),
+          _buildRegistrationsTab(isDark),
+          _buildInstallmentsTab(isDark),
           _buildDefaultersTab(isDark),
-          _buildCollectedTab(isDark),
         ],
       ),
     );
   }
 
-  // ── Tab 1 — All ────────────────────────────────────────────────────────────
+  // ── Tab 1 — Registrations ──────────────────────────────────────────────────
 
-  Widget _buildAllTab(bool isDark) {
+  Widget _buildRegistrationsTab(bool isDark) {
     final totalRegistered = widget.record.totalRegistrationAmount;
-    final totalCollected = widget.record.totalCollected;
+    final totalCollected = _registrations.fold<double>(0.0, (total, s) => total + s.feeSubmitted);
 
     return CustomScrollView(
       slivers: [
@@ -190,7 +141,7 @@ class _DailyRecordDetailScreenState extends State<DailyRecordDetailScreen>
                     const SizedBox(width: 12),
                     Expanded(
                       child: _summaryCard(
-                        label: 'Total Collected',
+                        label: 'Reg. Fee Collected',
                         amount: totalCollected,
                         icon: Icons.account_balance_wallet_rounded,
                         color: Colors.green,
@@ -203,20 +154,20 @@ class _DailyRecordDetailScreenState extends State<DailyRecordDetailScreen>
                 _summaryCard(
                   label: 'Students Registered on this Day',
                   amount: null,
-                  icon: Icons.group_add_rounded,
+                  icon: Icons.person_add_alt_1_rounded,
                   color: Colors.purple,
                   isDark: isDark,
-                  valueText: '${_allStudents.length} students',
+                  valueText: '${_registrations.length} students',
                 ).animate().fadeIn(duration: 400.ms, delay: 100.ms),
                 const SizedBox(height: 8),
               ],
             ),
           ),
         ),
-        if (_allStudents.isEmpty)
+        if (_registrations.isEmpty)
           const SliverFillRemaining(
             child: Center(
-              child: Text('No students on this date.'),
+              child: Text('No new registrations on this date.'),
             ),
           )
         else
@@ -225,10 +176,10 @@ class _DailyRecordDetailScreenState extends State<DailyRecordDetailScreen>
             sliver: SliverList(
               delegate: SliverChildBuilderDelegate(
                 (context, index) {
-                  final student = _allStudents[index];
-                  return _allStudentCard(student, isDark, index);
+                  final student = _registrations[index];
+                  return _registrationCard(student, isDark, index);
                 },
-                childCount: _allStudents.length,
+                childCount: _registrations.length,
               ),
             ),
           ),
@@ -236,18 +187,17 @@ class _DailyRecordDetailScreenState extends State<DailyRecordDetailScreen>
     );
   }
 
-  Widget _allStudentCard(StudentModel student, bool isDark, int index) {
-    // Registration / first installment amount from payment history
+  Widget _registrationCard(StudentModel student, bool isDark, int index) {
     double firstInstallment = 0;
-    if (student.paymentHistoryJson != null &&
-        student.paymentHistoryJson!.isNotEmpty) {
+    if (student.paymentHistoryJson != null && student.paymentHistoryJson!.isNotEmpty) {
       try {
         final List<dynamic> history = jsonDecode(student.paymentHistoryJson!);
         if (history.isNotEmpty) {
-          firstInstallment =
-              (history[0]['amount'] as num?)?.toDouble() ?? 0;
+          firstInstallment = (history[0]['amount'] as num?)?.toDouble() ?? 0;
         }
       } catch (_) {}
+    } else {
+      firstInstallment = student.feeSubmitted;
     }
 
     return _studentCard(
@@ -258,13 +208,13 @@ class _DailyRecordDetailScreenState extends State<DailyRecordDetailScreen>
       subtitle: Row(
         children: [
           _miniChip(
-            label: 'Reg: ${_fmt.format(firstInstallment)}',
-            color: AppTheme.primaryBlue,
+            label: 'Initial Paid: ${_fmt.format(firstInstallment)}',
+            color: Colors.green,
           ),
           const SizedBox(width: 6),
           _miniChip(
-            label: 'Total: ${_fmt.format(student.totalFee)}',
-            color: Colors.purple,
+            label: 'Total Fee: ${_fmt.format(student.totalFee)}',
+            color: AppTheme.primaryBlue,
           ),
         ],
       ),
@@ -429,12 +379,11 @@ class _DailyRecordDetailScreenState extends State<DailyRecordDetailScreen>
     );
   }
 
-  // ── Tab 3 — Collected ──────────────────────────────────────────────────────
+  // ── Tab 3 — Installments ───────────────────────────────────────────────────
 
-  Widget _buildCollectedTab(bool isDark) {
-    final paidList = _paidOnDate;
-    final totalCollectedOnDate =
-        paidList.fold<double>(0, (s, st) => s + _amountPaidOnDate(st));
+  Widget _buildInstallmentsTab(bool isDark) {
+    final paidList = _installments;
+    final totalCollectedOnDate = paidList.fold<double>(0, (s, st) => s + st.amount);
 
     return CustomScrollView(
       slivers: [
@@ -447,7 +396,7 @@ class _DailyRecordDetailScreenState extends State<DailyRecordDetailScreen>
                   children: [
                     Expanded(
                       child: _summaryCard(
-                        label: 'Collected on this Day',
+                        label: 'Amount Received',
                         amount: totalCollectedOnDate,
                         icon: Icons.payments_rounded,
                         color: Colors.green,
@@ -457,12 +406,12 @@ class _DailyRecordDetailScreenState extends State<DailyRecordDetailScreen>
                     const SizedBox(width: 12),
                     Expanded(
                       child: _summaryCard(
-                        label: 'Payments Received',
+                        label: 'Installments Paid',
                         amount: null,
                         icon: Icons.receipt_rounded,
                         color: Colors.teal,
                         isDark: isDark,
-                        valueText: '${paidList.length} students',
+                        valueText: '${paidList.length} txns',
                       ),
                     ),
                   ],
@@ -482,13 +431,13 @@ class _DailyRecordDetailScreenState extends State<DailyRecordDetailScreen>
                       size: 72, color: Colors.grey.withValues(alpha: 0.5)),
                   const SizedBox(height: 16),
                   Text(
-                    'No Payments on this Date',
+                    'No Installments on this Date',
                     style: GoogleFonts.poppins(
                         fontSize: 18, fontWeight: FontWeight.bold),
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    'No payment history entries\nwere recorded on this day.',
+                    'No additional installments\nwere paid on this day.',
                     textAlign: TextAlign.center,
                     style: GoogleFonts.poppins(
                         fontSize: 13, color: Colors.grey[600]),
@@ -503,9 +452,8 @@ class _DailyRecordDetailScreenState extends State<DailyRecordDetailScreen>
             sliver: SliverList(
               delegate: SliverChildBuilderDelegate(
                 (context, index) {
-                  final student = paidList[index];
-                  final amountPaid = _amountPaidOnDate(student);
-                  return _collectedCard(student, amountPaid, isDark, index);
+                  final event = paidList[index];
+                  return _installmentCard(event, isDark, index);
                 },
                 childCount: paidList.length,
               ),
@@ -515,43 +463,22 @@ class _DailyRecordDetailScreenState extends State<DailyRecordDetailScreen>
     );
   }
 
-  Widget _collectedCard(
-      StudentModel student, double amountPaid, bool isDark, int index) {
-    // Which installment number was this payment?
-    int installmentNo = 1;
-    if (student.paymentHistoryJson != null &&
-        student.paymentHistoryJson!.isNotEmpty) {
-      try {
-        final List<dynamic> history = jsonDecode(student.paymentHistoryJson!);
-        for (var i = 0; i < history.length; i++) {
-          final map = history[i] as Map<String, dynamic>;
-          final date = DateTime.tryParse(map['date'] ?? '');
-          if (date != null &&
-              date.year == widget.record.date.year &&
-              date.month == widget.record.date.month &&
-              date.day == widget.record.date.day) {
-            installmentNo = i + 1;
-            break;
-          }
-        }
-      } catch (_) {}
-    }
-
+  Widget _installmentCard(AdminStudentPaymentEvent event, bool isDark, int index) {
     return _studentCard(
       context: context,
-      student: student,
+      student: event.student,
       isDark: isDark,
       index: index,
       subtitle: Row(
         children: [
           _miniChip(
-            label: 'Installment #$installmentNo',
+            label: 'Installment #${event.installmentNumber}',
             color: Colors.teal,
           ),
           const SizedBox(width: 6),
           _miniChip(
-            label: 'Balance: ${_fmt.format(student.feeRemaining)}',
-            color: student.feeRemaining > 0 ? Colors.red : Colors.green,
+            label: 'Balance: ${_fmt.format(event.student.feeRemaining)}',
+            color: event.student.feeRemaining > 0 ? Colors.red : Colors.green,
           ),
         ],
       ),
@@ -560,7 +487,7 @@ class _DailyRecordDetailScreenState extends State<DailyRecordDetailScreen>
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           Text(
-            _fmt.format(amountPaid),
+            _fmt.format(event.amount),
             style: GoogleFonts.poppins(
               fontSize: 14,
               fontWeight: FontWeight.bold,

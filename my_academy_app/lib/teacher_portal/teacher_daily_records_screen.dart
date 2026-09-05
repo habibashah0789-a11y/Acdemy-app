@@ -162,19 +162,19 @@ class _TeacherDailyRecordsScreenState
       // Calculate totals for this date
       double totalCollected = 0;
 
-      // Add collection from new registrations
-      for (final s in regList) {
-        if (subject.isNotEmpty) {
-          totalCollected += s.getSubjectPaid(subject);
-        } else {
-          totalCollected += s.feeSubmitted;
-        }
+      // Add collection from ALL installment events on this day (includes 1st installment!)
+      for (final event in instList) {
+        totalCollected += event.amount;
       }
 
-      // Add collection from installment events on this day (excluding first registration payment to avoid double counting)
-      for (final event in instList) {
-        if (event.installmentNumber > 1) {
-          totalCollected += event.amount;
+      // Add collection from legacy registrations that have no payment history
+      for (final s in regList) {
+        if (s.paymentHistoryJson == null || s.paymentHistoryJson!.isEmpty) {
+          if (subject.isNotEmpty) {
+            totalCollected += s.getSubjectPaid(subject);
+          } else {
+            totalCollected += s.feeSubmitted;
+          }
         }
       }
 
