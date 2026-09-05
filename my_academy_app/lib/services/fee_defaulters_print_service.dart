@@ -37,17 +37,8 @@ class FeeDefaultersPrintService {
     final academyAddress = profile['address']?.toString() ?? '';
     final academyPhone = profile['phone']?.toString() ?? '';
 
-    // ── Load academy logo ───────────────────────────────────────────────
-    pw.MemoryImage? logoImage;
-    try {
-      final logoBytes = await rootBundle
-          .load('assets/images/Quaid Academy logo.png')
-          .timeout(const Duration(seconds: 3));
-      logoImage = pw.MemoryImage(logoBytes.buffer.asUint8List());
-    } catch (e) {
-      debugPrint('Error loading print logo: $e');
-      logoImage = null; // Continue without logo rather than hanging.
-    }
+    // ── Load academy logo for header & centered watermark ───────────────────
+    final logoImage = await PdfHelpers.loadLogoImage();
 
     // ── Pagination: ~18 students per page ─────────────────────────────────
     const int studentsPerPage = 18;

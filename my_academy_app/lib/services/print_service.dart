@@ -86,15 +86,8 @@ class PrintService {
       }
     }
 
-    // ── Load academy logo ──────────────────────────────────────────────────
-    pw.MemoryImage? logoImage;
-    try {
-      final logoBytes =
-          await rootBundle.load('assets/images/Quaid Academy logo.png');
-      logoImage = pw.MemoryImage(logoBytes.buffer.asUint8List());
-    } catch (e) {
-      debugPrint('Error loading print logo: $e');
-    }
+    // ── Load academy logo for header & centered watermark ───────────────────
+    final logoImage = await PdfHelpers.loadLogoImage();
 
     // ── Build page ─────────────────────────────────────────────────────────
     doc.addPage(

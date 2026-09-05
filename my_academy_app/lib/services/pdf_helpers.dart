@@ -1,11 +1,21 @@
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:intl/intl.dart';
+import 'package:flutter/services.dart' show rootBundle;
 
 /// Shared PDF branding helpers for Quaid Academy print documents.
 /// Provides [buildPdfHeader], [buildWatermark], and [buildPdfFooter]
 /// so that every printed page has a consistent look.
 class PdfHelpers {
+  /// Utility helper to load the academy logo image for PDFs.
+  static Future<pw.MemoryImage?> loadLogoImage() async {
+    try {
+      final logoBytes = await rootBundle.load('assets/images/Quaid Academy logo.png');
+      return pw.MemoryImage(logoBytes.buffer.asUint8List());
+    } catch (_) {
+      return null;
+    }
+  }
   // ─── Academy constants ────────────────────────────────────────────────────
 
   static const String _academyName = 'QUAID ACADEMY';
@@ -179,13 +189,18 @@ class PdfHelpers {
   static pw.Widget buildWatermark({pw.MemoryImage? logoImage}) {
     return pw.Center(
       child: pw.Opacity(
-        opacity: 0.08,
+        opacity: 0.10,
         child: logoImage != null
-            ? pw.Image(logoImage, width: 300, height: 300)
+            ? pw.Image(
+                logoImage,
+                width: 320,
+                height: 320,
+                fit: pw.BoxFit.contain,
+              )
             : pw.Text(
                 'QUAID ACADEMY',
                 style: pw.TextStyle(
-                  fontSize: 60,
+                  fontSize: 54,
                   fontWeight: pw.FontWeight.bold,
                   color: PdfColors.blueGrey300,
                 ),
