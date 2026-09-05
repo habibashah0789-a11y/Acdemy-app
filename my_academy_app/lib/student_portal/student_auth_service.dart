@@ -629,7 +629,28 @@ exactMatch = true
       } else {
         sessionBox = await Hive.openBox(_sessionBoxName);
       }
-      // Clear session key but preserve the persisted device_id so that the
+
+      // Read session data BEFORE clearing so we can reset device binding
+      final sessionData = sessionBox.get(_sessionKey);
+      if (sessionData != null) {
+        final session = Map<String, dynamic>.from(sessionData);
+        final studentId = session['studentId'] as String? ?? '';
+        final studentCode = session['studentCode'] as String? ?? '';
+
+        // Clear device binding in Firestore so admin sees "Not Bound"
+        if (studentId.isNotEmpty) {
+          try {
+            await resetDeviceBinding(studentId, studentCode: studentCode);
+            debugPrint(
+                '[StudentAuthService] Device binding cleared on logout for $studentId');
+          } catch (e) {
+            debugPrint(
+                '[StudentAuthService] Failed to reset device binding on logout: $e');
+          }
+        }
+      }
+
+      // Clear local session but preserve the persisted device_id so that the
       // device binding check still works if the student re-logs in on this device.
       await sessionBox.delete(_sessionKey);
     } catch (e) {

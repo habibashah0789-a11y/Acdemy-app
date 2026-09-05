@@ -142,7 +142,17 @@ class TeacherPayoutService {
     final authUid = authUser?.uid ?? '';
     final authEmail = (authUser?.email ?? '').trim().toLowerCase();
 
-    return _firestore.collection(_collection).snapshots().map((snapshot) {
+    // Use a Firestore query filter to only fetch payouts for this teacher.
+    // This prevents permission-denied errors when server rules restrict listing all payouts.
+    // We check both the provided teacher ID and the auth UID.
+    final targetId = authUid.isNotEmpty ? authUid : cleanId;
+
+    Query query = _firestore.collection(_collection);
+    if (targetId.isNotEmpty) {
+      query = query.where('teacherId', isEqualTo: targetId);
+    }
+
+    return query.snapshots().map((snapshot) {
       final list = snapshot.docs
           .map((doc) => TeacherPayoutModel.fromFirestore(doc))
           .where((p) {

@@ -45,24 +45,22 @@ class AboutAppScreen extends StatelessWidget {
               child: Column(
                 children: [
                   Container(
-                    padding: const EdgeInsets.all(4),
                     decoration: const BoxDecoration(
-                      color: Colors.white,
                       shape: BoxShape.circle,
                     ),
-                    child: ClipRRect(
-                      borderRadius: BorderRadius.circular(40),
-                      child: Image.asset(
-                        'assets/images/Quaid Academy logo.png',
+                    child: Image.asset(
+                      'assets/images/Quaid Academy logo.png',
+                      width: 72,
+                      height: 72,
+                      fit: BoxFit.contain,
+                      errorBuilder: (_, __, ___) => Container(
                         width: 72,
                         height: 72,
-                        fit: BoxFit.cover,
-                        errorBuilder: (_, __, ___) => Container(
-                          width: 72,
-                          height: 72,
+                        decoration: const BoxDecoration(
                           color: AppTheme.primaryBlue,
-                          child: const Icon(Icons.school_rounded, color: Colors.white, size: 36),
+                          shape: BoxShape.circle,
                         ),
+                        child: const Icon(Icons.school_rounded, color: Colors.white, size: 36),
                       ),
                     ),
                   ),

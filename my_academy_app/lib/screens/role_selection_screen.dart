@@ -242,26 +242,22 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen>
                     width: 96,
                     height: 96,
                     decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(28),
+                      shape: BoxShape.circle,
                       boxShadow: [
                         BoxShadow(
                           color: Colors.black.withValues(alpha: 0.3),
-                          blurRadius: 24,
-                          offset: const Offset(0, 8),
+                          blurRadius: 20,
+                          offset: const Offset(0, 6),
                         ),
                       ],
                     ),
-                    child: ClipRRect(
-                      borderRadius: BorderRadius.circular(28),
-                      child: Image.asset(
-                        'assets/images/Quaid Academy logo.png',
-                        fit: BoxFit.cover,
-                        errorBuilder: (_, __, ___) => const Icon(
-                          Icons.school_rounded,
-                          size: 54,
-                          color: AppTheme.primaryBlue,
-                        ),
+                    child: Image.asset(
+                      'assets/images/Quaid Academy logo.png',
+                      fit: BoxFit.contain,
+                      errorBuilder: (_, __, ___) => const Icon(
+                        Icons.school_rounded,
+                        size: 54,
+                        color: AppTheme.primaryBlue,
                       ),
                     ),
                   )
