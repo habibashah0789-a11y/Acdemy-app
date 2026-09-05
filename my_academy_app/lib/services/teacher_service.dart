@@ -535,10 +535,18 @@ class TeacherService {
 
     await notifDocRef.set(data);
 
-    // Trigger push notification to student devices with teacher name and subject
+    // Trigger push notification to student devices mapped to this teacher's class and subject
     try {
+      final safeClass = (targetClass == 'All' ? teacher.section : targetClass)
+          .toLowerCase()
+          .replaceAll(RegExp(r'[^a-z0-9]'), '_');
+      final safeSubject = formattedTeacherSubject
+          .toLowerCase()
+          .replaceAll(RegExp(r'[^a-z0-9]'), '_');
+      final topic = 'class_${safeClass}_subject_$safeSubject';
+
       await NotificationService.triggerPushNotification(
-        targetTopic: 'academy_all',
+        targetTopic: topic,
         title: '📢 $authorLabel: $title',
         body: message,
         payload: {

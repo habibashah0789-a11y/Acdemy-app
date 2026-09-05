@@ -20,6 +20,7 @@ import '../student_portal/student_auth_service.dart';
 import '../student_portal/student_dashboard_screen.dart';
 import '../student_portal/student_notifications_screen.dart';
 import '../theme/app_theme.dart';
+import 'database_service.dart';
 import 'sound_service.dart';
 
 /// Top-level background message handler for FCM.
@@ -962,10 +963,32 @@ status = PENDING
 
   // ── 9. Student Real-time Notifications Listener ────────────────────────────
 
+  static Future<void> subscribeToStudentTopics(StudentModel student) async {
+    try {
+      final safeClass = student.classType.toLowerCase().replaceAll(RegExp(r'[^a-z0-9]'), '_');
+      final subjects = student.subject.split(',').map((e) => e.trim().toLowerCase().replaceAll(RegExp(r'[^a-z0-9]'), '_')).toList();
+      
+      for (var sub in subjects) {
+        if (sub.isNotEmpty) {
+          await _messaging.subscribeToTopic('class_${safeClass}_subject_$sub');
+        }
+      }
+    } catch (e) {
+      debugPrint('[NotificationService] Error subscribing to student topics: $e');
+    }
+  }
+
   static void listenForStudent(String studentId) {
     if (!_initialized) {
       init();
     }
+    
+    // Fetch student info and subscribe to their class/subject topics
+    final student = DatabaseService.studentBox.get(studentId);
+    if (student != null) {
+      subscribeToStudentTopics(student);
+    }
+    
     _studentFirestoreSubscription?.cancel();
     _studentFirstSnapshotReceived = false;
     _studentSeenNotificationIds.clear();
@@ -982,10 +1005,31 @@ status = PENDING
           return NotificationModel.fromMap(map, doc.id);
         }).toList();
 
-        // Filter notices for this student (broadcast or targeted to this student, excluding admin_only & summaries)
+        // Filter notices for this student
         final filteredNotices = notifications.where((n) {
           if (n.studentId == 'admin_only' || n.notificationType == 'fee_reminder_summary') return false;
-          return n.studentId.isEmpty || n.studentId == studentId;
+          
+          // Targeted specifically to this student
+          if (n.studentId.isNotEmpty && n.studentId == studentId) return true;
+          // If targeted to another specific student, ignore it
+          if (n.studentId.isNotEmpty) return false;
+          
+          // If it's a teacher announcement, check if the student takes that subject
+          if (n.notificationType == 'teacher_announcement' && student != null) {
+            final classType = student.classType.trim().toLowerCase();
+            final subjects = student.subject.split(',').map((e) => e.trim().toLowerCase()).toList();
+            
+            final nClass = n.className.trim().toLowerCase();
+            final nSubj = n.subject.trim().toLowerCase();
+            
+            final matchesClass = (nClass.isEmpty || nClass == classType || nClass == 'all');
+            final matchesSubject = (nSubj.isEmpty || nSubj == 'all' || subjects.contains(nSubj));
+            
+            return matchesClass && matchesSubject;
+          }
+          
+          // General broadcasts
+          return true;
         }).toList();
 
         _lastFilteredNotices = filteredNotices;
