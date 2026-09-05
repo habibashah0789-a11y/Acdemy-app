@@ -1033,7 +1033,9 @@ class _PayFeeFormModalState extends State<_PayFeeFormModal> {
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
                   ),
                 ),
-              ],
+              ),
+                ],
+              ),
             ),
           ),
         );
