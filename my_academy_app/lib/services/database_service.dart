@@ -9,6 +9,7 @@ import '../models/student_model.dart';
 import '../models/recycled_student.dart';
 import '../utils/image_utils.dart';
 import 'notification_service.dart';
+import 'audit_log_service.dart';
 
 class DatabaseService {
   static final FirebaseFirestore _firestore = FirebaseFirestore.instance;
@@ -371,6 +372,17 @@ class DatabaseService {
       debugPrint('Restore student local sync failed: $e');
     }
 
+    try {
+      await AuditLogService.logAction(
+        actorId: 'ADMIN',
+        actorName: 'Administrator',
+        actorRole: 'ADMIN',
+        action: 'STUDENT_RESTORED',
+        transactionId: recycled.id,
+        details: 'Restored student ${recycled.firstName} ${recycled.lastName} (${recycled.id}) from recycle bin.',
+      );
+    } catch (_) {}
+
     return true;
   }
 
@@ -385,6 +397,15 @@ class DatabaseService {
           batch.delete(doc.reference);
         }
         await batch.commit();
+
+        await AuditLogService.logAction(
+          actorId: 'ADMIN',
+          actorName: 'Administrator',
+          actorRole: 'ADMIN',
+          action: 'RECYCLE_BIN_EMPTIED',
+          transactionId: 'RECYCLE_BIN',
+          details: 'Emptied all recycled student records.',
+        );
       } catch (e) {
         debugPrint('Error emptying recycle bin in cloud: $e');
       }
@@ -455,6 +476,17 @@ class DatabaseService {
     } catch (e) {
       debugPrint('Recycle student local sync failed: $e');
     }
+
+    try {
+      await AuditLogService.logAction(
+        actorId: 'ADMIN',
+        actorName: 'Administrator',
+        actorRole: 'ADMIN',
+        action: 'STUDENT_RECYCLED',
+        transactionId: student.id,
+        details: 'Moved student ${student.name} (${student.id}) to recycle bin.',
+      );
+    } catch (_) {}
 
     return true;
   }
