@@ -54,11 +54,37 @@ service cloud.firestore {
 
     // ── Notifications / Announcements ────────────────────────────────
     match /notifications/{notifId} {
-      allow read, write: if true;
+      allow read: if isAdmin() || isTeacher() || (
+        isSignedIn() &&
+        exists(/databases/$(database)/documents/students/$(request.auth.uid)) &&
+        (
+          resource.data.userId == request.auth.uid ||
+          (resource.data.type == 'teacher_announcement' && (
+            (exists(resource.data.targetClass) && get(/databases/$(database)/documents/students/$(request.auth.uid)).data.class == resource.data.targetClass) ||
+            (exists(resource.data.targetSubject) && get(/databases/$(database)/documents/students/$(request.auth.uid)).data.subject.matches('.*' + resource.data.targetSubject + '.*'))
+          )) ||
+          !exists(resource.data.type) ||
+          (resource.data.type != 'teacher_announcement' && !exists(resource.data.userId))
+        )
+      );
+      allow write: if isAdmin() || isTeacher();
     }
 
     match /announcements/{announcementId} {
-      allow read, write: if true;
+      allow read: if isAdmin() || isTeacher() || (
+        isSignedIn() &&
+        exists(/databases/$(database)/documents/students/$(request.auth.uid)) &&
+        (
+          resource.data.userId == request.auth.uid ||
+          (resource.data.type == 'teacher_announcement' && (
+            (exists(resource.data.targetClass) && get(/databases/$(database)/documents/students/$(request.auth.uid)).data.class == resource.data.targetClass) ||
+            (exists(resource.data.targetSubject) && get(/databases/$(database)/documents/students/$(request.auth.uid)).data.subject.matches('.*' + resource.data.targetSubject + '.*'))
+          )) ||
+          !exists(resource.data.type) ||
+          (resource.data.type != 'teacher_announcement' && !exists(resource.data.userId))
+        )
+      );
+      allow write: if isAdmin() || isTeacher();
     }
 
     // ── Devices (FCM Push Tokens) ────────────────────────────────────
@@ -108,7 +134,7 @@ service cloud.firestore {
 
     // ── Fallback ─────────────────────────────────────────────────────
     match /{document=**} {
-      allow read, write: if true;
+      allow read, write: if false;
     }
   }
 }

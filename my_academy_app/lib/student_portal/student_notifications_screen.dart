@@ -114,10 +114,44 @@ class _StudentNotificationsScreenState extends State<StudentNotificationsScreen>
 
       // Load student profile for grade & subject matching
       _student = await StudentAuthService.fetchCurrentStudent(studentId: _studentId!);
+      if (_student == null) {
+        if (mounted) {
+          setState(() {
+            _errorMessage = 'Student profile not found.';
+            _isLoading = false;
+          });
+        }
+        return;
+      }
+
+      final studentSubjects = _student!.subject
+          .split(',')
+          .map((s) => s.trim())
+          .where((s) => s.isNotEmpty)
+          .toList();
+          
+      if (studentSubjects.isEmpty) {
+        studentSubjects.add('NONE');
+      }
 
       _noticesSubscription?.cancel();
       _noticesSubscription = FirebaseFirestore.instance
           .collection('notifications')
+          .where(
+            Filter.or(
+              Filter('userId', isEqualTo: _studentId),
+              Filter('type', isEqualTo: 'student_registered'),
+              Filter('type', isEqualTo: 'fee_reminder'),
+              Filter('type', isEqualTo: 'announcement'),
+              Filter.and(
+                Filter('type', isEqualTo: 'teacher_announcement'),
+                Filter.or(
+                  Filter('targetClass', whereIn: [_student!.classType, _student!.grade, 'All', 'General']),
+                  Filter('targetSubject', whereIn: studentSubjects)
+                )
+              )
+            )
+          )
           .orderBy('timestamp', descending: true)
           .snapshots()
           .listen((snapshot) {
@@ -125,6 +159,7 @@ class _StudentNotificationsScreenState extends State<StudentNotificationsScreen>
             .map((doc) => NotificationModel.fromMap(doc.data(), doc.id))
             .toList();
 
+        // Still keep client-side filtering as a fallback and to handle complex matching if needed
         final filteredNotices = allNotices.where((n) {
           return _isNoticeTargetedForStudent(n, _student, _studentId!);
         }).toList();
