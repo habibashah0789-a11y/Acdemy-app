@@ -120,8 +120,7 @@ class _TeacherDashboardScreenState extends State<TeacherDashboardScreen> {
             ],
           ),
         ),
-      ),
-    );
+      );
   }
 
   Widget _buildDailyRecordsTile(

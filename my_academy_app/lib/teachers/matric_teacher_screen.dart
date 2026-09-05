@@ -300,17 +300,8 @@ class _MatricClassRoomScreenState extends State<MatricClassRoomScreen> {
                 return GestureDetector(
                   onTap: () {
                     setState(() {
-                      if (_startSlotIdx == null || (_startSlotIdx != null && _endSlotIdx != null)) {
-                        _startSlotIdx = index;
-                        _endSlotIdx = null;
-                      } else {
-                        if (index >= _startSlotIdx!) {
-                          _endSlotIdx = index;
-                        } else {
-                          _startSlotIdx = index;
-                          _endSlotIdx = null;
-                        }
-                      }
+                      _startSlotIdx = index;
+                      _endSlotIdx = (index + 1 < kScheduleSlots.length) ? index + 1 : index;
                     });
                   },
                   child: AnimatedContainer(
@@ -401,11 +392,6 @@ class _MatricClassRoomScreenState extends State<MatricClassRoomScreen> {
                   ),
                 ),
               ),
-              TextButton.icon(
-                onPressed: () => _addStudent(),
-                icon: const Icon(Icons.person_add_rounded, size: 18),
-                label: const Text('Add'),
-              ),
             ],
           ),
           const SizedBox(height: 12),
@@ -422,28 +408,7 @@ class _MatricClassRoomScreenState extends State<MatricClassRoomScreen> {
             }),
         ],
       ),
-      floatingActionButton: FloatingActionButton.extended(
-        heroTag: null,
-        onPressed: _addStudent,
-        icon: const Icon(Icons.person_add_rounded),
-        label: const Text('Add Student'),
-        backgroundColor: color,
-      ).animate().scale(delay: 300.ms),
     );
-  }
-
-  void _addStudent() {
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (_) => AddStudentScreen(
-          presetClassType: 'Matric',
-          presetSubject: widget.subject,
-          presetGrade: widget.grade,
-          presetSchedule: _currentRangeForStudent,
-        ),
-      ),
-    ).then((_) => setState(() {}));
   }
 
   Widget _buildStudentTile(StudentModel s, int index) {
@@ -514,7 +479,7 @@ class _MatricClassRoomScreenState extends State<MatricClassRoomScreen> {
             ),
             const SizedBox(height: 6),
             Text(
-              'Tap "Add Student" to enroll a student in this class',
+              'Students added to this class will appear here',
               style: TextStyle(fontSize: 13, color: Colors.grey.shade500),
             ),
           ],
