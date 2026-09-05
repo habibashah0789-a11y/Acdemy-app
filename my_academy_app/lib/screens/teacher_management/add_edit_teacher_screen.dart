@@ -1,7 +1,6 @@
 import 'dart:convert';
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
-import 'package:flutter_animate/flutter_animate.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:image_picker/image_picker.dart';
@@ -31,7 +30,6 @@ class _AddEditTeacherScreenState extends State<AddEditTeacherScreen> {
   final _profilePicUrlCtrl = TextEditingController();
 
   Uint8List? _imageBytes;
-  String _profilePicUrl = '';
 
   String _selectedSection = 'FSc';
   String _selectedSubject = 'Biology';
@@ -74,7 +72,6 @@ class _AddEditTeacherScreenState extends State<AddEditTeacherScreen> {
       _selectedSubject = t.subject;
       _selectedClasses.addAll(t.assignedClasses);
       _isActive = t.isActive;
-      _profilePicUrl = t.profilePicUrl;
       _profilePicUrlCtrl.text = t.profilePicUrl;
     }
   }
@@ -142,7 +139,6 @@ class _AddEditTeacherScreenState extends State<AddEditTeacherScreen> {
                     Navigator.pop(ctx);
                     setState(() {
                       _imageBytes = null;
-                      _profilePicUrl = '';
                       _profilePicUrlCtrl.clear();
                     });
                   },
@@ -298,8 +294,6 @@ class _AddEditTeacherScreenState extends State<AddEditTeacherScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-
     return Scaffold(
       appBar: AppBar(
         title: Text(

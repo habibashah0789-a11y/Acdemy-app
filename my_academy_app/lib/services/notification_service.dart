@@ -59,11 +59,11 @@ class NotificationService {
 
   // ── 1. Android Notification Channels ──────────────────────────────────
 
-  static const String defaultChannelId = 'academy_notifications_v2';
+  static const String defaultChannelId = 'academy_notifications_v3';
   static const String defaultChannelName = 'Academy Notifications';
-  static const String defaultSoundName = 'academy_notification';
+  static const String defaultSoundName = 'soft_chime_notification';
 
-  static const String feeReminderChannelId = 'academy_fee_reminders_v2';
+  static const String feeReminderChannelId = 'academy_fee_reminders_v3';
   static const String feeReminderChannelName = 'Fee Reminders';
 
   static const AndroidNotificationChannel _academyNotificationsV2Channel =
@@ -1004,11 +1004,20 @@ status = PENDING
           ).toList();
 
           if (newUnread.isNotEmpty) {
+            // Play custom chime sound
+            SoundService.playNotification();
+
             // Show a local notification for each new unread message
             for (final n in newUnread) {
+              String formattedTitle = n.title;
+              if (n.isTeacherAnnouncement &&
+                  n.teacherDisplayName.isNotEmpty &&
+                  !n.title.contains(n.teacherDisplayName)) {
+                formattedTitle = '📢 ${n.authorDisplay}: ${n.title}';
+              }
               showLocalNotification(
                 channelId: defaultChannelId,
-                title: n.title,
+                title: formattedTitle,
                 body: n.message,
               );
             }

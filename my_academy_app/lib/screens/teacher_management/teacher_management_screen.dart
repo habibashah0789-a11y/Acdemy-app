@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:cached_network_image/cached_network_image.dart';
 import '../../models/teacher_model.dart';
 import '../../services/teacher_service.dart';
 import '../../theme/app_theme.dart';
@@ -67,7 +66,6 @@ class TeacherManagementScreen extends StatelessWidget {
 
   Widget _buildTeacherCard(
       BuildContext context, TeacherModel teacher, int idx) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
     final subjectColor = _subjectColor(teacher.subject);
 
     return Card(
@@ -258,24 +256,6 @@ class TeacherManagementScreen extends StatelessWidget {
         ),
       ),
     ).animate().fadeIn(delay: (idx * 60).ms).slideY(begin: 0.05);
-  }
-
-  Widget _initialsWidget(TeacherModel teacher, Color color) {
-    final initials = teacher.name.isNotEmpty
-        ? teacher.name
-            .split(' ')
-            .take(2)
-            .map((w) => w.isNotEmpty ? w[0].toUpperCase() : '')
-            .join()
-        : 'T';
-    return Text(
-      initials,
-      style: TextStyle(
-        fontWeight: FontWeight.bold,
-        color: color,
-        fontSize: 18,
-      ),
-    );
   }
 
   Future<void> _deleteTeacher(

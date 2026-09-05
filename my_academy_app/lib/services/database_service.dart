@@ -224,10 +224,14 @@ class DatabaseService {
     required String subject,
     required String grade,
   }) {
+    final cType = classType.trim().toLowerCase();
+    final sub = subject.trim().toLowerCase();
+    final grd = grade.trim().toLowerCase();
+
     return _studentBox.values.where((s) =>
-      s.classType == classType &&
-      s.subject.split(',').map((e) => e.trim().toLowerCase()).contains(subject.trim().toLowerCase()) &&
-      s.grade == grade
+      s.classType.trim().toLowerCase() == cType &&
+      s.subject.split(',').map((e) => e.trim().toLowerCase()).contains(sub) &&
+      (s.grade.trim().toLowerCase() == grd || s.grade.trim().toLowerCase().contains(grd))
     ).toList();
   }
 

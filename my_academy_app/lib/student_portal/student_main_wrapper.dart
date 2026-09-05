@@ -406,20 +406,20 @@ $st
               NavigationDestination(
                 icon: ValueListenableBuilder<int>(
                   valueListenable: NotificationService.studentUnreadNoticesCount,
-                  builder: (context, count, _) {
+                  builder: (context, unreadCount, _) {
                     return Badge(
-                      isLabelVisible: count > 0,
-                      label: Text('$count'),
+                      isLabelVisible: unreadCount > 0,
+                      label: Text('$unreadCount'),
                       child: const Icon(Icons.notifications_none_rounded),
                     );
                   },
                 ),
                 selectedIcon: ValueListenableBuilder<int>(
                   valueListenable: NotificationService.studentUnreadNoticesCount,
-                  builder: (context, count, _) {
+                  builder: (context, unreadCount, _) {
                     return Badge(
-                      isLabelVisible: count > 0,
-                      label: Text('$count'),
+                      isLabelVisible: unreadCount > 0,
+                      label: Text('$unreadCount'),
                       child: const Icon(Icons.notifications_rounded),
                     );
                   },

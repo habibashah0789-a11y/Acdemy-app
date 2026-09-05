@@ -23,11 +23,9 @@ import 'student_portal/student_auth_service.dart';
 import 'provider/theme_provider.dart';
 
 // Screens
-import 'login/login_screen.dart';
 import 'screens/main_wrapper.dart';
 import 'screens/role_selection_screen.dart';
 import 'student_portal/student_main_wrapper.dart';
-import 'student_portal/student_login_screen.dart';
 
 // Teacher portal
 import 'teacher_portal/teacher_main_wrapper.dart';
@@ -134,7 +132,7 @@ class _AuthWrapperState extends State<AuthWrapper> {
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Image.asset(
-              'assets/images/logo.png',
+              'assets/images/Quaid Academy logo.png',
               width: 90,
               height: 90,
               errorBuilder: (_, __, ___) => const Icon(Icons.school_rounded, size: 72, color: AppTheme.primaryBlue),
@@ -208,7 +206,7 @@ class _StudentPortalEntryWrapperState extends State<StudentPortalEntryWrapper> {
       return Scaffold(
         body: Center(
           child: Image.asset(
-            'assets/images/logo.png',
+            'assets/images/Quaid Academy logo.png',
             width: 80,
             height: 80,
             errorBuilder: (_, __, ___) => const Icon(Icons.school_rounded, size: 64, color: AppTheme.primaryBlue),
@@ -343,7 +341,7 @@ class _RoleRoutingWrapperState extends State<RoleRoutingWrapper> {
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               Image.asset(
-                'assets/images/logo.png',
+                'assets/images/Quaid Academy logo.png',
                 width: 80,
                 height: 80,
                 errorBuilder: (_, __, ___) => const Icon(Icons.school_rounded, size: 64, color: AppTheme.primaryBlue),

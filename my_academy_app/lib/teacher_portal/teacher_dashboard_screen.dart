@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:cached_network_image/cached_network_image.dart';
 import 'package:intl/intl.dart';
 import '../models/teacher_model.dart';
 import '../services/teacher_service.dart';
@@ -41,10 +40,12 @@ class _TeacherDashboardScreenState extends State<TeacherDashboardScreen> {
   Future<void> _loadStats() async {
     setState(() => _loadingStats = true);
     final stats = await TeacherService.getSubjectStats(_teacher);
-    if (mounted) setState(() {
-      _stats = stats;
-      _loadingStats = false;
-    });
+    if (mounted) {
+      setState(() {
+        _stats = stats;
+        _loadingStats = false;
+      });
+    }
   }
 
   @override
@@ -502,28 +503,6 @@ class _TeacherDashboardScreenState extends State<TeacherDashboardScreen> {
       teacher: _teacher,
       size: size,
       backgroundColor: Colors.white.withValues(alpha: 0.25),
-    );
-  }
-
-  Widget _buildInitialsAvatar(double size) {
-    final initials = _teacher.name.isNotEmpty
-        ? _teacher.name
-            .split(' ')
-            .take(2)
-            .map((w) => w.isNotEmpty ? w[0].toUpperCase() : '')
-            .join()
-        : 'T';
-    return CircleAvatar(
-      radius: size / 2,
-      backgroundColor: Colors.white.withValues(alpha: 0.25),
-      child: Text(
-        initials,
-        style: TextStyle(
-          fontSize: size * 0.35,
-          fontWeight: FontWeight.bold,
-          color: Colors.white,
-        ),
-      ),
     );
   }
 

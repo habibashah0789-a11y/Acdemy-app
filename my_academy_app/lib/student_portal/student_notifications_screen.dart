@@ -207,7 +207,11 @@ class _StudentNotificationsScreenState extends State<StudentNotificationsScreen>
                           Color themeColor = AppTheme.primaryBlue;
                           Color bgActiveColor = AppTheme.primaryBlue.withValues(alpha: 0.12);
 
-                          if (item.notificationType == 'student_registered') {
+                          if (item.isTeacherAnnouncement) {
+                            leadingIcon = Icons.record_voice_over_rounded;
+                            themeColor = AppTheme.primaryBlue;
+                            bgActiveColor = AppTheme.primaryBlue.withValues(alpha: 0.12);
+                          } else if (item.notificationType == 'student_registered') {
                             leadingIcon = Icons.school_rounded;
                             themeColor = AppTheme.accentIndigo;
                             bgActiveColor = AppTheme.accentIndigo.withValues(alpha: 0.12);
@@ -330,15 +334,46 @@ class _StudentNotificationsScreenState extends State<StudentNotificationsScreen>
                                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                             children: [
                                               Expanded(
-                                                child: Text(
-                                                  'Issued by: ${item.registeredBy.isNotEmpty ? item.registeredBy : "Administration"}',
-                                                  style: TextStyle(
-                                                    fontSize: 11,
-                                                    color: isDark ? AppTheme.darkTextSecondary : AppTheme.lightTextSecondary,
-                                                    fontStyle: FontStyle.italic,
-                                                  ),
-                                                  overflow: TextOverflow.ellipsis,
-                                                ),
+                                                child: item.isTeacherAnnouncement
+                                                    ? Row(
+                                                        children: [
+                                                          Container(
+                                                            padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+                                                            decoration: BoxDecoration(
+                                                              color: AppTheme.primaryBlue.withValues(alpha: 0.1),
+                                                              borderRadius: BorderRadius.circular(6),
+                                                              border: Border.all(color: AppTheme.primaryBlue.withValues(alpha: 0.2)),
+                                                            ),
+                                                            child: Row(
+                                                              mainAxisSize: MainAxisSize.min,
+                                                              children: [
+                                                                const Icon(Icons.school_rounded, size: 13, color: AppTheme.primaryBlue),
+                                                                const SizedBox(width: 4),
+                                                                Flexible(
+                                                                  child: Text(
+                                                                    item.authorDisplay,
+                                                                    style: GoogleFonts.poppins(
+                                                                      fontSize: 11,
+                                                                      fontWeight: FontWeight.w600,
+                                                                      color: AppTheme.primaryBlue,
+                                                                    ),
+                                                                    overflow: TextOverflow.ellipsis,
+                                                                  ),
+                                                                ),
+                                                              ],
+                                                            ),
+                                                          ),
+                                                        ],
+                                                      )
+                                                    : Text(
+                                                        'Issued by: ${item.registeredBy.isNotEmpty ? item.registeredBy : "Administration"}',
+                                                        style: TextStyle(
+                                                          fontSize: 11,
+                                                          color: isDark ? AppTheme.darkTextSecondary : AppTheme.lightTextSecondary,
+                                                          fontStyle: FontStyle.italic,
+                                                        ),
+                                                        overflow: TextOverflow.ellipsis,
+                                                      ),
                                               ),
                                               const SizedBox(width: 8),
                                               Text(
@@ -438,7 +473,9 @@ class _StudentNotificationsScreenState extends State<StudentNotificationsScreen>
                               borderRadius: BorderRadius.circular(20),
                             ),
                             child: Text(
-                              item.notificationType.replaceAll('_', ' ').toUpperCase(),
+                              item.isTeacherAnnouncement
+                                  ? 'TEACHER ANNOUNCEMENT'
+                                  : item.notificationType.replaceAll('_', ' ').toUpperCase(),
                               style: TextStyle(
                                 color: themeColor,
                                 fontSize: 10,
@@ -448,6 +485,25 @@ class _StudentNotificationsScreenState extends State<StudentNotificationsScreen>
                             ),
                           ),
                           const SizedBox(width: 8),
+                          if (item.isTeacherAnnouncement && item.teacherSubjectDisplay.isNotEmpty) ...[
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                              decoration: BoxDecoration(
+                                color: AppTheme.secondaryGreen.withValues(alpha: 0.12),
+                                borderRadius: BorderRadius.circular(20),
+                              ),
+                              child: Text(
+                                item.teacherSubjectDisplay.toUpperCase(),
+                                style: const TextStyle(
+                                  color: AppTheme.secondaryGreen,
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.bold,
+                                  letterSpacing: 0.5,
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                          ],
                           Text(
                             DateFormat('MMM dd, yyyy • hh:mm a').format(item.timestamp),
                             style: TextStyle(
@@ -475,33 +531,102 @@ class _StudentNotificationsScreenState extends State<StudentNotificationsScreen>
                         _buildStudentAttachment(item.mediaUrl, item.mediaType),
                       ],
                       const SizedBox(height: 24),
-                      // Footer — issued by
-                      Container(
-                        padding: const EdgeInsets.all(14),
-                        decoration: BoxDecoration(
-                          color: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.grey.shade50,
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(
-                            color: isDark ? Colors.white12 : Colors.grey.shade200,
+                      // Footer — Teacher profile card or Admin badge
+                      if (item.isTeacherAnnouncement) ...[
+                        Container(
+                          padding: const EdgeInsets.all(16),
+                          decoration: BoxDecoration(
+                            color: isDark ? Colors.white.withValues(alpha: 0.05) : AppTheme.primaryBlue.withValues(alpha: 0.05),
+                            borderRadius: BorderRadius.circular(16),
+                            border: Border.all(
+                              color: AppTheme.primaryBlue.withValues(alpha: 0.25),
+                            ),
                           ),
-                        ),
-                        child: Row(
-                          children: [
-                            Icon(Icons.badge_rounded, size: 16, color: themeColor),
-                            const SizedBox(width: 8),
-                            Expanded(
-                              child: Text(
-                                'Issued by: ${item.registeredBy.isNotEmpty ? item.registeredBy : "Administration"}',
-                                style: TextStyle(
-                                  fontSize: 12,
-                                  color: isDark ? AppTheme.darkTextSecondary : AppTheme.lightTextSecondary,
-                                  fontStyle: FontStyle.italic,
+                          child: Row(
+                            children: [
+                              Container(
+                                width: 46,
+                                height: 46,
+                                decoration: BoxDecoration(
+                                  color: AppTheme.primaryBlue.withValues(alpha: 0.15),
+                                  shape: BoxShape.circle,
+                                ),
+                                child: const Icon(Icons.school_rounded, color: AppTheme.primaryBlue, size: 24),
+                              ),
+                              const SizedBox(width: 14),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      'Announcement by Teacher',
+                                      style: TextStyle(
+                                        fontSize: 11,
+                                        color: isDark ? AppTheme.darkTextSecondary : AppTheme.lightTextSecondary,
+                                        fontWeight: FontWeight.w500,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 2),
+                                    Text(
+                                      item.teacherDisplayName.isNotEmpty ? item.teacherDisplayName : item.registeredBy,
+                                      style: GoogleFonts.poppins(
+                                        fontSize: 15,
+                                        fontWeight: FontWeight.bold,
+                                        color: isDark ? Colors.white : AppTheme.primaryDarkBlue,
+                                      ),
+                                    ),
+                                    if (item.teacherSubjectDisplay.isNotEmpty) ...[
+                                      const SizedBox(height: 4),
+                                      Container(
+                                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                                        decoration: BoxDecoration(
+                                          color: AppTheme.primaryBlue.withValues(alpha: 0.15),
+                                          borderRadius: BorderRadius.circular(6),
+                                        ),
+                                        child: Text(
+                                          'Subject: ${item.teacherSubjectDisplay}',
+                                          style: GoogleFonts.poppins(
+                                            fontSize: 11,
+                                            fontWeight: FontWeight.w600,
+                                            color: AppTheme.primaryBlue,
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ],
                                 ),
                               ),
-                            ),
-                          ],
+                            ],
+                          ),
                         ),
-                      ),
+                      ] else ...[
+                        Container(
+                          padding: const EdgeInsets.all(14),
+                          decoration: BoxDecoration(
+                            color: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.grey.shade50,
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(
+                              color: isDark ? Colors.white12 : Colors.grey.shade200,
+                            ),
+                          ),
+                          child: Row(
+                            children: [
+                              Icon(Icons.badge_rounded, size: 16, color: themeColor),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: Text(
+                                  'Issued by: ${item.registeredBy.isNotEmpty ? item.registeredBy : "Administration"}',
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    color: isDark ? AppTheme.darkTextSecondary : AppTheme.lightTextSecondary,
+                                    fontStyle: FontStyle.italic,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
                       const SizedBox(height: 32),
                     ],
                   ),

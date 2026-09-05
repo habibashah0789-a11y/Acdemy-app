@@ -129,11 +129,51 @@ class _FscClassRoomScreenState extends State<FscClassRoomScreen> {
   int? _startSlotIdx;
   int? _endSlotIdx;
 
-  List<StudentModel> get _students => DatabaseService.getStudentsByClass(
+  List<StudentModel> get _allStudents => DatabaseService.getStudentsByClass(
     classType: 'FSc',
     subject: widget.subject,
     grade: widget.grade,
   );
+
+  /// Filter students by whether their schedule for this subject contains
+  /// the selected time slot text
+  List<StudentModel> get _filteredStudents {
+    final all = _allStudents;
+    if (_startSlotIdx == null) return all;
+
+    // Build the selected time string to match against student schedules
+    final selectedSlot = kScheduleSlots[_startSlotIdx!];
+
+    return all.where((s) {
+      final schedule = s.getScheduleForSubject(widget.subject).trim().toLowerCase();
+      if (schedule.isEmpty) return false;
+
+      // If only a single slot is selected, match if the schedule contains that time
+      if (_endSlotIdx == null) {
+        return schedule.contains(selectedSlot.toLowerCase());
+      }
+
+      // If a range is selected, check if the student's schedule overlaps
+      final rangeStart = selectedSlot.toLowerCase();
+      final rangeEnd = kScheduleSlots[_endSlotIdx!].toLowerCase();
+
+      // Check if the student schedule contains the start time, end time,
+      // or the full range string
+      final fullRange = '$rangeStart - $rangeEnd';
+      final fullRangeDash = '$rangeStart — $rangeEnd';
+
+      if (schedule.contains(fullRange) || schedule.contains(fullRangeDash)) return true;
+      if (schedule.contains(rangeStart) || schedule.contains(rangeEnd)) return true;
+
+      // Also check if any slot in the selected range is mentioned in the schedule
+      for (int i = _startSlotIdx!; i <= _endSlotIdx!; i++) {
+        if (schedule.contains(kScheduleSlots[i].toLowerCase())) return true;
+      }
+      return false;
+    }).toList();
+  }
+
+  bool get _isFiltering => _startSlotIdx != null;
 
   String _getRangeText() {
     if (_startSlotIdx == null) {
@@ -151,16 +191,39 @@ class _FscClassRoomScreenState extends State<FscClassRoomScreen> {
     return '${kScheduleSlots[_startSlotIdx!]} - ${kScheduleSlots[_endSlotIdx!]}';
   }
 
+  void _clearScheduleFilter() {
+    setState(() {
+      _startSlotIdx = null;
+      _endSlotIdx = null;
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     // Listen to SyncService so that this screen rebuilds on real-time sync updates
     Provider.of<SyncService>(context);
-    final students = _students;
+    final allStudents = _allStudents;
+    final students = _filteredStudents;
     final color = kSubjectColors[widget.subject] ?? AppTheme.primaryBlue;
 
     return Scaffold(
       appBar: AppBar(
         title: Text('${widget.grade} — ${widget.subject}'),
+        actions: [
+          if (_isFiltering)
+            TextButton.icon(
+              onPressed: _clearScheduleFilter,
+              icon: const Icon(Icons.clear_rounded, color: Colors.white, size: 18),
+              label: Text(
+                'Show All',
+                style: GoogleFonts.poppins(
+                  color: Colors.white,
+                  fontWeight: FontWeight.w600,
+                  fontSize: 12,
+                ),
+              ),
+            ),
+        ],
       ),
       body: ListView(
         padding: const EdgeInsets.all(20),
@@ -284,15 +347,58 @@ class _FscClassRoomScreenState extends State<FscClassRoomScreen> {
 
           const SizedBox(height: 28),
 
+          // ── Filter Active Banner ──
+          if (_isFiltering)
+            Container(
+              margin: const EdgeInsets.only(bottom: 16),
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+              decoration: BoxDecoration(
+                color: color.withValues(alpha: 0.08),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: color.withValues(alpha: 0.25)),
+              ),
+              child: Row(
+                children: [
+                  Icon(Icons.filter_alt_rounded, color: color, size: 18),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      'Showing ${students.length} of ${allStudents.length} students scheduled at ${_getRangeText()}',
+                      style: GoogleFonts.poppins(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                        color: color,
+                      ),
+                    ),
+                  ),
+                  GestureDetector(
+                    onTap: _clearScheduleFilter,
+                    child: Container(
+                      padding: const EdgeInsets.all(4),
+                      decoration: BoxDecoration(
+                        color: color.withValues(alpha: 0.15),
+                        shape: BoxShape.circle,
+                      ),
+                      child: Icon(Icons.close_rounded, color: color, size: 16),
+                    ),
+                  ),
+                ],
+              ),
+            ).animate().fadeIn().slideY(begin: 0.05),
+
           // ── Students header ──
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(
-                'Enrolled Students (${students.length})',
-                style: GoogleFonts.poppins(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
+              Expanded(
+                child: Text(
+                  _isFiltering
+                      ? 'Filtered Students (${students.length})'
+                      : 'Enrolled Students (${students.length})',
+                  style: GoogleFonts.poppins(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
               ),
               TextButton.icon(
@@ -305,7 +411,9 @@ class _FscClassRoomScreenState extends State<FscClassRoomScreen> {
           const SizedBox(height: 12),
 
           if (students.isEmpty)
-            _buildEmptyStudents()
+            _isFiltering
+                ? _buildNoScheduleMatch(color)
+                : _buildEmptyStudents()
           else
             ...students.asMap().entries.map((e) {
               final idx = e.key;
@@ -408,6 +516,36 @@ class _FscClassRoomScreenState extends State<FscClassRoomScreen> {
             Text(
               'Tap "Add Student" to enroll a student in this class',
               style: TextStyle(fontSize: 13, color: Colors.grey.shade500),
+            ),
+          ],
+        ),
+      ),
+    ).animate().fadeIn();
+  }
+
+  Widget _buildNoScheduleMatch(Color color) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 40),
+        child: Column(
+          children: [
+            Icon(Icons.schedule_rounded, size: 56, color: color.withValues(alpha: 0.3)),
+            const SizedBox(height: 12),
+            Text(
+              'No students at this time',
+              style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: color),
+            ),
+            const SizedBox(height: 6),
+            Text(
+              'No students are scheduled for ${widget.subject} at ${_getRangeText()}',
+              textAlign: TextAlign.center,
+              style: TextStyle(fontSize: 13, color: Colors.grey.shade500),
+            ),
+            const SizedBox(height: 16),
+            TextButton.icon(
+              onPressed: _clearScheduleFilter,
+              icon: const Icon(Icons.clear_all_rounded),
+              label: const Text('Show All Students'),
             ),
           ],
         ),

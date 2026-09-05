@@ -125,7 +125,17 @@ class _TeacherNotificationsScreenState
     final body =
         data['body'] as String? ?? data['message'] as String? ?? '';
     final type = data['type'] as String? ?? 'info';
-    final registeredBy = data['registeredBy'] as String? ?? 'Admin';
+    final rawRegisteredBy = data['registeredBy'] as String? ?? 'Admin';
+    final teacherSubject = (data['teacherSubject'] as String? ??
+            data['targetSubject'] as String? ??
+            data['subject'] as String? ??
+            '')
+        .trim();
+    final authorDisplay = (teacherSubject.isNotEmpty &&
+            !rawRegisteredBy.toLowerCase().contains('admin') &&
+            !rawRegisteredBy.contains('('))
+        ? '$rawRegisteredBy ($teacherSubject Teacher)'
+        : rawRegisteredBy;
     final mediaUrl =
         data['mediaUrl'] as String? ?? data['attachmentUrl'] as String? ?? '';
     final mediaType = data['mediaType'] as String? ??
@@ -177,7 +187,7 @@ class _TeacherNotificationsScreenState
                         ),
                       ),
                       Text(
-                        'By: $registeredBy',
+                        'By: $authorDisplay',
                         style: TextStyle(
                           fontSize: 11,
                           color: AppTheme.lightTextSecondary,

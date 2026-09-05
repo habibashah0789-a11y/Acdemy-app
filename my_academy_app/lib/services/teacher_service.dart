@@ -5,6 +5,7 @@ import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/foundation.dart';
 import '../models/teacher_model.dart';
 import '../models/student_model.dart';
+import '../services/notification_service.dart';
 import '../utils/image_utils.dart';
 
 class TeacherStats {
@@ -467,20 +468,29 @@ class TeacherService {
   }) async {
     final notifDocRef = _firestore.collection('notifications').doc();
 
+    final formattedTeacherName = teacher.name.trim();
+    final formattedTeacherSubject = teacher.subject.trim();
+    final authorLabel = formattedTeacherSubject.isNotEmpty
+        ? '$formattedTeacherName ($formattedTeacherSubject Teacher)'
+        : formattedTeacherName;
+
     final data = {
       'id': notifDocRef.id,
       'title': title,
       'body': message,
       'message': message,
-      'registeredBy': teacher.name,
+      'registeredBy': authorLabel,
+      'teacherName': formattedTeacherName,
+      'teacherSubject': formattedTeacherSubject,
+      'teacherSection': teacher.section,
       'senderId': teacher.id,
-      'subject': teacher.subject,
-      'targetSubject': teacher.subject,
+      'subject': formattedTeacherSubject,
+      'targetSubject': formattedTeacherSubject,
       'targetSection': teacher.section,
       'class': targetClass == 'All' ? teacher.section : targetClass,
       'timestamp': FieldValue.serverTimestamp(),
       'createdAt': FieldValue.serverTimestamp(),
-      'type': 'announcement',
+      'type': 'teacher_announcement',
       'notificationType': 'teacher_announcement',
       'isRead': false,
       'mediaUrl': mediaUrl,
@@ -490,6 +500,24 @@ class TeacherService {
     };
 
     await notifDocRef.set(data);
+
+    // Trigger push notification to student devices with teacher name and subject
+    try {
+      await NotificationService.triggerPushNotification(
+        targetTopic: 'academy_all',
+        title: '📢 $authorLabel: $title',
+        body: message,
+        payload: {
+          'type': 'teacher_announcement',
+          'screen': 'notifications',
+          'teacherName': formattedTeacherName,
+          'teacherSubject': formattedTeacherSubject,
+          'subject': formattedTeacherSubject,
+        },
+      );
+    } catch (e) {
+      debugPrint('[TeacherService] push trigger error: $e');
+    }
   }
 }
 

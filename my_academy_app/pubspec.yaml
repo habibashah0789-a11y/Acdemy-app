@@ -73,6 +73,7 @@ dependencies:
   uuid: ^4.5.1
   qr_flutter: ^4.1.0
   smooth_page_indicator: 
+  audioplayers: ^6.8.1
 
 dev_dependencies:
   flutter_test:
@@ -103,6 +104,7 @@ flutter:
   assets:
     - assets/images/Quaid Academy logo.png
     - assets/images/hamza.png
+    - assets/sound/
 
 flutter_native_splash:
   color: "#FFFFFF"

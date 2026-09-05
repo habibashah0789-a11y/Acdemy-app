@@ -8,6 +8,7 @@ import '../screens/teacher_management/teacher_management_screen.dart';
 import '../services/database_service.dart';
 import '../services/sync_service.dart';
 import '../teacher_portal/teacher_daily_records_screen.dart';
+import '../theme/app_theme.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Constants
@@ -217,48 +218,23 @@ class _TeacherFolderScreenState extends State<TeacherFolderScreen> {
             ),
           ),
         ),
-        floatingActionButton: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.end,
-          children: [
-            FloatingActionButton.extended(
-              heroTag: 'daily_records_btn',
-              onPressed: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) => const TeacherDailyRecordsScreen(),
-                  ),
-                );
-              },
-              backgroundColor: AppTheme.secondaryGreen,
-              foregroundColor: Colors.white,
-              icon: const Icon(Icons.today_rounded),
-              label: Text(
-                'Daily Records',
-                style: GoogleFonts.poppins(fontWeight: FontWeight.w600),
+        floatingActionButton: FloatingActionButton.extended(
+          heroTag: 'manage_teachers_btn',
+          onPressed: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) => const TeacherManagementScreen(),
               ),
-            ),
-            const SizedBox(height: 10),
-            FloatingActionButton.extended(
-              heroTag: 'manage_teachers_btn',
-              onPressed: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) => const TeacherManagementScreen(),
-                  ),
-                );
-              },
-              backgroundColor: AppTheme.primaryBlue,
-              foregroundColor: Colors.white,
-              icon: const Icon(Icons.manage_accounts_rounded),
-              label: Text(
-                'Manage Teachers',
-                style: GoogleFonts.poppins(fontWeight: FontWeight.w600),
-              ),
-            ),
-          ],
+            );
+          },
+          backgroundColor: AppTheme.primaryBlue,
+          foregroundColor: Colors.white,
+          icon: const Icon(Icons.manage_accounts_rounded),
+          label: Text(
+            'Manage Teachers',
+            style: GoogleFonts.poppins(fontWeight: FontWeight.w600),
+          ),
         ),
         body: TabBarView(
           children: [

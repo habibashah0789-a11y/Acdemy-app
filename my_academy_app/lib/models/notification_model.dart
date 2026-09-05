@@ -14,6 +14,8 @@ class NotificationModel {
   final String studentId; 
   final String mediaUrl;
   final String mediaType; // 'image', 'pdf', 'audio', 'none'
+  final String teacherName;
+  final String teacherSubject;
 
   NotificationModel({
     required this.id,
@@ -29,9 +31,55 @@ class NotificationModel {
     this.studentId = '',
     this.mediaUrl = '',
     this.mediaType = 'none',
+    this.teacherName = '',
+    this.teacherSubject = '',
   });
 
   String get studentClass => className;
+
+  bool get isTeacherAnnouncement =>
+      notificationType == 'teacher_announcement' ||
+      teacherName.isNotEmpty ||
+      (registeredBy.isNotEmpty &&
+          !registeredBy.toLowerCase().contains('admin') &&
+          !registeredBy.toLowerCase().contains('system') &&
+          subject.isNotEmpty);
+
+  String get teacherDisplayName {
+    if (teacherName.isNotEmpty) return teacherName;
+    if (registeredBy.isNotEmpty &&
+        !registeredBy.toLowerCase().contains('admin') &&
+        !registeredBy.toLowerCase().contains('system')) {
+      if (registeredBy.contains('(')) {
+        return registeredBy.split('(').first.trim();
+      }
+      return registeredBy;
+    }
+    return '';
+  }
+
+  String get teacherSubjectDisplay {
+    if (teacherSubject.isNotEmpty) return teacherSubject;
+    if (subject.isNotEmpty &&
+        subject.toLowerCase() != 'all' &&
+        subject.toLowerCase() != 'general') {
+      return subject;
+    }
+    return '';
+  }
+
+  String get authorDisplay {
+    final tName = teacherDisplayName;
+    final tSub = teacherSubjectDisplay;
+    if (tName.isNotEmpty && tSub.isNotEmpty) {
+      return '$tName ($tSub Teacher)';
+    } else if (tName.isNotEmpty) {
+      return '$tName (Teacher)';
+    } else if (registeredBy.isNotEmpty) {
+      return registeredBy;
+    }
+    return 'Administration';
+  }
 
   Map<String, dynamic> toMap() {
     return {
@@ -48,6 +96,8 @@ class NotificationModel {
       'studentId': studentId,
       'mediaUrl': mediaUrl,
       'mediaType': mediaType,
+      'teacherName': teacherName,
+      'teacherSubject': teacherSubject,
     };
   }
 
@@ -66,6 +116,8 @@ class NotificationModel {
       'studentId': studentId,
       'mediaUrl': mediaUrl,
       'mediaType': mediaType,
+      'teacherName': teacherName,
+      'teacherSubject': teacherSubject,
     };
   }
 
@@ -82,6 +134,14 @@ class NotificationModel {
       parsedTimestamp = DateTime.now();
     }
 
+    final rawRegisteredBy = map['registeredBy']?.toString() ?? '';
+    final rawTeacherName = map['teacherName']?.toString() ??
+        (map['notificationType'] == 'teacher_announcement' ? rawRegisteredBy : '');
+    final rawTeacherSubject = map['teacherSubject']?.toString() ??
+        map['subject']?.toString() ??
+        map['targetSubject']?.toString() ??
+        '';
+
     return NotificationModel(
       id: (docId ?? map['id'] ?? '').toString(),
       title: map['title']?.toString() ?? 'Notification',
@@ -89,13 +149,15 @@ class NotificationModel {
       studentName: map['studentName']?.toString() ?? '',
       className: map['class']?.toString() ?? map['targetSection']?.toString() ?? '',
       subject: map['subject']?.toString() ?? map['targetSubject']?.toString() ?? '',
-      registeredBy: map['registeredBy']?.toString() ?? '',
+      registeredBy: rawRegisteredBy,
       timestamp: parsedTimestamp,
       notificationType: map['notificationType']?.toString() ?? map['type']?.toString() ?? 'general',
       isRead: map['isRead'] == true,
       studentId: map['studentId']?.toString() ?? '',
       mediaUrl: map['mediaUrl']?.toString() ?? map['attachmentUrl']?.toString() ?? '',
       mediaType: map['mediaType']?.toString() ?? map['attachmentType']?.toString() ?? 'none',
+      teacherName: rawTeacherName,
+      teacherSubject: rawTeacherSubject,
     );
   }
 

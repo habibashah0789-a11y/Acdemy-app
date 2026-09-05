@@ -964,6 +964,35 @@ class _StudentDashboardScreenState extends State<StudentDashboardScreen> {
                           overflow: TextOverflow.ellipsis,
                         ),
                       ),
+                      const SizedBox(height: 6),
+                      Padding(
+                        padding: const EdgeInsets.only(left: 18),
+                        child: Row(
+                          children: [
+                            Icon(
+                              notice.isTeacherAnnouncement ? Icons.school_rounded : Icons.admin_panel_settings_rounded,
+                              size: 13,
+                              color: notice.isTeacherAnnouncement ? AppTheme.primaryBlue : Colors.grey,
+                            ),
+                            const SizedBox(width: 4),
+                            Expanded(
+                              child: Text(
+                                notice.isTeacherAnnouncement
+                                    ? notice.authorDisplay
+                                    : (notice.registeredBy.isNotEmpty ? notice.registeredBy : 'Administration'),
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  fontWeight: notice.isTeacherAnnouncement ? FontWeight.w600 : FontWeight.normal,
+                                  color: notice.isTeacherAnnouncement
+                                      ? AppTheme.primaryBlue
+                                      : (isDark ? AppTheme.darkTextSecondary : AppTheme.lightTextSecondary),
+                                ),
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
                       if (!isLast) ...[
                         const SizedBox(height: 12),
                         const Divider(height: 1),
@@ -985,7 +1014,10 @@ class _StudentDashboardScreenState extends State<StudentDashboardScreen> {
 
     IconData leadingIcon = Icons.campaign_rounded;
     Color themeColor = AppTheme.primaryBlue;
-    if (item.notificationType == 'student_registered') {
+    if (item.isTeacherAnnouncement) {
+      leadingIcon = Icons.record_voice_over_rounded;
+      themeColor = AppTheme.primaryBlue;
+    } else if (item.notificationType == 'student_registered') {
       leadingIcon = Icons.school_rounded;
       themeColor = AppTheme.accentIndigo;
     } else if (item.notificationType == 'fee_payment' || item.notificationType == 'second_installment') {
@@ -1061,7 +1093,9 @@ class _StudentDashboardScreenState extends State<StudentDashboardScreen> {
                               borderRadius: BorderRadius.circular(20),
                             ),
                             child: Text(
-                              item.notificationType.replaceAll('_', ' ').toUpperCase(),
+                              item.isTeacherAnnouncement
+                                  ? 'TEACHER ANNOUNCEMENT'
+                                  : item.notificationType.replaceAll('_', ' ').toUpperCase(),
                               style: TextStyle(
                                 color: themeColor,
                                 fontSize: 10,
@@ -1071,6 +1105,25 @@ class _StudentDashboardScreenState extends State<StudentDashboardScreen> {
                             ),
                           ),
                           const SizedBox(width: 8),
+                          if (item.isTeacherAnnouncement && item.teacherSubjectDisplay.isNotEmpty) ...[
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                              decoration: BoxDecoration(
+                                color: AppTheme.secondaryGreen.withValues(alpha: 0.12),
+                                borderRadius: BorderRadius.circular(20),
+                              ),
+                              child: Text(
+                                item.teacherSubjectDisplay.toUpperCase(),
+                                style: const TextStyle(
+                                  color: AppTheme.secondaryGreen,
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.bold,
+                                  letterSpacing: 0.5,
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                          ],
                           Text(
                             DateFormat('MMM dd, yyyy • hh:mm a').format(item.timestamp),
                             style: TextStyle(
@@ -1092,32 +1145,101 @@ class _StudentDashboardScreenState extends State<StudentDashboardScreen> {
                         ),
                       ),
                       const SizedBox(height: 24),
-                      Container(
-                        padding: const EdgeInsets.all(14),
-                        decoration: BoxDecoration(
-                          color: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.grey.shade50,
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(
-                            color: isDark ? Colors.white12 : Colors.grey.shade200,
+                      if (item.isTeacherAnnouncement) ...[
+                        Container(
+                          padding: const EdgeInsets.all(16),
+                          decoration: BoxDecoration(
+                            color: isDark ? Colors.white.withValues(alpha: 0.05) : AppTheme.primaryBlue.withValues(alpha: 0.05),
+                            borderRadius: BorderRadius.circular(16),
+                            border: Border.all(
+                              color: AppTheme.primaryBlue.withValues(alpha: 0.25),
+                            ),
                           ),
-                        ),
-                        child: Row(
-                          children: [
-                            Icon(Icons.admin_panel_settings_rounded, size: 16, color: themeColor),
-                            const SizedBox(width: 8),
-                            Expanded(
-                              child: Text(
-                                'Issued by: ${item.registeredBy.isNotEmpty ? item.registeredBy : "Administration"}',
-                                style: TextStyle(
-                                  fontSize: 12,
-                                  color: isDark ? AppTheme.darkTextSecondary : AppTheme.lightTextSecondary,
-                                  fontStyle: FontStyle.italic,
+                          child: Row(
+                            children: [
+                              Container(
+                                width: 46,
+                                height: 46,
+                                decoration: BoxDecoration(
+                                  color: AppTheme.primaryBlue.withValues(alpha: 0.15),
+                                  shape: BoxShape.circle,
+                                ),
+                                child: const Icon(Icons.school_rounded, color: AppTheme.primaryBlue, size: 24),
+                              ),
+                              const SizedBox(width: 14),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      'Announcement by Teacher',
+                                      style: TextStyle(
+                                        fontSize: 11,
+                                        color: isDark ? AppTheme.darkTextSecondary : AppTheme.lightTextSecondary,
+                                        fontWeight: FontWeight.w500,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 2),
+                                    Text(
+                                      item.teacherDisplayName.isNotEmpty ? item.teacherDisplayName : item.registeredBy,
+                                      style: GoogleFonts.poppins(
+                                        fontSize: 15,
+                                        fontWeight: FontWeight.bold,
+                                        color: isDark ? Colors.white : AppTheme.primaryDarkBlue,
+                                      ),
+                                    ),
+                                    if (item.teacherSubjectDisplay.isNotEmpty) ...[
+                                      const SizedBox(height: 4),
+                                      Container(
+                                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                                        decoration: BoxDecoration(
+                                          color: AppTheme.primaryBlue.withValues(alpha: 0.15),
+                                          borderRadius: BorderRadius.circular(6),
+                                        ),
+                                        child: Text(
+                                          'Subject: ${item.teacherSubjectDisplay}',
+                                          style: GoogleFonts.poppins(
+                                            fontSize: 11,
+                                            fontWeight: FontWeight.w600,
+                                            color: AppTheme.primaryBlue,
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ],
                                 ),
                               ),
-                            ),
-                          ],
+                            ],
+                          ),
                         ),
-                      ),
+                      ] else ...[
+                        Container(
+                          padding: const EdgeInsets.all(14),
+                          decoration: BoxDecoration(
+                            color: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.grey.shade50,
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(
+                              color: isDark ? Colors.white12 : Colors.grey.shade200,
+                            ),
+                          ),
+                          child: Row(
+                            children: [
+                              Icon(Icons.admin_panel_settings_rounded, size: 16, color: themeColor),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: Text(
+                                  'Issued by: ${item.registeredBy.isNotEmpty ? item.registeredBy : "Administration"}',
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    color: isDark ? AppTheme.darkTextSecondary : AppTheme.lightTextSecondary,
+                                    fontStyle: FontStyle.italic,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
                       const SizedBox(height: 32),
                     ],
                   ),

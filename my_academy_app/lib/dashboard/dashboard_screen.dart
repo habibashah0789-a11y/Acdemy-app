@@ -200,26 +200,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
     ).animate().fadeIn(duration: 450.ms).slideY(begin: -0.04);
   }
 
-  Widget _buildSectionTitle(String title) {
-    return Row(
-      children: [
-        Container(
-          width: 4,
-          height: 18,
-          decoration: BoxDecoration(
-            color: AppTheme.primaryBlue,
-            borderRadius: BorderRadius.circular(4),
-          ),
-        ),
-        const SizedBox(width: 8),
-        Text(
-          title,
-          style: GoogleFonts.poppins(fontSize: 18, fontWeight: FontWeight.bold),
-        ),
-      ],
-    );
-  }
-
   Widget _buildStatsGrid(List<StudentModel> students) {
     double collected = _sumAmount(students, true);
     double pending = _sumAmount(students, false);
@@ -265,79 +245,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
       },
     );
   }
-
-  Widget _buildStatCard(
-    String title,
-    String value,
-    IconData icon,
-    Color color, {
-    VoidCallback? onTap,
-  }) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-
-    return Card(
-      elevation: 3,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
-      ),
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(16),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(
-            horizontal: 14,
-            vertical: 12,
-          ),
-          child: Row(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(10),
-              decoration: BoxDecoration(
-                color: color.withValues(alpha: 0.12),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Icon(
-                icon,
-                color: color,
-                size: 24,
-              ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    value,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: GoogleFonts.poppins(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    title,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: GoogleFonts.poppins(
-                      fontSize: 12,
-                      color: isDark
-                          ? AppTheme.darkTextSecondary
-                          : AppTheme.lightTextSecondary,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
-    ),
-  );
-}
 
   Widget _buildStudentStrengthChart(List<StudentModel> students,
       {bool isDialog = false}) {
@@ -684,10 +591,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
     double total = collected + pending;
     double maxVal = [total, collected, pending].reduce((a, b) => a > b ? a : b);
     if (maxVal == 0) maxVal = 1000;
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-
-    final isFsc = title.contains('FSC');
-    final iconData = isFsc ? Icons.bar_chart_rounded : Icons.school_rounded;
 
     return InkWell(
       onTap: () => onMetricTap('Total'),
@@ -695,17 +598,21 @@ class _DashboardScreenState extends State<DashboardScreen> {
       child: Container(
         padding: const EdgeInsets.all(20),
         decoration: BoxDecoration(
-          color: isDark ? AppTheme.darkCard : Colors.white,
+          gradient: const LinearGradient(
+            colors: [Color(0xFF0F172A), Color(0xFF1E3A8A), Color(0xFF1E293B)],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
           borderRadius: BorderRadius.circular(24),
           border: Border.all(
-            color: isDark ? const Color(0xFF243044) : const Color(0xFFE2E8F0),
-            width: 1,
+            color: const Color(0xFF2E3D56),
+            width: 1.2,
           ),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withValues(alpha: isDark ? 0.25 : 0.04),
-              blurRadius: 16,
-              offset: const Offset(0, 4),
+              color: Colors.black.withValues(alpha: 0.35),
+              blurRadius: 20,
+              offset: const Offset(0, 8),
             ),
           ],
         ),
@@ -714,31 +621,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
           children: [
             // Header Row
             Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Container(
-                  width: 48,
-                  height: 48,
-                  decoration: BoxDecoration(
-                    gradient: isFsc
-                        ? const LinearGradient(
-                            colors: [Color(0xFF2563EB), Color(0xFF1D4ED8)],
-                          )
-                        : const LinearGradient(
-                            colors: [Color(0xFF8B5CF6), Color(0xFF6D28D9)],
-                          ),
-                    borderRadius: BorderRadius.circular(16),
-                    boxShadow: [
-                      BoxShadow(
-                        color: (isFsc ? const Color(0xFF2563EB) : const Color(0xFF8B5CF6))
-                            .withValues(alpha: 0.3),
-                        blurRadius: 8,
-                        offset: const Offset(0, 3),
-                      ),
-                    ],
-                  ),
-                  child: Icon(iconData, color: Colors.white, size: 24),
-                ),
-                const SizedBox(width: 14),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -748,36 +633,36 @@ class _DashboardScreenState extends State<DashboardScreen> {
                         style: GoogleFonts.poppins(
                           fontSize: 16,
                           fontWeight: FontWeight.bold,
-                          color: isDark ? Colors.white : const Color(0xFF1D1D1F),
+                          color: Colors.white.withValues(alpha: 0.9),
                         ),
                       ),
-                      const SizedBox(height: 2),
+                      const SizedBox(height: 4),
                       Text(
                         _fmt.format(collected),
                         style: GoogleFonts.poppins(
-                          fontSize: 20,
+                          fontSize: 28,
                           fontWeight: FontWeight.bold,
-                          color: isDark ? Colors.white : const Color(0xFF1D1D1F),
+                          color: Colors.white,
                         ),
                       ),
-                      const SizedBox(height: 2),
+                      const SizedBox(height: 4),
                       Builder(builder: (ctx) {
                         final label = _revenueGrowthLabel(students);
                         if (label == null) return const SizedBox.shrink();
                         final isPositive = label.startsWith('+');
-                        final growthColor = isPositive ? const Color(0xFF2E7D32) : const Color(0xFFDC2626);
+                        final growthColor = isPositive ? const Color(0xFF4ADE80) : const Color(0xFFF87171);
                         return Row(
                           children: [
                             Icon(
                               isPositive ? Icons.arrow_upward_rounded : Icons.arrow_downward_rounded,
-                              size: 12,
+                              size: 14,
                               color: growthColor,
                             ),
-                            const SizedBox(width: 2),
+                            const SizedBox(width: 4),
                             Text(
                               '$label from last month',
                               style: GoogleFonts.poppins(
-                                fontSize: 11,
+                                fontSize: 12,
                                 fontWeight: FontWeight.w500,
                                 color: growthColor,
                               ),
@@ -792,88 +677,90 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   width: 40,
                   height: 40,
                   decoration: BoxDecoration(
-                    color: isDark ? Colors.white10 : const Color(0xFFF1F5F9),
+                    color: Colors.white.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(12),
                   ),
-                  child: const Icon(Icons.open_in_full_rounded, size: 18, color: Colors.grey),
+                  child: const Icon(Icons.open_in_full_rounded, size: 18, color: Colors.white70),
                 ),
               ],
             ),
-            const SizedBox(height: 20),
-            // Bar Chart with Light Wavy Decorative Background Effect
+            const SizedBox(height: 30),
+            // Smooth Area Chart
             SizedBox(
-              height: 150,
-              child: BarChart(
-                BarChartData(
-                  alignment: BarChartAlignment.spaceAround,
-                  maxY: maxVal * 1.25,
-                  barTouchData: BarTouchData(
-                    touchTooltipData: BarTouchTooltipData(
-                      getTooltipColor: (group) =>
-                          isDark ? Colors.grey.shade800 : Colors.white,
-                      tooltipPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                      tooltipMargin: 8,
-                      getTooltipItem: (group, groupIndex, rod, rodIndex) {
-                        return BarTooltipItem(
-                          _fmt.format(rod.toY),
-                          TextStyle(
-                            color: isDark ? Colors.white : const Color(0xFF1D1D1F),
-                            fontWeight: FontWeight.bold,
-                            fontSize: 12,
-                          ),
-                        );
+              height: 120,
+              child: LineChart(
+                LineChartData(
+                  minY: 0,
+                  maxY: maxVal * 1.2,
+                  minX: 0,
+                  maxX: 2,
+                  lineTouchData: LineTouchData(
+                    touchTooltipData: LineTouchTooltipData(
+                      getTooltipColor: (group) => const Color(0xFF1E293B),
+                      getTooltipItems: (touchedSpots) {
+                        return touchedSpots.map((spot) {
+                          return LineTooltipItem(
+                            _fmt.format(spot.y),
+                            const TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 12,
+                            ),
+                          );
+                        }).toList();
                       },
                     ),
-                    touchCallback: (FlTouchEvent event, barTouchResponse) {
-                      if (event is! FlTapUpEvent) return;
-                      if (barTouchResponse == null ||
-                          barTouchResponse.spot == null) {
-                        return;
-                      }
-                      final index = barTouchResponse.spot!.touchedBarGroupIndex;
-                      if (index == 0) onMetricTap('Total');
-                      if (index == 1) onMetricTap('Collected');
-                      if (index == 2) onMetricTap('Pending');
-                    },
-                  ),
-                  titlesData: FlTitlesData(
-                    show: true,
-                    bottomTitles: AxisTitles(
-                      sideTitles: SideTitles(
-                        showTitles: true,
-                        getTitlesWidget: (double value, TitleMeta meta) {
-                          final style = GoogleFonts.poppins(
-                            fontWeight: FontWeight.w600,
-                            fontSize: 12,
-                            color: isDark ? Colors.grey.shade400 : const Color(0xFF64748B),
-                          );
-                          final labels = ['Total', 'Collected', 'Pending'];
-                          final label = (value >= 0 && value < labels.length)
-                              ? labels[value.toInt()]
-                              : '';
-                          return SideTitleWidget(
-                              meta: meta,
-                              space: 6,
-                              child: Text(label, style: style));
-                        },
-                      ),
-                    ),
-                    leftTitles: const AxisTitles(
-                        sideTitles: SideTitles(showTitles: false)),
-                    topTitles: const AxisTitles(
-                        sideTitles: SideTitles(showTitles: false)),
-                    rightTitles: const AxisTitles(
-                        sideTitles: SideTitles(showTitles: false)),
+                    handleBuiltInTouches: true,
                   ),
                   gridData: const FlGridData(show: false),
+                  titlesData: const FlTitlesData(show: false),
                   borderData: FlBorderData(show: false),
-                  barGroups: [
-                    _barWithHeader(0, total, const Color(0xFF3B82F6), isDark),
-                    _barWithHeader(1, collected, const Color(0xFF22C55E), isDark),
-                    _barWithHeader(2, pending, const Color(0xFFEF4444), isDark),
+                  lineBarsData: [
+                    LineChartBarData(
+                      spots: [
+                        FlSpot(0, total),
+                        FlSpot(1, collected),
+                        FlSpot(2, pending),
+                      ],
+                      isCurved: true,
+                      color: Colors.white,
+                      barWidth: 3,
+                      isStrokeCapRound: true,
+                      dotData: FlDotData(
+                        show: true,
+                        getDotPainter: (spot, percent, barData, index) => FlDotCirclePainter(
+                          radius: 4,
+                          color: Colors.white,
+                          strokeWidth: 2,
+                          strokeColor: const Color(0xFF3B82F6),
+                        ),
+                      ),
+                      belowBarData: BarAreaData(
+                        show: true,
+                        gradient: LinearGradient(
+                          colors: [
+                            Colors.white.withValues(alpha: 0.3),
+                            Colors.white.withValues(alpha: 0.0),
+                          ],
+                          begin: Alignment.topCenter,
+                          end: Alignment.bottomCenter,
+                        ),
+                      ),
+                    ),
                   ],
                 ),
               ),
+            ),
+            const SizedBox(height: 20),
+            // KPI Cards Row
+            Row(
+              children: [
+                Expanded(child: _buildKpiCard('Total', total, const Color(0xFF3B82F6))),
+                const SizedBox(width: 12),
+                Expanded(child: _buildKpiCard('Collected', collected, const Color(0xFF22C55E))),
+                const SizedBox(width: 12),
+                Expanded(child: _buildKpiCard('Pending', pending, const Color(0xFFEF4444))),
+              ],
             ),
           ],
         ),
@@ -881,18 +768,56 @@ class _DashboardScreenState extends State<DashboardScreen> {
     );
   }
 
-  BarChartGroupData _barWithHeader(int x, double y, Color color, bool isDark) => BarChartGroupData(
-        x: x,
-        showingTooltipIndicators: [0],
-        barRods: [
-          BarChartRodData(
-            toY: y,
-            color: color,
-            width: 32,
-            borderRadius: BorderRadius.circular(8),
-          )
+  Widget _buildKpiCard(String label, double amount, Color iconColor) {
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 4),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.1),
+            blurRadius: 8,
+            offset: const Offset(0, 4),
+          ),
         ],
-      );
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            width: 8,
+            height: 8,
+            decoration: BoxDecoration(
+              color: iconColor,
+              shape: BoxShape.circle,
+            ),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            label,
+            style: GoogleFonts.poppins(
+              fontSize: 11,
+              fontWeight: FontWeight.w600,
+              color: const Color(0xFF64748B),
+            ),
+          ),
+          const SizedBox(height: 2),
+          Text(
+            _fmt.format(amount),
+            style: GoogleFonts.poppins(
+              fontSize: 13,
+              fontWeight: FontWeight.bold,
+              color: const Color(0xFF0F172A),
+            ),
+            textAlign: TextAlign.center,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
+        ],
+      ),
+    );
+  }
 
   Widget _buildRecentActivityListDirect(List<StudentModel> students) {
     final since = DateTime.now().subtract(const Duration(hours: 24));

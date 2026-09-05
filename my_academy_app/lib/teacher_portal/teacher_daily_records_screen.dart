@@ -3,16 +3,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
-import 'package:cached_network_image/cached_network_image.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../models/student_model.dart';
 import '../models/teacher_model.dart';
 import '../services/database_service.dart';
-import '../services/teacher_service.dart';
 import '../theme/app_theme.dart';
 import '../widgets/shimmer_loading_widget.dart';
-import '../widgets/teacher_avatar.dart';
-import '../students/student_detail_screen.dart';
+import '../widgets/student_avatar.dart';
 
 class TeacherDailyRecordData {
   final DateTime date;
@@ -143,7 +140,7 @@ class _TeacherDailyRecordsScreenState
               final event = StudentPaymentEvent(
                 student: s,
                 amount: amt,
-                date: pDate,
+                date: rawDate,
                 note: note,
                 installmentNumber: i + 1,
               );
@@ -181,8 +178,8 @@ class _TeacherDailyRecordsScreenState
         }
       }
 
-      double totalRegistrationFee = regList.fold(0, (sum, s) {
-        return sum + (subject.isNotEmpty ? s.getSubjectTotalFee(subject) : s.totalFee);
+      double totalRegistrationFee = regList.fold<double>(0.0, (total, s) {
+        return total + (subject.isNotEmpty ? s.getSubjectTotalFee(subject) : s.totalFee);
       });
 
       // Defaulters registered on or before this date
@@ -305,9 +302,9 @@ class _TeacherDailyRecordsScreenState
           final records = _processRecords(allStudents);
 
           // Calculate grand totals across all records
-          double grandTotalCollected = records.fold(0, (sum, r) => sum + r.totalCollected);
-          int grandTotalNewRegs = records.fold(0, (sum, r) => sum + r.newRegistrations.length);
-          int grandTotalInstallments = records.fold(0, (sum, r) => sum + r.installmentPayments.length);
+          double grandTotalCollected = records.fold<double>(0.0, (total, r) => total + r.totalCollected);
+          int grandTotalNewRegs = records.fold<int>(0, (total, r) => total + r.newRegistrations.length);
+          int grandTotalInstallments = records.fold<int>(0, (total, r) => total + r.installmentPayments.length);
 
           return Column(
             children: [
@@ -656,8 +653,8 @@ class _TeacherDailyRecordDetailScreenState
                 Expanded(
                   child: _statTile(
                     'Reg. Fee Collected',
-                    _currencyFmt.format(regList.fold(0, (sum, s) {
-                      return sum +
+                    _currencyFmt.format(regList.fold<double>(0.0, (total, s) {
+                      return total +
                           (_subject.isNotEmpty
                               ? s.getSubjectPaid(_subject)
                               : s.feeSubmitted);
@@ -697,6 +694,7 @@ class _TeacherDailyRecordDetailScreenState
                     isDark: isDark,
                     badgeText: 'NEW REGISTRATION',
                     badgeColor: AppTheme.primaryBlue,
+                    paymentDateTime: student.createdAt,
                     subtitleContent: Row(
                       children: [
                         _miniChip(
@@ -722,7 +720,7 @@ class _TeacherDailyRecordDetailScreenState
   Widget _buildInstallmentsTab(bool isDark) {
     final instList = widget.record.installmentPayments;
     final totalInstallmentAmt =
-        instList.fold<double>(0, (sum, e) => sum + e.amount);
+        instList.fold<double>(0.0, (total, e) => total + e.amount);
 
     return CustomScrollView(
       slivers: [
@@ -779,6 +777,7 @@ class _TeacherDailyRecordDetailScreenState
                     isDark: isDark,
                     badgeText: 'INSTALLMENT #${event.installmentNumber}',
                     badgeColor: Colors.teal,
+                    paymentDateTime: event.date,
                     subtitleContent: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
@@ -822,8 +821,8 @@ class _TeacherDailyRecordDetailScreenState
   // ── Tab 3: Defaulters on this date ──
   Widget _buildDefaultersTab(bool isDark) {
     final defs = widget.record.defaulters;
-    final totalPending = defs.fold<double>(0, (sum, s) {
-      return sum +
+    final totalPending = defs.fold<double>(0.0, (total, s) {
+      return total +
           (_subject.isNotEmpty ? s.getSubjectRemaining(_subject) : s.feeRemaining);
     });
 
@@ -883,6 +882,7 @@ class _TeacherDailyRecordDetailScreenState
                     isDark: isDark,
                     badgeText: 'PENDING',
                     badgeColor: Colors.red,
+                    paymentDateTime: student.createdAt,
                     subtitleContent: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
@@ -965,74 +965,83 @@ class _TeacherDailyRecordDetailScreenState
     required String badgeText,
     required Color badgeColor,
     required Widget subtitleContent,
+    DateTime? paymentDateTime,
   }) {
     return Card(
       margin: const EdgeInsets.only(bottom: 12),
       elevation: 1,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
       color: isDark ? AppTheme.darkCard : Colors.white,
-      child: InkWell(
-        borderRadius: BorderRadius.circular(14),
-        onTap: () {
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (_) => StudentDetailScreen(student: student),
+      child: Padding(
+        padding: const EdgeInsets.all(14),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            StudentAvatar(
+              student: student,
+              size: 46,
             ),
-          );
-        },
-        child: Padding(
-          padding: const EdgeInsets.all(12),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              TeacherAvatar(
-                teacher: TeacherModel.empty().copyWith(
-                  name: student.name,
-                  profilePicUrl: student.profilePicUrl,
-                ),
-                size: 46,
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      student.name,
-                      style: GoogleFonts.poppins(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 14,
-                      ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    student.name,
+                    style: GoogleFonts.poppins(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 14,
                     ),
-                    Text(
-                      'Roll: ${student.studentCode} • ${student.grade} (${student.classType})',
-                      style: GoogleFonts.poppins(
-                        fontSize: 11,
-                        color: isDark ? Colors.grey[400] : Colors.grey[600],
-                      ),
-                    ),
-                    subtitleContent,
-                  ],
-                ),
-              ),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                decoration: BoxDecoration(
-                  color: badgeColor.withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Text(
-                  badgeText,
-                  style: GoogleFonts.poppins(
-                    fontSize: 9,
-                    fontWeight: FontWeight.bold,
-                    color: badgeColor,
                   ),
+                  Text(
+                    'Roll: ${student.studentCode} • ${student.grade} (${student.classType})',
+                    style: GoogleFonts.poppins(
+                      fontSize: 11,
+                      color: isDark ? Colors.grey[400] : Colors.grey[600],
+                    ),
+                  ),
+                  if (paymentDateTime != null) ...[
+                    const SizedBox(height: 3),
+                    Row(
+                      children: [
+                        Icon(
+                          Icons.event_available_rounded,
+                          size: 12,
+                          color: isDark ? Colors.grey[400] : Colors.grey[600],
+                        ),
+                        const SizedBox(width: 4),
+                        Text(
+                          DateFormat('MMM dd, yyyy • hh:mm a').format(paymentDateTime),
+                          style: TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w500,
+                            color: isDark ? Colors.grey[400] : Colors.grey[600],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                  const SizedBox(height: 4),
+                  subtitleContent,
+                ],
+              ),
+            ),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              decoration: BoxDecoration(
+                color: badgeColor.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Text(
+                badgeText,
+                style: GoogleFonts.poppins(
+                  fontSize: 9,
+                  fontWeight: FontWeight.bold,
+                  color: badgeColor,
                 ),
               ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );
