@@ -16,6 +16,7 @@ class NotificationModel {
   final String mediaType; // 'image', 'pdf', 'audio', 'none'
   final String teacherName;
   final String teacherSubject;
+  final String teacherId;
 
   NotificationModel({
     required this.id,
@@ -33,6 +34,7 @@ class NotificationModel {
     this.mediaType = 'none',
     this.teacherName = '',
     this.teacherSubject = '',
+    this.teacherId = '',
   });
 
   String get studentClass => className;
@@ -98,6 +100,7 @@ class NotificationModel {
       'mediaType': mediaType,
       'teacherName': teacherName,
       'teacherSubject': teacherSubject,
+      'teacherId': teacherId,
     };
   }
 
@@ -169,6 +172,7 @@ class NotificationModel {
       mediaType: map['mediaType']?.toString() ?? map['attachmentType']?.toString() ?? 'none',
       teacherName: rawTeacherName,
       teacherSubject: rawTeacherSubject,
+      teacherId: map['teacherId']?.toString() ?? '',
     );
   }
 
