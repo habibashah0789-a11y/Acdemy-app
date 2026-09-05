@@ -13,7 +13,6 @@ service cloud.firestore {
         get(/databases/$(database)/documents/roles/$(request.auth.uid)).data.role == 'admin'
       );
     }
-    
 
     function isTeacher() {
       return isSignedIn() &&
@@ -52,12 +51,24 @@ service cloud.firestore {
       allow read, write: if true;
     }
 
-    // ── Notifications / Announcements ────────────────────────────────
+    // ── Notifications, Announcements & Notices ──────────────────────
     match /notifications/{notifId} {
       allow read, write: if true;
     }
 
     match /announcements/{announcementId} {
+      allow read, write: if true;
+    }
+
+    match /notices/{noticeId} {
+      allow read, write: if true;
+    }
+
+    match /teacher_announcements/{announcementId} {
+      allow read, write: if true;
+    }
+
+    match /teacher_notices/{noticeId} {
       allow read, write: if true;
     }
 
@@ -106,7 +117,12 @@ service cloud.firestore {
       allow read, write: if true;
     }
 
-    // ── Fallback ─────────────────────────────────────────────────────
+    // ── Admins ───────────────────────────────────────────────────────
+    match /admins/{adminId} {
+      allow read, write: if true;
+    }
+
+    // ── Fallback (Global catch-all for all documents) ────────────────
     match /{document=**} {
       allow read, write: if true;
     }

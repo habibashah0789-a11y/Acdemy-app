@@ -602,10 +602,13 @@ class TeacherService {
       'attachmentType': mediaType,
     };
 
-    // Save to both notifications and announcements collections for complete compatibility
+    // Save to notifications, announcements, and notices collections for complete compatibility
     await _firestore.collection('notifications').doc(notifDocRef.id).set(data);
     try {
       await _firestore.collection('announcements').doc(notifDocRef.id).set(data);
+    } catch (_) {}
+    try {
+      await _firestore.collection('notices').doc(notifDocRef.id).set(data);
     } catch (_) {}
 
     // Trigger push notification to student devices mapped to this teacher's class and subject

@@ -7,8 +7,20 @@ service firebase.storage {
       allow read, write: if true;
     }
 
-    // Announcement attachment uploads (Pictures, PDFs, Audio Voice Notes)
+    // Announcement & Notice attachment uploads (Pictures, PDFs, Audio Voice Notes)
     match /announcements/{fileName} {
+      allow read, write: if true;
+    }
+
+    match /announcements/{allPaths=**} {
+      allow read, write: if true;
+    }
+
+    match /notices/{fileName} {
+      allow read, write: if true;
+    }
+
+    match /notices/{allPaths=**} {
       allow read, write: if true;
     }
 
