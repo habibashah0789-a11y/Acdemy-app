@@ -8,6 +8,7 @@ import 'package:hive/hive.dart';
 import 'package:uuid/uuid.dart';
 import '../models/student_model.dart';
 import '../services/database_service.dart';
+import '../services/audit_log_service.dart';
 
 /// Handles all student-specific authentication logic using Firestore.
 ///
@@ -402,6 +403,16 @@ exactMatch = true
 
     debugPrint(
         '[StudentAuthService] Login successful for studentId: $validStudentId');
+    try {
+      await AuditLogService.logAction(
+        actorId: validStudentId,
+        actorName: cleanCode,
+        actorRole: 'STUDENT',
+        action: 'STUDENT_LOGIN_SUCCESS',
+        transactionId: validStudentId,
+        details: 'Student ($cleanCode) successfully authenticated via QR token & Student ID.',
+      );
+    } catch (_) {}
     return validStudentId;
   }
 

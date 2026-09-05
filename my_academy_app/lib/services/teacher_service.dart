@@ -8,6 +8,7 @@ import '../models/student_model.dart';
 import '../services/notification_service.dart';
 import '../services/supabase_service.dart';
 import '../utils/image_utils.dart';
+import '../services/audit_log_service.dart';
 
 class TeacherStats {
   final int totalStudents;
@@ -361,6 +362,17 @@ class TeacherService {
     );
 
     await batch.commit();
+
+    try {
+      await AuditLogService.logAction(
+        actorId: 'ADMIN',
+        actorName: 'Administrator',
+        actorRole: 'ADMIN',
+        action: 'TEACHER_RECORD_CREATED',
+        transactionId: uid,
+        details: 'Created teacher profile for ${teacher.name} (${teacher.subject} - ${teacher.section}).',
+      );
+    } catch (_) {}
   }
 
   // ── ADMIN: Update teacher ──
@@ -369,6 +381,17 @@ class TeacherService {
         .collection('teachers')
         .doc(teacher.id)
         .update(teacher.toUpdateMap());
+
+    try {
+      await AuditLogService.logAction(
+        actorId: 'ADMIN',
+        actorName: 'Administrator',
+        actorRole: 'ADMIN',
+        action: 'TEACHER_RECORD_UPDATED',
+        transactionId: teacher.id,
+        details: 'Updated teacher profile for ${teacher.name} (${teacher.id}).',
+      );
+    } catch (_) {}
   }
 
   // ── ADMIN: Set teacher active/inactive ──
@@ -377,6 +400,17 @@ class TeacherService {
       'isActive': isActive,
       'updatedAt': FieldValue.serverTimestamp(),
     });
+
+    try {
+      await AuditLogService.logAction(
+        actorId: 'ADMIN',
+        actorName: 'Administrator',
+        actorRole: 'ADMIN',
+        action: isActive ? 'TEACHER_ACTIVATED' : 'TEACHER_DEACTIVATED',
+        transactionId: teacherId,
+        details: '${isActive ? "Activated" : "Deactivated"} teacher account ($teacherId).',
+      );
+    } catch (_) {}
   }
 
   // ── ADMIN: Delete teacher (removes Firestore doc + role doc) ──
@@ -385,6 +419,17 @@ class TeacherService {
     batch.delete(_firestore.collection('teachers').doc(teacherId));
     batch.delete(_firestore.collection('roles').doc(teacherId));
     await batch.commit();
+
+    try {
+      await AuditLogService.logAction(
+        actorId: 'ADMIN',
+        actorName: 'Administrator',
+        actorRole: 'ADMIN',
+        action: 'TEACHER_RECORD_DELETED',
+        transactionId: teacherId,
+        details: 'Deleted teacher record and revoked access role for ($teacherId).',
+      );
+    } catch (_) {}
   }
 
   // ── ADMIN: Generate next available teacher ID ──

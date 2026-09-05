@@ -625,6 +625,21 @@ class _StudentFeeScreenState extends State<StudentFeeScreen> {
                         const SizedBox(height: 6),
                         _receiptRow('Rejection Reason', txn.failureReason!, isDanger: true),
                       ],
+                      const SizedBox(height: 10),
+                      const Divider(),
+                      const Padding(
+                        padding: EdgeInsets.only(top: 4),
+                        child: Text(
+                          "PAYMENT STATUS IS BASED ON THE ACADEMY'S VERIFIED RECORD.",
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            fontSize: 9,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.grey,
+                            letterSpacing: 0.3,
+                          ),
+                        ),
+                      ),
                     ],
                   ),
                 ),

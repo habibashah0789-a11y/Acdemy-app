@@ -11,10 +11,21 @@ import 'package:url_launcher/url_launcher.dart';
 import '../models/student_model.dart';
 import 'database_service.dart';
 import 'pdf_helpers.dart';
+import 'audit_log_service.dart';
 
 class FeeDefaultersPrintService {
   static Future<void> printDefaultersList(
       List<StudentModel> defaulters) async {
+    try {
+      await AuditLogService.logAction(
+        actorId: 'ADMIN',
+        actorName: 'Administrator',
+        actorRole: 'ADMIN',
+        action: 'FEE_DEFAULTERS_EXPORTED',
+        transactionId: 'DEFAULTERS_LIST',
+        details: 'Exported fee defaulters list containing ${defaulters.length} students.',
+      );
+    } catch (_) {}
     final doc = pw.Document();
     final now = DateTime.now();
 
@@ -60,7 +71,7 @@ class FeeDefaultersPrintService {
           build: (pw.Context context) {
             return pw.Stack(
               children: [
-                // ── Watermark ───────────────────────────────────────────────
+                // ── Watermark ──────────────────────────────────────────
                 PdfHelpers.buildWatermark(logoImage: logoImage),
 
                 // ── Page content ─────────────────────────────────────────────
