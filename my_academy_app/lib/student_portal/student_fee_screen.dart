@@ -835,11 +835,16 @@ class _PayFeeFormModalState extends State<_PayFeeFormModal> {
             ],
           ),
           actions: [
-            TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
-            ElevatedButton(
+            TextButton.icon(
+              onPressed: () => Navigator.pop(ctx, false),
+              icon: const Icon(Icons.close_rounded, size: 16),
+              label: const Text('Cancel'),
+            ),
+            ElevatedButton.icon(
               onPressed: () => Navigator.pop(ctx, true),
+              icon: const Icon(Icons.send_rounded, color: Colors.white, size: 16),
               style: ElevatedButton.styleFrom(backgroundColor: AppTheme.secondaryGreen),
-              child: const Text('Confirm & Submit', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+              label: const Text('Confirm & Submit', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
             ),
           ],
         );
@@ -883,85 +888,91 @@ class _PayFeeFormModalState extends State<_PayFeeFormModal> {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      decoration: const BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-      ),
-      padding: EdgeInsets.only(
-        bottom: MediaQuery.of(context).viewInsets.bottom + 20,
-        top: 20,
-        left: 20,
-        right: 20,
-      ),
-      child: SingleChildScrollView(
-        child: Form(
-          key: _formKey,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Center(
-                child: Container(width: 40, height: 4, decoration: BoxDecoration(color: Colors.grey.shade300, borderRadius: BorderRadius.circular(2))),
-              ),
-              const SizedBox(height: 16),
-              Text('Pay Academy Fee', style: GoogleFonts.poppins(fontSize: 18, fontWeight: FontWeight.bold)),
-              Text('Select method and submit transaction reference for verification', style: TextStyle(fontSize: 12, color: Colors.grey.shade600)),
-              const SizedBox(height: 16),
+    return StreamBuilder<PaymentConfigModel>(
+      stream: PaymentService.getPaymentConfigStream(),
+      initialData: widget.config,
+      builder: (context, snapshot) {
+        final config = snapshot.data ?? widget.config;
 
-              // Payment Method Choice
-              const Text('Select Payment Method', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
-              const SizedBox(height: 8),
-              Wrap(
-                spacing: 8,
+        return Container(
+          decoration: const BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+          ),
+          padding: EdgeInsets.only(
+            bottom: MediaQuery.of(context).viewInsets.bottom + 20,
+            top: 20,
+            left: 20,
+            right: 20,
+          ),
+          child: SingleChildScrollView(
+            child: Form(
+              key: _formKey,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  if (widget.config.isBankTransferEnabled)
-                    ChoiceChip(
-                      label: const Text('Bank Transfer'),
-                      selected: _selectedMethod == 'BANK_TRANSFER',
-                      onSelected: (_) => setState(() => _selectedMethod = 'BANK_TRANSFER'),
-                    ),
-                  if (widget.config.isEasypaisaEnabled)
-                    ChoiceChip(
-                      label: const Text('Easypaisa'),
-                      selected: _selectedMethod == 'EASYPAISA',
-                      onSelected: (_) => setState(() => _selectedMethod = 'EASYPAISA'),
-                    ),
-                  if (widget.config.isJazzcashEnabled)
-                    ChoiceChip(
-                      label: const Text('JazzCash'),
-                      selected: _selectedMethod == 'JAZZCASH',
-                      onSelected: (_) => setState(() => _selectedMethod = 'JAZZCASH'),
-                    ),
-                ],
-              ),
-              const SizedBox(height: 14),
+                  Center(
+                    child: Container(width: 40, height: 4, decoration: BoxDecoration(color: Colors.grey.shade300, borderRadius: BorderRadius.circular(2))),
+                  ),
+                  const SizedBox(height: 16),
+                  Text('Pay Academy Fee', style: GoogleFonts.poppins(fontSize: 18, fontWeight: FontWeight.bold)),
+                  Text('Select method and submit transaction reference for verification', style: TextStyle(fontSize: 12, color: Colors.grey.shade600)),
+                  const SizedBox(height: 16),
 
-              // Bank / Account Details Card
-              Container(
-                padding: const EdgeInsets.all(14),
-                decoration: BoxDecoration(color: Colors.indigo.shade50, borderRadius: BorderRadius.circular(14)),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text('Academy Account Details:', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: Colors.indigo.shade900)),
-                    const SizedBox(height: 6),
-                    if (_selectedMethod == 'BANK_TRANSFER') ...[
-                      Text('• Bank: ${widget.config.bankName}', style: const TextStyle(fontSize: 12)),
-                      Text('• Title: ${widget.config.accountTitle}', style: const TextStyle(fontSize: 12)),
-                      Text('• Account #: ${widget.config.accountNumber}', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
-                      Text('• IBAN: ${widget.config.iban}', style: const TextStyle(fontSize: 11, fontFamily: 'monospace')),
-                    ] else if (_selectedMethod == 'EASYPAISA') ...[
-                      Text('• Merchant: ${widget.config.easypaisaTitle}', style: const TextStyle(fontSize: 12)),
-                      Text('• Easypaisa #: ${widget.config.easypaisaNumber}', style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold)),
-                    ] else ...[
-                      Text('• Merchant: ${widget.config.jazzcashTitle}', style: const TextStyle(fontSize: 12)),
-                      Text('• JazzCash #: ${widget.config.jazzcashNumber}', style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold)),
+                  // Payment Method Choice
+                  const Text('Select Payment Method', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                  const SizedBox(height: 8),
+                  Wrap(
+                    spacing: 8,
+                    children: [
+                      if (config.isBankTransferEnabled)
+                        ChoiceChip(
+                          label: const Text('Bank Transfer'),
+                          selected: _selectedMethod == 'BANK_TRANSFER',
+                          onSelected: (_) => setState(() => _selectedMethod = 'BANK_TRANSFER'),
+                        ),
+                      if (config.isEasypaisaEnabled)
+                        ChoiceChip(
+                          label: const Text('Easypaisa'),
+                          selected: _selectedMethod == 'EASYPAISA',
+                          onSelected: (_) => setState(() => _selectedMethod = 'EASYPAISA'),
+                        ),
+                      if (config.isJazzcashEnabled)
+                        ChoiceChip(
+                          label: const Text('JazzCash'),
+                          selected: _selectedMethod == 'JAZZCASH',
+                          onSelected: (_) => setState(() => _selectedMethod = 'JAZZCASH'),
+                        ),
                     ],
-                  ],
-                ),
-              ),
-              const SizedBox(height: 16),
+                  ),
+                  const SizedBox(height: 14),
+
+                  // Bank / Account Details Card
+                  Container(
+                    padding: const EdgeInsets.all(14),
+                    decoration: BoxDecoration(color: Colors.indigo.shade50, borderRadius: BorderRadius.circular(14)),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text('Academy Account Details:', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: Colors.indigo.shade900)),
+                        const SizedBox(height: 6),
+                        if (_selectedMethod == 'BANK_TRANSFER') ...[
+                          Text('• Bank: ${config.bankName}', style: const TextStyle(fontSize: 12)),
+                          Text('• Title: ${config.accountTitle}', style: const TextStyle(fontSize: 12)),
+                          Text('• Account #: ${config.accountNumber}', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                          Text('• IBAN: ${config.iban}', style: const TextStyle(fontSize: 11, fontFamily: 'monospace')),
+                        ] else if (_selectedMethod == 'EASYPAISA') ...[
+                          Text('• Merchant: ${config.easypaisaTitle}', style: const TextStyle(fontSize: 12)),
+                          Text('• Easypaisa #: ${config.easypaisaNumber}', style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold)),
+                        ] else ...[
+                          Text('• Merchant: ${config.jazzcashTitle}', style: const TextStyle(fontSize: 12)),
+                          Text('• JazzCash #: ${config.jazzcashNumber}', style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold)),
+                        ],
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 16),
 
               // Amount Input
               TextFormField(
@@ -1022,11 +1033,11 @@ class _PayFeeFormModalState extends State<_PayFeeFormModal> {
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
                   ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
-        ),
-      ),
+        );
+      },
     );
   }
 }

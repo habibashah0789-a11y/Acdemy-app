@@ -43,14 +43,16 @@ class _RecycleBinScreenState extends State<RecycleBinScreen> {
           'Permanently delete ${recycled.name}? This cannot be undone.',
         ),
         actions: [
-          TextButton(
+          TextButton.icon(
             onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('Cancel'),
+            icon: const Icon(Icons.close_rounded, size: 16),
+            label: const Text('Cancel'),
           ),
-          TextButton(
+          TextButton.icon(
             onPressed: () => Navigator.pop(ctx, true),
             style: TextButton.styleFrom(foregroundColor: Colors.red),
-            child: const Text('Delete Forever'),
+            icon: const Icon(Icons.delete_forever_rounded, size: 16),
+            label: const Text('Delete Forever'),
           ),
         ],
       ),
@@ -76,14 +78,16 @@ class _RecycleBinScreenState extends State<RecycleBinScreen> {
           'This will permanently delete ALL recycled students. This action cannot be undone.',
         ),
         actions: [
-          TextButton(
+          TextButton.icon(
             onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('Cancel'),
+            icon: const Icon(Icons.close_rounded, size: 16),
+            label: const Text('Cancel'),
           ),
-          TextButton(
+          TextButton.icon(
             onPressed: () => Navigator.pop(ctx, true),
             style: TextButton.styleFrom(foregroundColor: Colors.red),
-            child: const Text('Empty Bin'),
+            icon: const Icon(Icons.delete_sweep_rounded, size: 16),
+            label: const Text('Empty Bin'),
           ),
         ],
       ),

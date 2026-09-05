@@ -98,9 +98,7 @@ class _StudentDashboardScreenState extends State<StudentDashboardScreen> {
         if (doc.exists && mounted) {
           setState(() {
             _student = StudentModel.fromFirestore(doc);
-            if (_student != null && _recentNotices.isNotEmpty) {
-              _isLoading = false;
-            }
+            _isLoading = false;
           });
         }
       }, onError: (e) {

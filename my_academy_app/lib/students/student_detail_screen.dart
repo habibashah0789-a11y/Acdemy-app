@@ -150,14 +150,16 @@ class _StudentDetailScreenState extends State<StudentDetailScreen> {
         content: const Text(
             'This will clear the student\'s linked device. The student will be logged out and must re-authenticate to bind a new device.'),
         actions: [
-          TextButton(
+          TextButton.icon(
             onPressed: () => Navigator.pop(context, false),
-            child: const Text('Cancel'),
+            icon: const Icon(Icons.close_rounded, size: 16),
+            label: const Text('Cancel'),
           ),
-          TextButton(
+          TextButton.icon(
             onPressed: () => Navigator.pop(context, true),
             style: TextButton.styleFrom(foregroundColor: Colors.red),
-            child: const Text('Reset'),
+            icon: const Icon(Icons.restart_alt_rounded, size: 16),
+            label: const Text('Reset'),
           ),
         ],
       ),
@@ -281,14 +283,16 @@ class _StudentDetailScreenState extends State<StudentDetailScreen> {
         content: const Text(
             'This will generate a new secure QR token. The student\'s previous QR code will immediately stop working.'),
         actions: [
-          TextButton(
+          TextButton.icon(
             onPressed: () => Navigator.pop(context, false),
-            child: const Text('Cancel'),
+            icon: const Icon(Icons.close_rounded, size: 16),
+            label: const Text('Cancel'),
           ),
-          TextButton(
+          TextButton.icon(
             onPressed: () => Navigator.pop(context, true),
             style: TextButton.styleFrom(foregroundColor: Colors.orange),
-            child: const Text('Regenerate'),
+            icon: const Icon(Icons.qr_code_rounded, size: 16),
+            label: const Text('Regenerate'),
           ),
         ],
       ),
@@ -598,11 +602,16 @@ class _StudentDetailScreenState extends State<StudentDetailScreen> {
         title: const Text('Move to Recycle Bin'),
         content: Text('Are you sure you want to move ${student.name} to the Recycle Bin?'),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
-          TextButton(
+          TextButton.icon(
+            onPressed: () => Navigator.pop(ctx, false),
+            icon: const Icon(Icons.close_rounded, size: 16),
+            label: const Text('Cancel'),
+          ),
+          TextButton.icon(
             onPressed: () => Navigator.pop(ctx, true),
             style: TextButton.styleFrom(foregroundColor: Colors.red),
-            child: const Text('Move'),
+            icon: const Icon(Icons.delete_sweep_rounded, size: 16),
+            label: const Text('Move'),
           ),
         ],
       ),

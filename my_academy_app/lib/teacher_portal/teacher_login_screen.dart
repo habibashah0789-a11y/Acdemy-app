@@ -384,9 +384,10 @@ class _TeacherLoginScreenState extends State<TeacherLoginScreen> {
 
                               Align(
                                 alignment: Alignment.centerRight,
-                                child: TextButton(
+                                child: TextButton.icon(
                                   onPressed: _handleForgotPassword,
-                                  child: const Text('Forgot Password?'),
+                                  icon: const Icon(Icons.help_outline_rounded, size: 16),
+                                  label: const Text('Forgot Password?'),
                                 ),
                               ),
 
@@ -394,8 +395,11 @@ class _TeacherLoginScreenState extends State<TeacherLoginScreen> {
 
                               SizedBox(
                                 width: double.infinity,
-                                child: ElevatedButton(
+                                child: ElevatedButton.icon(
                                   onPressed: _isLoading ? null : _handleLogin,
+                                  icon: _isLoading
+                                      ? const SizedBox.shrink()
+                                      : const Icon(Icons.login_rounded, color: Colors.white),
                                   style: ElevatedButton.styleFrom(
                                     padding: const EdgeInsets.symmetric(
                                         vertical: 16),
@@ -404,7 +408,7 @@ class _TeacherLoginScreenState extends State<TeacherLoginScreen> {
                                     ),
                                     backgroundColor: AppTheme.primaryBlue,
                                   ),
-                                  child: _isLoading
+                                  label: _isLoading
                                       ? const SizedBox(
                                           height: 20,
                                           width: 20,

@@ -12,6 +12,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:hive/hive.dart';
 
 import '../models/notification_model.dart';
+import 'sound_service.dart';
 import '../models/student_model.dart';
 import '../screens/fee_reminders_screen.dart';
 import '../screens/notifications_screen.dart';
@@ -402,6 +403,7 @@ Firebase projectId = ${Firebase.app().options.projectId}
         platformDetails,
         payload: payload,
       );
+      await SoundService.playNotification();
     } catch (e) {
       debugPrint('[NotificationService] Local notification sound lookup failed ($e), falling back to default sound');
       try {

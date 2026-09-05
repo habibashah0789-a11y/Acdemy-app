@@ -284,17 +284,19 @@ class _DeleteStudentsDialogState extends State<DeleteStudentsDialog> {
       actions: _isDeleting
           ? null
           : [
-              TextButton(
+              TextButton.icon(
                 onPressed: () => Navigator.pop(context),
-                child: const Text('Cancel'),
+                icon: const Icon(Icons.close_rounded, size: 16),
+                label: const Text('Cancel'),
               ),
-              ElevatedButton(
+              ElevatedButton.icon(
                 onPressed: _delete,
+                icon: const Icon(Icons.delete_forever_rounded, color: Colors.white, size: 16),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.red,
                   foregroundColor: Colors.white,
                 ),
-                child: const Text('DELETE'),
+                label: const Text('DELETE'),
               ),
             ],
     );

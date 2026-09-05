@@ -713,18 +713,19 @@ class _TeacherStudentsScreenState extends State<TeacherStudentsScreen>
               style: TextStyle(color: Colors.grey.shade500, fontSize: 12),
             ),
             const SizedBox(height: 12),
-            ElevatedButton(
+            ElevatedButton.icon(
               onPressed: () {
                 setState(() {
                   _selectedSlotByClass[className] = null;
                 });
               },
+              icon: const Icon(Icons.people_alt_rounded, size: 14),
               style: ElevatedButton.styleFrom(
                 backgroundColor: _subjectColor,
                 foregroundColor: Colors.white,
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
               ),
-              child: const Text('Show All Batches', style: TextStyle(fontSize: 12)),
+              label: const Text('Show All Batches', style: TextStyle(fontSize: 12)),
             ),
           ],
         ),

@@ -213,9 +213,10 @@ class _LoginScreenState extends State<LoginScreen> {
                             const SizedBox(height: 10),
                             Align(
                               alignment: Alignment.centerRight,
-                              child: TextButton(
+                              child: TextButton.icon(
                                 onPressed: () {},
-                                child: const Text('Forgot Password?'),
+                                icon: const Icon(Icons.help_outline_rounded, size: 16),
+                                label: const Text('Forgot Password?'),
                               ),
                             ),
                             const SizedBox(height: 20),

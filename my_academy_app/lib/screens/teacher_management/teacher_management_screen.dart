@@ -292,16 +292,18 @@ class TeacherManagementScreen extends StatelessWidget {
           'This will remove their profile and login access. This action cannot be undone.',
         ),
         actions: [
-          TextButton(
+          TextButton.icon(
               onPressed: () => Navigator.of(ctx).pop(false),
-              child: const Text('Cancel')),
-          ElevatedButton(
+              icon: const Icon(Icons.close_rounded, size: 16),
+              label: const Text('Cancel')),
+          ElevatedButton.icon(
             onPressed: () => Navigator.of(ctx).pop(true),
+            icon: const Icon(Icons.delete_forever_rounded, color: Colors.white, size: 16),
             style: ElevatedButton.styleFrom(
               backgroundColor: Colors.red,
               foregroundColor: Colors.white,
             ),
-            child: const Text('Yes, Delete'),
+            label: const Text('Yes, Delete'),
           ),
         ],
       ),
@@ -319,16 +321,18 @@ class TeacherManagementScreen extends StatelessWidget {
           'Press "Permanently Delete" to confirm.',
         ),
         actions: [
-          TextButton(
+          TextButton.icon(
               onPressed: () => Navigator.of(ctx).pop(false),
-              child: const Text('Cancel')),
-          ElevatedButton(
+              icon: const Icon(Icons.close_rounded, size: 16),
+              label: const Text('Cancel')),
+          ElevatedButton.icon(
             onPressed: () => Navigator.of(ctx).pop(true),
+            icon: const Icon(Icons.delete_forever_rounded, color: Colors.white, size: 16),
             style: ElevatedButton.styleFrom(
               backgroundColor: Colors.red.shade800,
               foregroundColor: Colors.white,
             ),
-            child: const Text('Permanently Delete'),
+            label: const Text('Permanently Delete'),
           ),
         ],
       ),
@@ -371,17 +375,23 @@ class TeacherManagementScreen extends StatelessWidget {
           'Are you sure you want to $action ${teacher.name}?${teacher.isActive ? " They will no longer be able to login." : ""}',
         ),
         actions: [
-          TextButton(
+          TextButton.icon(
               onPressed: () => Navigator.of(ctx).pop(false),
-              child: const Text('Cancel')),
-          ElevatedButton(
+              icon: const Icon(Icons.close_rounded, size: 16),
+              label: const Text('Cancel')),
+          ElevatedButton.icon(
             onPressed: () => Navigator.of(ctx).pop(true),
+            icon: Icon(
+              teacher.isActive ? Icons.block_rounded : Icons.check_circle_rounded,
+              color: Colors.white,
+              size: 16,
+            ),
             style: ElevatedButton.styleFrom(
               backgroundColor:
                   teacher.isActive ? AppTheme.warningRed : AppTheme.secondaryGreen,
               foregroundColor: Colors.white,
             ),
-            child: Text(action[0].toUpperCase() + action.substring(1)),
+            label: Text(action[0].toUpperCase() + action.substring(1)),
           ),
         ],
       ),

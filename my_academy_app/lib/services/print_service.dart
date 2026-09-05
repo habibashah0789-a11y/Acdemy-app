@@ -13,6 +13,7 @@ import '../models/student_model.dart';
 import 'database_service.dart';
 import '../student_portal/student_auth_service.dart';
 import 'audit_log_service.dart';
+import 'pdf_helpers.dart';
 
 class PrintService {
   static Future<void> printStudentReport(StudentModel student) async {

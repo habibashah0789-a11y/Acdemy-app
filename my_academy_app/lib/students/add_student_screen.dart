@@ -770,12 +770,13 @@ class _AddStudentScreenState extends State<AddStudentScreen> {
                     const SizedBox(height: 20),
                     SizedBox(
                       width: double.infinity,
-                      child: ElevatedButton(
+                      child: ElevatedButton.icon(
                         onPressed: () => Navigator.pop(ctx),
+                        icon: const Icon(Icons.check_circle_rounded, size: 18),
                         style: ElevatedButton.styleFrom(
                           padding: const EdgeInsets.symmetric(vertical: 14),
                         ),
-                        child: Text(
+                        label: Text(
                           'Done',
                           style: GoogleFonts.poppins(fontWeight: FontWeight.bold, fontSize: 15),
                         ),
