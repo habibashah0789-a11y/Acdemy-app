@@ -1088,6 +1088,95 @@ status = PENDING
     _studentFirestoreSubscription = null;
   }
 
+  // ── 10. Teacher Real-time Notifications Listener ────────────────────────────
+
+  static StreamSubscription? _teacherFirestoreSubscription;
+  static bool _teacherFirstSnapshotReceived = false;
+  static final Set<String> _teacherSeenNotificationIds = {};
+  
+  static final ValueNotifier<int> teacherUnreadNoticesCount = ValueNotifier<int>(0);
+  static List<NotificationModel> _lastTeacherFilteredNotices = [];
+  
+  static void listenForTeacher(TeacherModel teacher) {
+    if (!_initialized) {
+      init();
+    }
+    
+    _teacherFirestoreSubscription?.cancel();
+    _teacherFirstSnapshotReceived = false;
+    _teacherSeenNotificationIds.clear();
+
+    _teacherFirestoreSubscription = _firestore
+        .collection(_collection)
+        .orderBy('timestamp', descending: true)
+        .limit(100)
+        .snapshots()
+        .listen(
+      (snapshot) {
+        final notifications = snapshot.docs.map((doc) {
+          final rawData = doc.data();
+          final map = {...rawData, 'id': doc.id};
+          return NotificationModel.fromMap(map, doc.id);
+        }).toList();
+
+        final filteredNotices = notifications.where((n) {
+          // targeted payout
+          if (n.notificationType == 'teacher_payout') {
+            final targetTeacherId = n.teacherId;
+            if (targetTeacherId.isNotEmpty) {
+              return targetTeacherId == teacher.id;
+            }
+          }
+
+          final targetSubject = n.subject.trim().toLowerCase();
+          final targetSection = n.className.trim().toLowerCase();
+          
+          if (targetSubject.isEmpty || targetSubject == 'all' || targetSection == 'all') {
+            return true;
+          }
+          final mySubject = teacher.subject.toLowerCase();
+          final mySection = teacher.section.toLowerCase();
+          return targetSubject == mySubject && (targetSection.isEmpty || targetSection == mySection);
+        }).toList();
+
+        _lastTeacherFilteredNotices = filteredNotices;
+        _updateUnreadCount();
+
+        if (!_teacherFirstSnapshotReceived) {
+          _teacherFirstSnapshotReceived = true;
+          for (final n in filteredNotices) {
+            _teacherSeenNotificationIds.add(n.id);
+          }
+        } else {
+          final newUnread = filteredNotices.where(
+            (n) => !_teacherSeenNotificationIds.contains(n.id) && !isNoticeRead(n.id),
+          ).toList();
+
+          if (newUnread.isNotEmpty) {
+            SoundService.playNotification();
+            for (final n in newUnread) {
+              showLocalNotification(
+                channelId: defaultChannelId,
+                title: n.title,
+                body: n.message,
+              );
+            }
+          }
+
+          for (final n in filteredNotices) {
+            _teacherSeenNotificationIds.add(n.id);
+          }
+        }
+      },
+      onError: (e) => debugPrint("Teacher Notification Firestore Error: $e"),
+    );
+  }
+
+  static void cancelTeacherSubscription() {
+    _teacherFirestoreSubscription?.cancel();
+    _teacherFirestoreSubscription = null;
+  }
+
   static final ValueNotifier<int> studentUnreadNoticesCount = ValueNotifier<int>(0);
   static List<NotificationModel> _lastFilteredNotices = [];
   static final StreamController<void> _readStatusController = StreamController<void>.broadcast();
@@ -1110,12 +1199,14 @@ status = PENDING
 
   static void _updateUnreadCount() {
     studentUnreadNoticesCount.value = _lastFilteredNotices.where((n) => !isNoticeRead(n.id)).length;
+    teacherUnreadNoticesCount.value = _lastTeacherFilteredNotices.where((n) => !isNoticeRead(n.id)).length;
   }
 
   static Future<void> dispose() async {
     await _authSubscription?.cancel();
     await _firestoreSubscription?.cancel();
     await _studentFirestoreSubscription?.cancel();
+    await _teacherFirestoreSubscription?.cancel();
     await _controller.close();
     _initialized = false;
   }

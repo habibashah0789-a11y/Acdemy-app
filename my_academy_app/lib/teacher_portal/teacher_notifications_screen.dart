@@ -9,7 +9,9 @@ import 'package:intl/intl.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../models/teacher_model.dart';
 import '../services/teacher_service.dart';
+import '../services/notification_service.dart';
 import '../theme/app_theme.dart';
+import 'dart:async';
 
 class TeacherNotificationsScreen extends StatefulWidget {
   final TeacherModel? teacher;
@@ -23,6 +25,7 @@ class TeacherNotificationsScreen extends StatefulWidget {
 class _TeacherNotificationsScreenState
     extends State<TeacherNotificationsScreen> {
   TeacherModel? _currentTeacher;
+  StreamSubscription<void>? _readStatusSubscription;
 
   @override
   void initState() {
@@ -31,6 +34,15 @@ class _TeacherNotificationsScreenState
     if (_currentTeacher == null) {
       _loadTeacherProfile();
     }
+    _readStatusSubscription = NotificationService.readStatusStream.listen((_) {
+      if (mounted) setState(() {});
+    });
+  }
+
+  @override
+  void dispose() {
+    _readStatusSubscription?.cancel();
+    super.dispose();
   }
 
   Future<void> _loadTeacherProfile() async {
@@ -121,7 +133,9 @@ class _TeacherNotificationsScreenState
             padding: const EdgeInsets.fromLTRB(16, 16, 16, 80),
             itemCount: filtered.length,
             itemBuilder: (context, i) {
-              final data = filtered[i].data() as Map<String, dynamic>;
+              final doc = filtered[i];
+              final data = doc.data() as Map<String, dynamic>;
+              data['id'] = doc.id;
               return _buildNotifCard(data, i, isDark);
             },
           );
@@ -160,84 +174,209 @@ class _TeacherNotificationsScreenState
       dt = DateTime.tryParse(raw);
     }
 
+    final id = data['id'] as String? ?? '';
+    final isRead = NotificationService.isNoticeRead(id);
+
     final color = _colorForType(type, mediaType);
     final icon = _iconForType(type, mediaType);
 
     return Card(
       margin: const EdgeInsets.only(bottom: 12),
-      elevation: 2,
+      elevation: isRead ? 0.5 : 3,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Container(
-                  width: 44,
-                  height: 44,
-                  decoration: BoxDecoration(
-                    color: color.withValues(alpha: 0.12),
-                    borderRadius: BorderRadius.circular(12),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(16),
+        onTap: () {
+          if (id.isNotEmpty && !isRead) {
+            NotificationService.markNoticeAsRead(id);
+          }
+          _showNoticeDetail(data, isDark);
+        },
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Container(
+                    width: 44,
+                    height: 44,
+                    decoration: BoxDecoration(
+                      color: color.withValues(alpha: 0.12),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Icon(icon, color: color, size: 22),
                   ),
-                  child: Icon(icon, color: color, size: 22),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        title,
-                        style: GoogleFonts.poppins(
-                          fontSize: 15,
-                          fontWeight: FontWeight.bold,
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          title,
+                          style: GoogleFonts.poppins(
+                            fontSize: 15,
+                            fontWeight: isRead ? FontWeight.w500 : FontWeight.bold,
+                          ),
                         ),
-                      ),
-                      Text(
-                        'By: $authorDisplay',
-                        style: TextStyle(
-                          fontSize: 11,
-                          color: AppTheme.lightTextSecondary,
-                          fontStyle: FontStyle.italic,
+                        Text(
+                          'By: $authorDisplay',
+                          style: TextStyle(
+                            fontSize: 11,
+                            color: AppTheme.lightTextSecondary,
+                            fontStyle: FontStyle.italic,
+                          ),
                         ),
-                      ),
-                    ],
-                  ),
-                ),
-                if (dt != null)
-                  Text(
-                    DateFormat('dd MMM, hh:mm a').format(dt),
-                    style: TextStyle(
-                      fontSize: 11,
-                      color: Colors.grey.shade500,
+                      ],
                     ),
                   ),
-              ],
-            ),
-            if (body.isNotEmpty) ...[
-              const SizedBox(height: 10),
-              Text(
-                body,
-                style: TextStyle(
-                  fontSize: 13,
-                  color: isDark
-                      ? AppTheme.darkTextPrimary
-                      : AppTheme.lightTextPrimary,
-                  height: 1.45,
-                ),
+                  if (dt != null)
+                    Text(
+                      DateFormat('dd MMM, hh:mm a').format(dt),
+                      style: TextStyle(
+                        fontSize: 11,
+                        color: Colors.grey.shade500,
+                      ),
+                    ),
+                ],
               ),
+              if (body.isNotEmpty) ...[
+                const SizedBox(height: 10),
+                Text(
+                  body,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontSize: 13,
+                    color: isDark
+                        ? AppTheme.darkTextPrimary
+                        : AppTheme.lightTextPrimary,
+                    height: 1.45,
+                  ),
+                ),
+              ],
+              if (mediaUrl.isNotEmpty && mediaType != 'none') ...[
+                const SizedBox(height: 12),
+                _buildAttachmentPreview(mediaUrl, mediaType, isDark),
+              ],
             ],
-            if (mediaUrl.isNotEmpty && mediaType != 'none') ...[
-              const SizedBox(height: 12),
-              _buildAttachmentPreview(mediaUrl, mediaType, isDark),
-            ],
-          ],
+          ),
         ),
       ),
     ).animate().fadeIn().slideY(begin: 0.04);
+  }
+
+  void _showNoticeDetail(Map<String, dynamic> data, bool isDark) {
+    final title = data['title'] as String? ?? 'Notification';
+    final body = data['body'] as String? ?? data['message'] as String? ?? '';
+    final rawRegisteredBy = data['registeredBy'] as String? ?? 'Admin';
+    final mediaUrl = data['mediaUrl'] as String? ?? data['attachmentUrl'] as String? ?? '';
+    final mediaType = data['mediaType'] as String? ?? data['attachmentType'] as String? ?? 'none';
+    final type = data['type'] as String? ?? 'info';
+    final color = _colorForType(type, mediaType);
+    final icon = _iconForType(type, mediaType);
+    
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => DraggableScrollableSheet(
+        initialChildSize: 0.8,
+        minChildSize: 0.5,
+        maxChildSize: 0.95,
+        builder: (_, scrollController) => Container(
+          decoration: BoxDecoration(
+            color: isDark ? AppTheme.darkBackground : AppTheme.lightBackground,
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+          ),
+          child: Column(
+            children: [
+              Center(
+                child: Container(
+                  margin: const EdgeInsets.symmetric(vertical: 12),
+                  width: 40,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: Colors.grey.shade400,
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+              ),
+              Expanded(
+                child: ListView(
+                  controller: scrollController,
+                  padding: const EdgeInsets.all(24),
+                  children: [
+                    Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: color.withValues(alpha: 0.1),
+                            shape: BoxShape.circle,
+                          ),
+                          child: Icon(icon, color: color, size: 28),
+                        ),
+                        const SizedBox(width: 16),
+                        Expanded(
+                          child: Text(
+                            title,
+                            style: GoogleFonts.poppins(
+                              fontSize: 20,
+                              fontWeight: FontWeight.bold,
+                              color: isDark ? AppTheme.darkTextPrimary : AppTheme.lightTextPrimary,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 16),
+                    Text(
+                      'Published by: $rawRegisteredBy',
+                      style: TextStyle(
+                        fontSize: 13,
+                        color: AppTheme.lightTextSecondary,
+                        fontStyle: FontStyle.italic,
+                      ),
+                    ),
+                    const SizedBox(height: 24),
+                    Divider(color: isDark ? Colors.white12 : Colors.grey.shade200),
+                    const SizedBox(height: 16),
+                    Text(
+                      body,
+                      style: TextStyle(
+                        fontSize: 15,
+                        height: 1.6,
+                        color: isDark ? AppTheme.darkTextPrimary : AppTheme.lightTextPrimary,
+                      ),
+                    ),
+                    if (mediaUrl.isNotEmpty && mediaType != 'none') ...[
+                      const SizedBox(height: 24),
+                      _buildAttachmentPreview(mediaUrl, mediaType, isDark),
+                      const SizedBox(height: 12),
+                      SizedBox(
+                        width: double.infinity,
+                        child: OutlinedButton.icon(
+                          onPressed: () => _openUrl(mediaUrl),
+                          icon: Icon(
+                            mediaType == 'pdf' ? Icons.picture_as_pdf_rounded : Icons.open_in_new_rounded,
+                            size: 18,
+                          ),
+                          label: Text('Open ${mediaType.toUpperCase()}'),
+                        ),
+                      ),
+                    ],
+                    const SizedBox(height: 40),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 
   Widget _buildAttachmentPreview(

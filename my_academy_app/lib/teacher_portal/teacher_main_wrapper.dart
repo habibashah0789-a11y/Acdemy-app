@@ -6,8 +6,8 @@ import 'teacher_dashboard_screen.dart';
 import 'teacher_students_screen.dart';
 import 'teacher_notifications_screen.dart';
 import 'teacher_profile_screen.dart';
-
 import 'teacher_payout_ledger_screen.dart';
+import '../services/notification_service.dart';
 
 class TeacherMainWrapper extends StatefulWidget {
   final TeacherModel teacher;
@@ -32,6 +32,13 @@ class _TeacherMainWrapperState extends State<TeacherMainWrapper> {
       TeacherNotificationsScreen(teacher: widget.teacher),
       TeacherProfileScreen(teacher: widget.teacher),
     ];
+    NotificationService.listenForTeacher(widget.teacher);
+  }
+
+  @override
+  void dispose() {
+    NotificationService.cancelTeacherSubscription();
+    super.dispose();
   }
 
   static const List<_NavItem> _navItems = [
@@ -84,8 +91,8 @@ class _TeacherMainWrapperState extends State<TeacherMainWrapper> {
               ),
               destinations: _navItems
                   .map((item) => NavigationRailDestination(
-                        icon: Icon(item.icon),
-                        selectedIcon: Icon(item.activeIcon),
+                        icon: _buildIcon(item.icon, item.label),
+                        selectedIcon: _buildIcon(item.activeIcon, item.label),
                         label: Text(item.label,
                             style: GoogleFonts.poppins(fontSize: 11)),
                       ))
@@ -109,13 +116,29 @@ class _TeacherMainWrapperState extends State<TeacherMainWrapper> {
         onTap: (i) => setState(() => _currentIndex = i),
         items: _navItems
             .map((item) => BottomNavigationBarItem(
-                  icon: Icon(item.icon),
-                  activeIcon: Icon(item.activeIcon),
+                  icon: _buildIcon(item.icon, item.label),
+                  activeIcon: _buildIcon(item.activeIcon, item.label),
                   label: item.label,
                 ))
             .toList(),
       ),
     );
+  }
+
+  Widget _buildIcon(IconData icon, String label) {
+    if (label == 'Notices') {
+      return ValueListenableBuilder<int>(
+        valueListenable: NotificationService.teacherUnreadNoticesCount,
+        builder: (context, unreadCount, _) {
+          return Badge(
+            isLabelVisible: unreadCount > 0,
+            label: Text('$unreadCount'),
+            child: Icon(icon),
+          );
+        },
+      );
+    }
+    return Icon(icon);
   }
 }
 
