@@ -143,14 +143,10 @@ class TeacherPayoutService {
     final authEmail = (authUser?.email ?? '').trim().toLowerCase();
 
     // Use a Firestore query filter to only fetch payouts for this teacher.
-    // This prevents permission-denied errors when server rules restrict listing all payouts.
-    // We check both the provided teacher ID and the auth UID.
-    final targetId = authUid.isNotEmpty ? authUid : cleanId;
-
+    // We use a client-side filter instead of a strict Firestore `where` query.
+    // This allows the fallback name/subject/section matching to work,
+    // solving the issue where the teacher's Auth UID changed from the original doc ID.
     Query query = _firestore.collection(_collection);
-    if (targetId.isNotEmpty) {
-      query = query.where('teacherId', isEqualTo: targetId);
-    }
 
     return query.snapshots().map((snapshot) {
       final list = snapshot.docs
