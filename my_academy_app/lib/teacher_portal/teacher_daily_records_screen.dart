@@ -525,7 +525,7 @@ class _TeacherDailyRecordsScreenState
           ),
         ),
       ),
-    ).animate(delay: (index * 40).ms).fadeIn().slideY(begin: 0.05);
+    ).animate().fadeIn().slideY(begin: 0.05);
   }
 
   Widget _chip(String label, Color color) {

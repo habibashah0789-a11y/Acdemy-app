@@ -58,8 +58,6 @@ class _CropImageDialogState extends State<CropImageDialog> {
     if (_isCropping) return;
     setState(() => _isCropping = true);
     try {
-      await Future.delayed(const Duration(milliseconds: 50));
-      
       final boundary = _boundaryKey.currentContext?.findRenderObject() as RenderRepaintBoundary?;
       if (boundary == null) {
         throw Exception("Render boundary not found");

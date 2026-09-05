@@ -27,9 +27,9 @@ service cloud.firestore {
       }
     }
 
-    // ── Teacher Payouts ──────────────────────────────────────────────
+    // ── Teacher Payouts & Salary Ledger ──────────────────────────────
     match /teacher_payouts/{payoutId} {
-      allow read, write: if true;
+      allow read, get, list, create, update, delete, write: if true;
     }
 
     // ── Students ────────────────────────────────────────────────────

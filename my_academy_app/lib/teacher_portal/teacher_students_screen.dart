@@ -650,7 +650,7 @@ class _TeacherStudentsScreenState extends State<TeacherStudentsScreen>
           ],
         ),
       ),
-    ).animate().fadeIn(delay: (idx * 30).ms).slideX(begin: 0.03);
+    ).animate().fadeIn().slideX(begin: 0.03);
   }
 
   Widget _buildInitials(StudentModel student) {

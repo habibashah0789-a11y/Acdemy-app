@@ -371,7 +371,7 @@ class _TeacherDashboardScreenState extends State<TeacherDashboardScreen> {
           ),
         ],
       ),
-    ).animate().fadeIn(delay: 400.ms).slideY(begin: 0.05);
+    ).animate().fadeIn().slideY(begin: 0.05);
   }
 
   Widget _buildWelcomeBanner(Color subjectColor, bool isDark, bool isWide) {
@@ -559,7 +559,7 @@ class _TeacherDashboardScreenState extends State<TeacherDashboardScreen> {
           ),
         ],
       ),
-    ).animate().fadeIn(delay: (300 + index * 80).ms).slideY(begin: 0.1);
+    ).animate().fadeIn().slideY(begin: 0.1);
   }
 
   Widget _buildStatsShimmer(bool isWide) {
@@ -633,7 +633,7 @@ class _TeacherDashboardScreenState extends State<TeacherDashboardScreen> {
           ),
         ],
       ),
-    ).animate().fadeIn(delay: 600.ms);
+    ).animate().fadeIn();
   }
 
   Widget _buildTeacherAvatar({double size = 60}) {

@@ -267,7 +267,7 @@ class _StudentProfileScreenState extends State<StudentProfileScreen> {
                   ),
                 ],
               ),
-            ).animate().fadeIn(delay: 100.ms),
+            ).animate().fadeIn(),
 
             const SizedBox(height: 20),
 
@@ -289,7 +289,7 @@ class _StudentProfileScreenState extends State<StudentProfileScreen> {
                   ),
                 ],
               ),
-            ).animate().fadeIn(delay: 200.ms),
+            ).animate().fadeIn(),
 
             const SizedBox(height: 20),
 
@@ -325,12 +325,12 @@ class _StudentProfileScreenState extends State<StudentProfileScreen> {
                   ),
                 ],
               ),
-            ).animate().fadeIn(delay: 240.ms),
+            ).animate().fadeIn(),
 
             const SizedBox(height: 20),
 
             // About Developers Card
-            const AboutDevelopersCard().animate().fadeIn(delay: 280.ms),
+            const AboutDevelopersCard().animate().fadeIn(),
 
             const SizedBox(height: 28),
 
@@ -344,7 +344,7 @@ class _StudentProfileScreenState extends State<StudentProfileScreen> {
                 foregroundColor: Colors.white,
                 padding: const EdgeInsets.symmetric(vertical: 15),
               ),
-            ).animate().fadeIn(delay: 300.ms),
+            ).animate().fadeIn(),
 
             const SizedBox(height: 60),
           ],

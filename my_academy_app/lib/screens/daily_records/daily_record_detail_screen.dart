@@ -158,7 +158,7 @@ class _DailyRecordDetailScreenState extends State<DailyRecordDetailScreen>
                   color: Colors.purple,
                   isDark: isDark,
                   valueText: '${_registrations.length} students',
-                ).animate().fadeIn(duration: 400.ms, delay: 100.ms),
+                ).animate().fadeIn(duration: 400.ms),
                 const SizedBox(height: 8),
               ],
             ),
@@ -687,7 +687,7 @@ class _DailyRecordDetailScreenState extends State<DailyRecordDetailScreen>
         ),
       ),
     )
-        .animate(delay: Duration(milliseconds: 50 * index))
+        .animate()
         .fadeIn(duration: 350.ms)
         .slideX(begin: 0.04);
   }

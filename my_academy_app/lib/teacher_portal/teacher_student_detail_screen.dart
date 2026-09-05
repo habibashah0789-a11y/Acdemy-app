@@ -277,7 +277,7 @@ class TeacherStudentDetailScreen extends StatelessWidget {
           ...rows.map((row) => _buildRowItem(row.label, row.value)),
         ],
       ),
-    ).animate().fadeIn(delay: 200.ms).slideY(begin: 0.04);
+    ).animate().fadeIn().slideY(begin: 0.04);
   }
 
   Widget _buildRowItem(String label, String value) {
@@ -412,7 +412,7 @@ class TeacherStudentDetailScreen extends StatelessWidget {
           ),
         ],
       ),
-    ).animate().fadeIn(delay: 400.ms).slideY(begin: 0.06);
+    ).animate().fadeIn().slideY(begin: 0.06);
   }
 
   Widget _feeRow(String label, String value, Color valueColor) {

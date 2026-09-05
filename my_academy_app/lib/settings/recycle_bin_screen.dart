@@ -363,7 +363,7 @@ class _RecycleBinScreenState extends State<RecycleBinScreen> {
             ],
           ),
         ),
-      ).animate().fadeIn(delay: (index * 50).ms).slideX(begin: 0.1),
+      ).animate().fadeIn().slideX(begin: 0.1),
     );
   }
 

@@ -89,13 +89,8 @@ class _StudentListScreenState extends State<StudentListScreen> {
                 TextField(
                   controller: _searchController,
                   onChanged: (value) {
-                    _debounce?.cancel();
-                    _debounce = Timer(const Duration(milliseconds: 200), () {
-                      if (mounted) {
-                        setState(() {
-                          _searchQuery = value;
-                        });
-                      }
+                    setState(() {
+                      _searchQuery = value;
                     });
                   },
                   decoration: InputDecoration(
@@ -240,7 +235,7 @@ class _StudentListScreenState extends State<StudentListScreen> {
         },
         icon: const Icon(Icons.person_add_rounded),
         label: Text('Add Student', style: GoogleFonts.poppins(fontWeight: FontWeight.bold)),
-      ).animate().scale(delay: 300.ms),
+      ).animate().scale(),
     );
   }
 

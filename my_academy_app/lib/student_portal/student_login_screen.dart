@@ -168,7 +168,7 @@ class _StudentLoginScreenState extends State<StudentLoginScreen> {
                       fontWeight: FontWeight.bold,
                       color: isDark ? Colors.white : AppTheme.primaryDarkBlue,
                     ),
-                  ).animate().fadeIn(delay: 150.ms),
+                  ).animate().fadeIn(),
 
                   Text(
                     'Student Access Portal',
@@ -178,7 +178,7 @@ class _StudentLoginScreenState extends State<StudentLoginScreen> {
                       fontWeight: FontWeight.w500,
                       letterSpacing: 0.5,
                     ),
-                  ).animate().fadeIn(delay: 250.ms),
+                  ).animate().fadeIn(),
 
                   if (widget.message != null) ...[
                     const SizedBox(height: 18),
@@ -247,7 +247,7 @@ class _StudentLoginScreenState extends State<StudentLoginScreen> {
                           ),
                       ],
                     ),
-                  ).animate().fadeIn(delay: 350.ms).slideY(begin: 0.08),
+                  ).animate().fadeIn().slideY(begin: 0.08),
 
                   const SizedBox(height: 18),
 
@@ -282,7 +282,7 @@ class _StudentLoginScreenState extends State<StudentLoginScreen> {
                         },
                       ),
                     ),
-                  ).animate().fadeIn(delay: 450.ms).slideY(begin: 0.08),
+                  ).animate().fadeIn().slideY(begin: 0.08),
 
                   const SizedBox(height: 16),
 
@@ -321,7 +321,7 @@ class _StudentLoginScreenState extends State<StudentLoginScreen> {
                       icon: Icons.arrow_forward_rounded,
                       onPressed: _handleLogin,
                     ),
-                  ).animate().fadeIn(delay: 550.ms),
+                  ).animate().fadeIn(),
 
                   const SizedBox(height: 32),
 

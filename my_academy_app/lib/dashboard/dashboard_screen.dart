@@ -927,7 +927,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
     return Column(
       children: items.map((item) => _buildActivityItem(item)).toList(),
-    ).animate().fadeIn(delay: 600.ms);
+    ).animate().fadeIn();
   }
 
   Widget _buildActivityItem(_ActivityItem item) {

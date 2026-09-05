@@ -179,11 +179,11 @@ class TeacherProfileScreen extends StatelessWidget {
                       );
                     },
                   ),
-                ).animate().fadeIn(delay: 350.ms),
+                ).animate().fadeIn(),
 
                 const SizedBox(height: 20),
 
-                const AboutDevelopersCard().animate().fadeIn(delay: 380.ms),
+                const AboutDevelopersCard().animate().fadeIn(),
 
                 const SizedBox(height: 32),
 
@@ -209,7 +209,7 @@ class TeacherProfileScreen extends StatelessWidget {
                       ),
                     ),
                   ),
-                ).animate().fadeIn(delay: 400.ms),
+                ).animate().fadeIn(),
 
                 const SizedBox(height: 32),
 
@@ -306,7 +306,7 @@ class TeacherProfileScreen extends StatelessWidget {
               )),
         ],
       ),
-    ).animate().fadeIn(delay: 200.ms).slideY(begin: 0.04);
+    ).animate().fadeIn().slideY(begin: 0.04);
   }
 
   Widget _buildClassesCard(
@@ -361,7 +361,7 @@ class TeacherProfileScreen extends StatelessWidget {
           ),
         ],
       ),
-    ).animate().fadeIn(delay: 300.ms);
+    ).animate().fadeIn();
   }
 
   Widget _buildAvatar(BuildContext context, double size, TeacherModel currentTeacher) {

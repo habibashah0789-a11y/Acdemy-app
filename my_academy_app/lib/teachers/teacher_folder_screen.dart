@@ -430,7 +430,7 @@ class _TeacherFolderScreenState extends State<TeacherFolderScreen> {
                   ),
                 ),
               ),
-            ).animate().fadeIn(delay: (index * 40).ms).slideY(begin: 0.05);
+            ).animate().fadeIn().slideY(begin: 0.05);
           },
         );
       },

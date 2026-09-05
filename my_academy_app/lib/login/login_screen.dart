@@ -134,7 +134,7 @@ class _LoginScreenState extends State<LoginScreen> {
                         fontWeight: FontWeight.bold,
                         color: isDark ? Colors.white : AppTheme.primaryDarkBlue,
                       ),
-                    ).animate().fadeIn(delay: 200.ms),
+                    ).animate().fadeIn(),
 
                     Text(
                       'Administration & Faculty Portal',
@@ -144,7 +144,7 @@ class _LoginScreenState extends State<LoginScreen> {
                         fontWeight: FontWeight.w500,
                         letterSpacing: 0.5,
                       ),
-                    ).animate().fadeIn(delay: 350.ms),
+                    ).animate().fadeIn(),
 
                     const SizedBox(height: 36),
 
@@ -251,7 +251,7 @@ class _LoginScreenState extends State<LoginScreen> {
                           ],
                         ),
                       ),
-                    ).animate().fadeIn(delay: 500.ms).slideY(begin: 0.08),
+                    ).animate().fadeIn().slideY(begin: 0.08),
 
                     const SizedBox(height: 32),
 

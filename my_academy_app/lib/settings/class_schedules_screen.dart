@@ -573,7 +573,7 @@ class _ClassSchedulesScreenState extends State<ClassSchedulesScreen> {
                                 color: Colors.grey.shade400,
                               ),
                             ),
-                          ).animate().fadeIn(delay: (index * 55).ms).slideY(begin: 0.1, end: 0);
+                          ).animate().fadeIn().slideY(begin: 0.1, end: 0);
                         },
                       ),
           ),

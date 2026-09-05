@@ -107,7 +107,6 @@ class _StudentFeeScreenState extends State<StudentFeeScreen> {
 
   Future<void> _refreshData() async {
     _initRealTimeListener();
-    await Future.delayed(const Duration(milliseconds: 500));
   }
 
   @override
@@ -282,7 +281,7 @@ class _StudentFeeScreenState extends State<StudentFeeScreen> {
                 ),
             ],
           ),
-        ).animate().fadeIn(delay: 100.ms),
+        ).animate().fadeIn(),
 
         const SizedBox(height: 24),
 
@@ -367,7 +366,7 @@ class _StudentFeeScreenState extends State<StudentFeeScreen> {
                   ],
                 ),
               ),
-            ).animate().fadeIn(delay: 150.ms);
+            ).animate().fadeIn();
           }),
         ],
 
@@ -553,7 +552,7 @@ class _StudentFeeScreenState extends State<StudentFeeScreen> {
               );
             },
           ),
-        ).animate().fadeIn(delay: 200.ms),
+        ).animate().fadeIn(),
       ],
     );
   }

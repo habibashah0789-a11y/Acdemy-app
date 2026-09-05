@@ -277,7 +277,7 @@ class TeacherManagementScreen extends StatelessWidget {
           ],
         ),
       ),
-    ).animate().fadeIn(delay: (idx * 60).ms).slideY(begin: 0.05);
+    ).animate().fadeIn().slideY(begin: 0.05);
   }
 
   Future<void> _deleteTeacher(

@@ -195,7 +195,6 @@ class _StudentDashboardScreenState extends State<StudentDashboardScreen> {
 
   Future<void> _refreshData() async {
     _initRealTimeListeners();
-    await Future.delayed(const Duration(milliseconds: 500));
   }
 
   @override
@@ -437,7 +436,7 @@ class _StudentDashboardScreenState extends State<StudentDashboardScreen> {
                                       ),
                                     ],
                                   ),
-                                ).animate().fadeIn(delay: 100.ms).slideY(begin: 0.1, end: 0),
+                                ).animate().fadeIn().slideY(begin: 0.1, end: 0),
                               ),
                               const SizedBox(width: 12),
                               Expanded(
@@ -476,7 +475,7 @@ class _StudentDashboardScreenState extends State<StudentDashboardScreen> {
                                       ),
                                     ],
                                   ),
-                                ).animate().fadeIn(delay: 200.ms).slideY(begin: 0.1, end: 0),
+                                ).animate().fadeIn().slideY(begin: 0.1, end: 0),
                               ),
                             ],
                           );
@@ -694,7 +693,7 @@ class _StudentDashboardScreenState extends State<StudentDashboardScreen> {
           ),
         ],
       ),
-    ).animate().fadeIn(delay: 200.ms);
+    ).animate().fadeIn();
   }
 
   Widget _buildFeeStatItem(String label, String value, Color color) {
@@ -783,7 +782,7 @@ class _StudentDashboardScreenState extends State<StudentDashboardScreen> {
           );
         }).toList(),
       ),
-    ).animate().fadeIn(delay: 300.ms);
+    ).animate().fadeIn();
   }
 
   Widget _buildClassInfoCard(StudentModel student) {
@@ -859,7 +858,7 @@ class _StudentDashboardScreenState extends State<StudentDashboardScreen> {
           ),
         ],
       ),
-    ).animate().fadeIn(delay: 400.ms);
+    ).animate().fadeIn();
   }
 
 
@@ -1017,7 +1016,7 @@ class _StudentDashboardScreenState extends State<StudentDashboardScreen> {
         ),
         const SizedBox(height: 24),
       ],
-    ).animate().fadeIn(delay: 100.ms);
+    ).animate().fadeIn();
   }
 
   void _openNoticeDetail(NotificationModel item) {

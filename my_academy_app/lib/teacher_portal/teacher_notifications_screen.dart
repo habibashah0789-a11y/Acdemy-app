@@ -237,7 +237,7 @@ class _TeacherNotificationsScreenState
           ],
         ),
       ),
-    ).animate().fadeIn(delay: (idx * 50).ms).slideY(begin: 0.04);
+    ).animate().fadeIn().slideY(begin: 0.04);
   }
 
   Widget _buildAttachmentPreview(

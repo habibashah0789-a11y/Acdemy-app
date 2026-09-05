@@ -280,7 +280,7 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen>
                       color: Colors.white,
                       letterSpacing: 2.5,
                     ),
-                  ).animate().fadeIn(delay: 200.ms),
+                  ).animate().fadeIn(),
 
                   const SizedBox(height: 6),
 
@@ -293,7 +293,7 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen>
                       color: Colors.white.withValues(alpha: 0.70),
                       letterSpacing: 0.5,
                     ),
-                  ).animate().fadeIn(delay: 350.ms),
+                  ).animate().fadeIn(),
 
                   const SizedBox(height: 48),
 
@@ -306,7 +306,7 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen>
                       color: Colors.white,
                     ),
                     textAlign: TextAlign.center,
-                  ).animate().fadeIn(delay: 450.ms),
+                  ).animate().fadeIn(),
 
                   const SizedBox(height: 8),
 
@@ -317,7 +317,7 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen>
                       color: Colors.white.withValues(alpha: 0.65),
                     ),
                     textAlign: TextAlign.center,
-                  ).animate().fadeIn(delay: 550.ms),
+                  ).animate().fadeIn(),
 
                   const SizedBox(height: 40),
 
@@ -387,8 +387,8 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen>
       },
       child: _RoleCard(data: data)
           .animate()
-          .fadeIn(delay: (600 + index * 120).ms, duration: 500.ms)
-          .slideY(begin: 0.15, delay: (600 + index * 120).ms),
+          .fadeIn(duration: 300.ms)
+          .slideY(begin: 0.15),
     );
   }
 }

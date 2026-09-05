@@ -250,7 +250,7 @@ class _StudentDetailScreenState extends State<StudentDetailScreen> {
                     child: const Text('OK'),
                   )
                       .animate()
-                      .fadeIn(delay: 200.ms, duration: 300.ms),
+                      .fadeIn(duration: 300.ms),
                 ],
               ),
             ),
@@ -910,7 +910,7 @@ class _StudentDetailScreenState extends State<StudentDetailScreen> {
           ],
         );
       },
-    ).animate().fadeIn(delay: 200.ms);
+    ).animate().fadeIn();
   }
 
   Widget _buildQrCodeCard(BuildContext context, bool isDark) {
@@ -1157,7 +1157,7 @@ class _StudentDetailScreenState extends State<StudentDetailScreen> {
           ],
         ),
       ),
-    ).animate().fadeIn(delay: 300.ms);
+    ).animate().fadeIn();
   }
 
   Widget _buildSubjectGrid() {

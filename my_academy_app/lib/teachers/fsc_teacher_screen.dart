@@ -40,7 +40,7 @@ class FscSubjectListScreen extends StatelessWidget {
                 builder: (_) => FscGradeListScreen(subject: subject),
               ),
             ),
-          ).animate().fadeIn(delay: (index * 80).ms).slideX(begin: 0.08);
+          ).animate().fadeIn().slideX(begin: 0.08);
         },
       ),
     );
@@ -98,7 +98,7 @@ class FscGradeListScreen extends StatelessWidget {
                       ),
                     ),
                   ),
-                ).animate().fadeIn(delay: (idx * 120).ms).slideY(begin: 0.12),
+                ).animate().fadeIn().slideY(begin: 0.12),
               );
             }),
           ],
@@ -281,7 +281,7 @@ class _FscClassRoomScreenState extends State<FscClassRoomScreen> {
                 ),
               ],
             ),
-          ).animate().fadeIn(delay: 100.ms).slideY(begin: 0.1),
+          ).animate().fadeIn().slideY(begin: 0.1),
 
           const SizedBox(height: 12),
 
@@ -334,7 +334,7 @@ class _FscClassRoomScreenState extends State<FscClassRoomScreen> {
                 );
               },
             ),
-          ).animate().fadeIn(delay: 200.ms),
+          ).animate().fadeIn(),
 
           const SizedBox(height: 28),
 
@@ -462,7 +462,7 @@ class _FscClassRoomScreenState extends State<FscClassRoomScreen> {
           ),
         ),
       ),
-    ).animate().fadeIn(delay: (index * 60).ms).slideX(begin: 0.06);
+    ).animate().fadeIn().slideX(begin: 0.06);
   }
 
   Widget _buildEmptyStudents() {

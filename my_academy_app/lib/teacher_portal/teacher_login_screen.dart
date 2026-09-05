@@ -251,7 +251,7 @@ class _TeacherLoginScreenState extends State<TeacherLoginScreen> {
                         fontWeight: FontWeight.bold,
                         color: isDark ? Colors.white : AppTheme.primaryDarkBlue,
                       ),
-                    ).animate().fadeIn(delay: 200.ms),
+                    ).animate().fadeIn(),
 
                     Text(
                       'Quaid Academy — Faculty Access',
@@ -261,7 +261,7 @@ class _TeacherLoginScreenState extends State<TeacherLoginScreen> {
                             ? AppTheme.darkTextSecondary
                             : AppTheme.lightTextSecondary,
                       ),
-                    ).animate().fadeIn(delay: 300.ms),
+                    ).animate().fadeIn(),
 
                     const SizedBox(height: 32),
 
@@ -428,7 +428,7 @@ class _TeacherLoginScreenState extends State<TeacherLoginScreen> {
                           ),
                         ),
                       ),
-                    ).animate().fadeIn(delay: 400.ms).slideY(begin: 0.08),
+                    ).animate().fadeIn().slideY(begin: 0.08),
 
                     const SizedBox(height: 32),
 

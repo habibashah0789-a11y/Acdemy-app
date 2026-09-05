@@ -221,12 +221,6 @@ class _StudentQrScannerScreenState extends State<StudentQrScannerScreen>
       if (mounted) {
         setState(() {
           _scanError = 'Invalid student QR code. Please scan official academy QR code.';
-        });
-      }
-      await Future.delayed(const Duration(seconds: 2));
-      if (mounted) {
-        setState(() {
-          _scanError = null;
           _isProcessingScan = false;
         });
       }
@@ -245,8 +239,6 @@ class _StudentQrScannerScreenState extends State<StudentQrScannerScreen>
     try {
       await _scannerController?.stop();
     } catch (_) {}
-
-    await Future.delayed(const Duration(milliseconds: 350));
 
     if (mounted) {
       Navigator.of(context).pop(scanResult);

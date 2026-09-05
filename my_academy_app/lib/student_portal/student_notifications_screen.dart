@@ -158,7 +158,6 @@ class _StudentNotificationsScreenState extends State<StudentNotificationsScreen>
 
   Future<void> _refreshData() async {
     _initRealTimeNotices();
-    await Future.delayed(const Duration(milliseconds: 500));
   }
 
   @override
@@ -399,7 +398,7 @@ class _StudentNotificationsScreenState extends State<StudentNotificationsScreen>
                                 ),
                               ),
                             ),
-                          ).animate().fadeIn(delay: (index * 40).ms).slideY(begin: 0.05);
+                          ).animate().fadeIn().slideY(begin: 0.05);
                         },
                       ),
                     ),
