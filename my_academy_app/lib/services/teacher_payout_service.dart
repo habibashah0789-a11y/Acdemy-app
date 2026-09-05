@@ -143,10 +143,17 @@ class TeacherPayoutService {
     final authEmail = (authUser?.email ?? '').trim().toLowerCase();
 
     // Use a Firestore query filter to only fetch payouts for this teacher.
-    // We use a client-side filter instead of a strict Firestore `where` query.
-    // This allows the fallback name/subject/section matching to work,
-    // solving the issue where the teacher's Auth UID changed from the original doc ID.
+    // Use a Firestore query filter to only fetch payouts for this teacher.
+    // We check both the original document ID (cleanId) and the new Auth UID (authUid)
+    // because admin might have recorded the payout using the original doc ID before the teacher logged in.
+    final targetIds = <String>{};
+    if (cleanId.isNotEmpty) targetIds.add(cleanId);
+    if (authUid.isNotEmpty) targetIds.add(authUid);
+
     Query query = _firestore.collection(_collection);
+    if (targetIds.isNotEmpty) {
+      query = query.where('teacherId', whereIn: targetIds.toList());
+    }
 
     return query.snapshots().map((snapshot) {
       final list = snapshot.docs
