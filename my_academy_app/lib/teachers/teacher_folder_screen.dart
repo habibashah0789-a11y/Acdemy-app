@@ -139,20 +139,6 @@ class _TeacherFolderScreenState extends State<TeacherFolderScreen> {
               fontSize: 22,
             ),
           ),
-          actions: [
-            IconButton(
-              icon: const Icon(Icons.receipt_long_rounded),
-              tooltip: 'Daily Payment Records',
-              onPressed: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) => const TeacherDailyRecordsScreen(),
-                  ),
-                );
-              },
-            ),
-          ],
           bottom: PreferredSize(
             preferredSize: const Size.fromHeight(115),
             child: Column(
