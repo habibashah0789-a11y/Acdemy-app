@@ -35,21 +35,31 @@ class CustomCard extends StatelessWidget {
     final cardShadows = shadows ?? UIHelpers.cardShadow(context);
     final radius = BorderRadius.circular(borderRadius);
 
+    final borderSide = border?.top ??
+        BorderSide(
+          color: isDark ? Colors.white.withValues(alpha: 0.08) : const Color(0xFFE2E8F0),
+          width: 1,
+        );
+
     Widget cardContent = Container(
       margin: margin,
-      padding: padding ?? UIHelpers.paddingAll16,
       decoration: BoxDecoration(
-        color: gradient == null ? cardBg : null,
-        gradient: gradient,
         borderRadius: radius,
-        border: border ??
-            Border.all(
-              color: isDark ? Colors.white.withValues(alpha: 0.08) : const Color(0xFFE2E8F0),
-              width: 1,
-            ),
         boxShadow: cardShadows,
       ),
-      child: child,
+      child: Material(
+        color: gradient == null ? cardBg : Colors.transparent,
+        shape: RoundedRectangleBorder(
+          borderRadius: radius,
+          side: borderSide,
+        ),
+        clipBehavior: Clip.antiAlias,
+        child: Container(
+          padding: padding ?? UIHelpers.paddingAll16,
+          decoration: gradient != null ? BoxDecoration(gradient: gradient) : null,
+          child: child,
+        ),
+      ),
     );
 
     if (onTap != null) {

@@ -123,7 +123,7 @@ class TeacherPayoutService {
     }
   }
 
-  /// Stream payouts specifically targeted to a given teacherId / email / name
+  /// Stream payouts specifically targeted to a given teacherId / email / name / auth user
   static Stream<List<TeacherPayoutModel>> getTeacherPayoutsStream(
     String teacherId, {
     String? teacherEmail,
@@ -137,9 +137,21 @@ class TeacherPayoutService {
       final list = snapshot.docs
           .map((doc) => TeacherPayoutModel.fromFirestore(doc))
           .where((p) {
-            if (cleanId.isNotEmpty && p.teacherId == cleanId) return true;
-            if (cleanEmail.isNotEmpty && p.teacherId.toLowerCase() == cleanEmail) return true;
-            if (cleanName.isNotEmpty && p.teacherName.trim().toLowerCase() == cleanName) return true;
+            final pId = p.teacherId.trim();
+            final pEmail = p.teacherId.trim().toLowerCase();
+            final pName = p.teacherName.trim().toLowerCase();
+
+            // 1. Direct ID / Auth UID match
+            if (cleanId.isNotEmpty && pId == cleanId) return true;
+
+            // 2. Email match
+            if (cleanEmail.isNotEmpty && (pEmail == cleanEmail || p.teacherId.toLowerCase() == cleanEmail)) return true;
+
+            // 3. Name match (exact or substring)
+            if (cleanName.isNotEmpty && pName.isNotEmpty) {
+              if (pName == cleanName || pName.contains(cleanName) || cleanName.contains(pName)) return true;
+            }
+
             return false;
           })
           .toList();

@@ -138,16 +138,16 @@ class TeacherProfileScreen extends StatelessWidget {
                 const SizedBox(height: 20),
 
                 // ── About App & Manual ──
-                Container(
-                  width: double.infinity,
-                  decoration: BoxDecoration(
-                    color: isDark ? AppTheme.darkCard : Colors.white,
+                Material(
+                  color: isDark ? AppTheme.darkCard : Colors.white,
+                  shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(16),
-                    border: Border.all(
+                    side: BorderSide(
                       color:
                           isDark ? AppTheme.darkBorder : AppTheme.lightBorder,
                     ),
                   ),
+                  clipBehavior: Clip.antiAlias,
                   child: ListTile(
                     leading: Container(
                       padding: const EdgeInsets.all(8),
