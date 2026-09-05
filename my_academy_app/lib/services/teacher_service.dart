@@ -504,9 +504,10 @@ class TeacherService {
 
     final formattedTeacherName = teacher.name.trim();
     final formattedTeacherSubject = teacher.subject.trim();
+    final displayClass = targetClass == 'All' ? teacher.section : targetClass;
     final authorLabel = formattedTeacherSubject.isNotEmpty
-        ? '$formattedTeacherName ($formattedTeacherSubject Teacher)'
-        : formattedTeacherName;
+        ? '$formattedTeacherName ($displayClass $formattedTeacherSubject Teacher)'
+        : '$formattedTeacherName ($displayClass Teacher)';
 
     final data = {
       'id': notifDocRef.id,
@@ -521,7 +522,7 @@ class TeacherService {
       'subject': formattedTeacherSubject,
       'targetSubject': formattedTeacherSubject,
       'targetSection': teacher.section,
-      'class': targetClass == 'All' ? teacher.section : targetClass,
+      'class': displayClass,
       'timestamp': FieldValue.serverTimestamp(),
       'createdAt': FieldValue.serverTimestamp(),
       'type': 'teacher_announcement',
@@ -537,7 +538,7 @@ class TeacherService {
 
     // Trigger push notification to student devices mapped to this teacher's class and subject
     try {
-      final safeClass = (targetClass == 'All' ? teacher.section : targetClass)
+      final safeClass = displayClass
           .toLowerCase()
           .replaceAll(RegExp(r'[^a-z0-9]'), '_');
       final safeSubject = formattedTeacherSubject
@@ -547,8 +548,8 @@ class TeacherService {
 
       await NotificationService.triggerPushNotification(
         targetTopic: topic,
-        title: '📢 $authorLabel: $title',
-        body: message,
+        title: '📢 $authorLabel',
+        body: '$title\n$message',
         payload: {
           'type': 'teacher_announcement',
           'screen': 'notifications',
