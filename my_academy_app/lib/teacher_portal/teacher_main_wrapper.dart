@@ -7,6 +7,8 @@ import 'teacher_students_screen.dart';
 import 'teacher_notifications_screen.dart';
 import 'teacher_profile_screen.dart';
 
+import 'teacher_payout_ledger_screen.dart';
+
 class TeacherMainWrapper extends StatefulWidget {
   final TeacherModel teacher;
   const TeacherMainWrapper({super.key, required this.teacher});
@@ -26,6 +28,7 @@ class _TeacherMainWrapperState extends State<TeacherMainWrapper> {
     _screens = [
       TeacherDashboardScreen(teacher: widget.teacher),
       TeacherStudentsScreen(teacher: widget.teacher),
+      TeacherPayoutLedgerScreen(teacher: widget.teacher),
       TeacherNotificationsScreen(teacher: widget.teacher),
       TeacherProfileScreen(teacher: widget.teacher),
     ];
@@ -34,7 +37,8 @@ class _TeacherMainWrapperState extends State<TeacherMainWrapper> {
   static const List<_NavItem> _navItems = [
     _NavItem(Icons.dashboard_rounded, Icons.dashboard_outlined, 'Dashboard'),
     _NavItem(Icons.people_rounded, Icons.people_outline_rounded, 'My Students'),
-    _NavItem(Icons.notifications_rounded, Icons.notifications_outlined, 'Notifications'),
+    _NavItem(Icons.account_balance_wallet_rounded, Icons.account_balance_wallet_outlined, 'Payment Ledger'),
+    _NavItem(Icons.notifications_rounded, Icons.notifications_outlined, 'Notices'),
     _NavItem(Icons.person_rounded, Icons.person_outline_rounded, 'Profile'),
   ];
 

@@ -6,6 +6,7 @@ import '../../services/teacher_service.dart';
 import '../../theme/app_theme.dart';
 import '../../widgets/teacher_avatar.dart';
 import 'add_edit_teacher_screen.dart';
+import '../../teachers/record_teacher_payment_modal.dart';
 
 class TeacherManagementScreen extends StatelessWidget {
   const TeacherManagementScreen({super.key});
@@ -206,7 +207,28 @@ class TeacherManagementScreen extends StatelessWidget {
                     ),
                   ),
                 ),
-                const SizedBox(width: 10),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: OutlinedButton.icon(
+                    onPressed: () {
+                      showModalBottomSheet(
+                        context: context,
+                        isScrollControlled: true,
+                        backgroundColor: Colors.transparent,
+                        builder: (_) => RecordTeacherPaymentModal(
+                          preselectedTeacher: teacher,
+                        ),
+                      );
+                    },
+                    icon: const Icon(Icons.payments_rounded, size: 16, color: Color(0xFF10B981)),
+                    label: const Text('Pay', style: TextStyle(color: Color(0xFF10B981), fontWeight: FontWeight.bold)),
+                    style: OutlinedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(vertical: 8),
+                      side: const BorderSide(color: Color(0xFF10B981)),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
                 Expanded(
                   child: OutlinedButton.icon(
                     onPressed: () => _toggleActive(context, teacher),
@@ -218,7 +240,7 @@ class TeacherManagementScreen extends StatelessWidget {
                       color: teacher.isActive ? Colors.red : Colors.green,
                     ),
                     label: Text(
-                      teacher.isActive ? 'Deactivate' : 'Reactivate',
+                      teacher.isActive ? 'Disable' : 'Enable',
                       style: TextStyle(
                           color:
                               teacher.isActive ? Colors.red : Colors.green),

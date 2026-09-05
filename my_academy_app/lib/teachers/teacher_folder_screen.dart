@@ -4,6 +4,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import 'fsc_teacher_screen.dart';
 import 'matric_teacher_screen.dart';
+import 'record_teacher_payment_modal.dart';
 import '../screens/teacher_management/teacher_management_screen.dart';
 import '../services/database_service.dart';
 import '../services/sync_service.dart';
@@ -139,6 +140,20 @@ class _TeacherFolderScreenState extends State<TeacherFolderScreen> {
               fontSize: 22,
             ),
           ),
+          actions: [
+            IconButton(
+              icon: const Icon(Icons.payments_rounded, color: AppTheme.primaryBlue),
+              tooltip: 'Record Teacher Payment',
+              onPressed: () {
+                showModalBottomSheet(
+                  context: context,
+                  isScrollControlled: true,
+                  backgroundColor: Colors.transparent,
+                  builder: (_) => const RecordTeacherPaymentModal(),
+                );
+              },
+            ),
+          ],
           bottom: PreferredSize(
             preferredSize: const Size.fromHeight(115),
             child: Column(

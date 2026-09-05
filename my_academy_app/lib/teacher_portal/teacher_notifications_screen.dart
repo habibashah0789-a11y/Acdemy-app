@@ -87,6 +87,16 @@ class _TeacherNotificationsScreenState
           final docs = snapshot.data?.docs ?? [];
           final filtered = docs.where((doc) {
             final data = doc.data() as Map<String, dynamic>;
+            final notifType = data['notificationType'] as String? ?? '';
+            
+            // Targeted teacher payout notifications
+            if (notifType == 'teacher_payout') {
+              final targetTeacherId = data['teacherId'] as String? ?? '';
+              if (_currentTeacher != null && targetTeacherId.isNotEmpty) {
+                return targetTeacherId == _currentTeacher!.id;
+              }
+            }
+
             final targetSubject =
                 (data['targetSubject'] as String? ?? '').toLowerCase();
             final targetSection =

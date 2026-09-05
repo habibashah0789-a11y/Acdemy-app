@@ -10,6 +10,7 @@ import '../theme/app_theme.dart';
 import '../screens/app_info_screens.dart';
 import '../widgets/teacher_avatar.dart';
 import 'teacher_daily_records_screen.dart';
+import 'teacher_payout_ledger_screen.dart';
 
 class TeacherDashboardScreen extends StatefulWidget {
   final TeacherModel teacher;
@@ -117,10 +118,112 @@ class _TeacherDashboardScreenState extends State<TeacherDashboardScreen> {
 
               // ── Daily Financial & Registration Records Card ──
               _buildDailyRecordsTile(context, isDark, subjectColor),
+
+              const SizedBox(height: 16),
+
+              // ── Payment Payout Ledger Card ──
+              _buildPayoutLedgerTile(context, isDark, subjectColor),
             ],
           ),
         ),
       );
+  }
+
+  Widget _buildPayoutLedgerTile(
+      BuildContext context, bool isDark, Color subjectColor) {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: isDark ? AppTheme.darkCard : Colors.white,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(
+          color: isDark ? AppTheme.darkBorder : AppTheme.lightBorder,
+        ),
+        boxShadow: isDark
+            ? null
+            : [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.04),
+                  blurRadius: 12,
+                  offset: const Offset(0, 4),
+                )
+              ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF10B981).withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: const Icon(
+                  Icons.account_balance_wallet_rounded,
+                  color: Color(0xFF10B981),
+                  size: 24,
+                ),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Payment Payout Ledger',
+                      style: GoogleFonts.poppins(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    Text(
+                      'View official salary payouts & bank receipts',
+                      style: GoogleFonts.poppins(
+                        fontSize: 12,
+                        color: AppTheme.lightTextSecondary,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton.icon(
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => TeacherPayoutLedgerScreen(
+                      teacher: _teacher,
+                    ),
+                  ),
+                );
+              },
+              icon: const Icon(Icons.receipt_long_rounded, color: Colors.white, size: 18),
+              label: Text(
+                'Open Payment Ledger',
+                style: GoogleFonts.poppins(
+                  fontWeight: FontWeight.bold,
+                  color: Colors.white,
+                ),
+              ),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.indigo.shade900,
+                padding: const EdgeInsets.symmetric(vertical: 12),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   Widget _buildDailyRecordsTile(
