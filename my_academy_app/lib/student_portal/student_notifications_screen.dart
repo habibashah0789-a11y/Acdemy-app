@@ -54,45 +54,48 @@ class _StudentNotificationsScreenState extends State<StudentNotificationsScreen>
 
     if (student == null) return true; // Fallback if student profile not yet loaded
 
-    // 2. Target Class / Grade / Section Check
+    // 2. Class / Grade / Section Matching
     final targetClass = n.className.trim().toLowerCase();
     final studentGrade = student.grade.trim().toLowerCase();
     final studentClassType = student.classType.trim().toLowerCase();
 
-    if (targetClass.isNotEmpty && targetClass != 'all') {
-      bool classMatches = targetClass == studentGrade ||
+    bool classMatches = true;
+    if (targetClass.isNotEmpty && targetClass != 'all' && targetClass != 'general') {
+      classMatches = targetClass == studentGrade ||
           targetClass == studentClassType ||
           studentGrade.contains(targetClass) ||
           targetClass.contains(studentGrade) ||
           studentClassType.contains(targetClass) ||
           targetClass.contains(studentClassType);
-      if (!classMatches) return false;
     }
 
-    // 3. Target Subject Check (Teacher announcement vs Admin announcement)
+    // 3. Subject Matching
     final targetSubject = n.subject.trim().toLowerCase();
     final isGeneralAdmin = targetSubject.isEmpty ||
         targetSubject == 'general' ||
         targetSubject == 'all' ||
         n.registeredBy.toLowerCase().contains('admin');
 
+    bool subjectMatches = true;
     if (!isGeneralAdmin) {
-      // Teacher announcement for specific subject (e.g. 'Physics')
       final studentSubjects = student.subject
           .split(',')
           .map((s) => s.trim().toLowerCase())
           .where((s) => s.isNotEmpty)
           .toList();
 
-      bool subjectMatches = studentSubjects.any((sub) =>
+      subjectMatches = studentSubjects.any((sub) =>
           sub == targetSubject ||
           sub.contains(targetSubject) ||
           targetSubject.contains(sub));
-
-      if (!subjectMatches) return false;
     }
 
-    return true;
+    // For teacher announcements, match if class OR subject matches
+    if (n.isTeacherAnnouncement) {
+      return classMatches || subjectMatches;
+    }
+
+    return classMatches && subjectMatches;
   }
 
   void _initRealTimeNotices() async {

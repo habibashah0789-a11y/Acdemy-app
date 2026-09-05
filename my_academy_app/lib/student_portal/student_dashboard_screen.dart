@@ -110,26 +110,34 @@ class _StudentDashboardScreenState extends State<StudentDashboardScreen> {
       });
 
   bool _isNoticeTargeted(NotificationModel n, StudentModel student) {
+    // 1. Direct personal notification to student
     if (n.studentId.isNotEmpty) {
       return n.studentId == student.id || n.studentId == student.studentCode;
     }
 
+    // 2. Class / Grade / Section Matching
     final targetClass = n.className.trim().toLowerCase();
     final studentGrade = student.grade.trim().toLowerCase();
+    final studentClassType = student.classType.trim().toLowerCase();
 
-    if (targetClass.isNotEmpty && targetClass != 'all') {
-      bool classMatches = targetClass == studentGrade ||
+    bool classMatches = true;
+    if (targetClass.isNotEmpty && targetClass != 'all' && targetClass != 'general') {
+      classMatches = targetClass == studentGrade ||
+          targetClass == studentClassType ||
           studentGrade.contains(targetClass) ||
-          targetClass.contains(studentGrade);
-      if (!classMatches) return false;
+          targetClass.contains(studentGrade) ||
+          studentClassType.contains(targetClass) ||
+          targetClass.contains(studentClassType);
     }
 
+    // 3. Subject Matching
     final targetSubject = n.subject.trim().toLowerCase();
     final isGeneralAdmin = targetSubject.isEmpty ||
         targetSubject == 'general' ||
         targetSubject == 'all' ||
         n.registeredBy.toLowerCase().contains('admin');
 
+    bool subjectMatches = true;
     if (!isGeneralAdmin) {
       final studentSubjects = student.subject
           .split(',')
@@ -137,15 +145,18 @@ class _StudentDashboardScreenState extends State<StudentDashboardScreen> {
           .where((s) => s.isNotEmpty)
           .toList();
 
-      bool subjectMatches = studentSubjects.any((sub) =>
+      subjectMatches = studentSubjects.any((sub) =>
           sub == targetSubject ||
           sub.contains(targetSubject) ||
           targetSubject.contains(sub));
-
-      if (!subjectMatches) return false;
     }
 
-    return true;
+    // For teacher announcements, match if class OR subject matches
+    if (n.isTeacherAnnouncement) {
+      return classMatches || subjectMatches;
+    }
+
+    return classMatches && subjectMatches;
   }
 
       // Listen to notifications in real-time

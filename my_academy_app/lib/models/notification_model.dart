@@ -136,19 +136,30 @@ class NotificationModel {
 
     final rawRegisteredBy = map['registeredBy']?.toString() ?? '';
     final rawTeacherName = map['teacherName']?.toString() ??
-        (map['notificationType'] == 'teacher_announcement' ? rawRegisteredBy : '');
+        (map['notificationType'] == 'teacher_announcement' || map['type'] == 'teacher_announcement' ? rawRegisteredBy : '');
     final rawTeacherSubject = map['teacherSubject']?.toString() ??
         map['subject']?.toString() ??
         map['targetSubject']?.toString() ??
         '';
 
+    final parsedClassName = map['className']?.toString() ??
+        map['targetClass']?.toString() ??
+        map['class']?.toString() ??
+        map['targetSection']?.toString() ??
+        '';
+
+    final parsedSubject = map['subject']?.toString() ??
+        map['targetSubject']?.toString() ??
+        map['teacherSubject']?.toString() ??
+        '';
+
     return NotificationModel(
       id: (docId ?? map['id'] ?? '').toString(),
       title: map['title']?.toString() ?? 'Notification',
-      message: map['message']?.toString() ?? '',
+      message: map['message']?.toString() ?? map['body']?.toString() ?? '',
       studentName: map['studentName']?.toString() ?? '',
-      className: map['class']?.toString() ?? map['targetSection']?.toString() ?? '',
-      subject: map['subject']?.toString() ?? map['targetSubject']?.toString() ?? '',
+      className: parsedClassName,
+      subject: parsedSubject,
       registeredBy: rawRegisteredBy,
       timestamp: parsedTimestamp,
       notificationType: map['notificationType']?.toString() ?? map['type']?.toString() ?? 'general',
