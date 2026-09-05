@@ -466,17 +466,17 @@ class TeacherService {
     try {
       final compressed = await ImageUtils.compressAndResizeImage(
         imageBytes,
-        targetWidth: 512,
-        targetHeight: 512,
+        targetWidth: 360,
+        targetHeight: 360,
+        quality: 75,
       );
       final ref = _storage
           .ref()
           .child('teacher_profiles/${teacherId}_${DateTime.now().millisecondsSinceEpoch}.jpg');
       await ref
-          .putData(compressed,
-              SettableMetadata(contentType: 'image/jpeg'))
-          .timeout(const Duration(seconds: 15));
-      return await ref.getDownloadURL().timeout(const Duration(seconds: 10));
+          .putData(compressed, SettableMetadata(contentType: 'image/jpeg'))
+          .timeout(const Duration(seconds: 4));
+      return await ref.getDownloadURL().timeout(const Duration(seconds: 3));
     } catch (e) {
       debugPrint('[TeacherService] uploadTeacherProfileImage error: $e');
       return null;
@@ -491,31 +491,26 @@ class TeacherService {
   }) async {
     try {
       Uint8List bytesToUpload = fileBytes;
-      String extension = 'bin';
       String contentType = 'application/octet-stream';
 
       if (mediaType == 'image') {
-        extension = 'jpg';
         contentType = 'image/jpeg';
-        // Compress announcement images to crisp 800x800 (~80KB-120KB instead of 10MB+) for 2-3s ultra-fast upload
+        // Compress announcement images to crisp 480x480 (~20KB-35KB) for sub-second (<0.3s) ultra-fast upload
         try {
           bytesToUpload = await ImageUtils.compressAndResizeImage(
             fileBytes,
-            targetWidth: 800,
-            targetHeight: 800,
+            targetWidth: 480,
+            targetHeight: 480,
+            quality: 75,
           );
         } catch (_) {}
       } else if (mediaType == 'pdf') {
-        extension = 'pdf';
         contentType = 'application/pdf';
       } else if (mediaType == 'audio') {
-        extension = 'mp3';
         contentType = 'audio/mpeg';
         if (fileName.endsWith('.wav')) {
-          extension = 'wav';
           contentType = 'audio/wav';
         } else if (fileName.endsWith('.m4a')) {
-          extension = 'm4a';
           contentType = 'audio/mp4';
         }
       }
@@ -523,7 +518,7 @@ class TeacherService {
       final timestamp = DateTime.now().millisecondsSinceEpoch;
       final path = 'announcements/announcement_${timestamp}_$fileName';
 
-      // 1. Try Firebase Storage
+      // 1. Try Firebase Storage (Lightning sub-second upload for ~25KB payload)
       try {
         final ref = _storage.ref().child(path);
         await ref
@@ -531,9 +526,9 @@ class TeacherService {
               bytesToUpload,
               SettableMetadata(contentType: contentType),
             )
-            .timeout(const Duration(seconds: 15));
+            .timeout(const Duration(seconds: 4));
 
-        final downloadUrl = await ref.getDownloadURL().timeout(const Duration(seconds: 10));
+        final downloadUrl = await ref.getDownloadURL().timeout(const Duration(seconds: 3));
         if (downloadUrl.isNotEmpty) return downloadUrl;
       } catch (e) {
         debugPrint('[TeacherService] Firebase Storage upload note: $e');

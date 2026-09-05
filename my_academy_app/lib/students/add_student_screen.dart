@@ -462,8 +462,9 @@ class _AddStudentScreenState extends State<AddStudentScreen> {
           if (cropped != null) {
             final compressed = await ImageUtils.compressAndResizeImage(
               cropped,
-              targetWidth: 512,
-              targetHeight: 512,
+              targetWidth: 360,
+              targetHeight: 360,
+              quality: 75,
             );
             setState(() => _imageBytes = compressed);
           }
@@ -529,8 +530,8 @@ class _AddStudentScreenState extends State<AddStudentScreen> {
             final storageRef = FirebaseStorage.instance.ref().child(fileName);
             await storageRef
                 .putData(_imageBytes!, SettableMetadata(contentType: 'image/jpeg'))
-                .timeout(const Duration(seconds: 10));
-            final url = await storageRef.getDownloadURL().timeout(const Duration(seconds: 5));
+                .timeout(const Duration(seconds: 4));
+            final url = await storageRef.getDownloadURL().timeout(const Duration(seconds: 3));
             final currentStudent = DatabaseService.studentBox.get(studentId);
             if (currentStudent != null) {
               final updated = currentStudent.copyWith(profilePicUrl: url);

@@ -164,8 +164,9 @@ class _AddEditTeacherScreenState extends State<AddEditTeacherScreen> {
           if (cropped != null) {
             final compressed = await ImageUtils.compressAndResizeImage(
               cropped,
-              targetWidth: 512,
-              targetHeight: 512,
+              targetWidth: 360,
+              targetHeight: 360,
+              quality: 75,
             );
             setState(() {
               _imageBytes = compressed;

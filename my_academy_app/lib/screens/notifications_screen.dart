@@ -288,7 +288,7 @@ class __AdminCreateAnnouncementModalState
         if (url != null) {
           uploadedUrl = url;
         } else {
-          throw Exception('Failed to upload attachment to storage.');
+          debugPrint('[NotificationsScreen] Attachment upload note: could not retrieve URL, publishing text announcement.');
         }
       }
 

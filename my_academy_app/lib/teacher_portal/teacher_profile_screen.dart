@@ -467,8 +467,9 @@ class TeacherProfileScreen extends StatelessWidget {
         final imageBytesToUpload = cropped ?? bytes;
         final compressed = await ImageUtils.compressAndResizeImage(
           imageBytesToUpload,
-          targetWidth: 512,
-          targetHeight: 512,
+          targetWidth: 360,
+          targetHeight: 360,
+          quality: 75,
         );
 
         ScaffoldMessenger.of(context).showSnackBar(

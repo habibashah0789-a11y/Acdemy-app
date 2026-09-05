@@ -326,16 +326,22 @@ class _EditStudentScreenState extends State<EditStudentScreen> {
       
       // Instant image update: base64 encoding & local disk save (0ms latency)
       if (_imageBytes != null) {
-        picUrl = 'data:image/jpeg;base64,${base64Encode(_imageBytes!)}';
+        final compressed = await ImageUtils.compressAndResizeImage(
+          _imageBytes!,
+          targetWidth: 360,
+          targetHeight: 360,
+          quality: 75,
+        );
+        picUrl = 'data:image/jpeg;base64,${base64Encode(compressed)}';
         if (!kIsWeb) {
           try {
-            await ImageUtils.saveImageLocally(widget.student.id, _imageBytes!);
+            await ImageUtils.saveImageLocally(widget.student.id, compressed);
           } catch (e) {
             debugPrint('Local image save error: $e');
           }
         }
         
-        final imageBytesToUpload = _imageBytes!;
+        final imageBytesToUpload = compressed;
         final studentIdToUpdate = widget.student.id;
         final oldUrlToDelete = _existingUrl;
         
@@ -350,9 +356,9 @@ class _EditStudentScreenState extends State<EditStudentScreen> {
             
             await storageRef
                 .putData(imageBytesToUpload, SettableMetadata(contentType: 'image/jpeg'))
-                .timeout(const Duration(seconds: 10));
+                .timeout(const Duration(seconds: 4));
             
-            final url = await storageRef.getDownloadURL().timeout(const Duration(seconds: 5));
+            final url = await storageRef.getDownloadURL().timeout(const Duration(seconds: 3));
             debugPrint('Background image uploaded to Firebase Storage: $url');
             
             final currentStudent = DatabaseService.studentBox.get(studentIdToUpdate);
