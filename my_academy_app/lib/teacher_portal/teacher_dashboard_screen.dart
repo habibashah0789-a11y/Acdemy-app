@@ -9,6 +9,8 @@ import '../theme/app_theme.dart';
 
 import '../screens/app_info_screens.dart';
 import '../widgets/teacher_avatar.dart';
+import '../models/teacher_payout_model.dart';
+import '../services/teacher_payout_service.dart';
 import 'teacher_daily_records_screen.dart';
 import 'teacher_payout_ledger_screen.dart';
 
@@ -149,79 +151,127 @@ class _TeacherDashboardScreenState extends State<TeacherDashboardScreen> {
                 )
               ],
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
+      child: StreamBuilder<List<TeacherPayoutModel>>(
+        stream: TeacherPayoutService.getTeacherPayoutsStream(
+          _teacher.id,
+          teacherEmail: _teacher.email,
+          teacherName: _teacher.name,
+        ),
+        builder: (context, snapshot) {
+          final payouts = snapshot.data ?? [];
+          final totalEarned = payouts.fold(0.0, (sum, item) => sum + item.amount);
+          final latestPayout = payouts.isNotEmpty ? payouts.first : null;
+
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Container(
-                padding: const EdgeInsets.all(10),
-                decoration: BoxDecoration(
-                  color: const Color(0xFF10B981).withValues(alpha: 0.12),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: const Icon(
-                  Icons.account_balance_wallet_rounded,
-                  color: Color(0xFF10B981),
-                  size: 24,
-                ),
+              Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF10B981).withValues(alpha: 0.12),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: const Icon(
+                      Icons.account_balance_wallet_rounded,
+                      color: Color(0xFF10B981),
+                      size: 24,
+                    ),
+                  ),
+                  const SizedBox(width: 14),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Payment Payout Ledger',
+                          style: GoogleFonts.poppins(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        Text(
+                          payouts.isEmpty
+                              ? 'Official salary payouts & bank receipts'
+                              : '${payouts.length} Payout(s) Recorded • Lifetime: Rs ${NumberFormat('#,##0').format(totalEarned)}',
+                          style: GoogleFonts.poppins(
+                            fontSize: 12,
+                            color: payouts.isEmpty ? AppTheme.lightTextSecondary : const Color(0xFF10B981),
+                            fontWeight: payouts.isEmpty ? FontWeight.normal : FontWeight.w600,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
               ),
-              const SizedBox(width: 14),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Payment Payout Ledger',
-                      style: GoogleFonts.poppins(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
+              if (latestPayout != null) ...[
+                const SizedBox(height: 12),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: Colors.indigo.shade50,
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(color: Colors.indigo.shade100),
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        'Latest: ${latestPayout.reason}',
+                        style: GoogleFonts.poppins(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.indigo.shade900,
+                        ),
                       ),
-                    ),
-                    Text(
-                      'View official salary payouts & bank receipts',
-                      style: GoogleFonts.poppins(
-                        fontSize: 12,
-                        color: AppTheme.lightTextSecondary,
+                      Text(
+                        '+ Rs ${NumberFormat('#,##0').format(latestPayout.amount)}',
+                        style: GoogleFonts.poppins(
+                          fontSize: 12,
+                          fontWeight: FontWeight.bold,
+                          color: const Color(0xFF10B981),
+                        ),
                       ),
+                    ],
+                  ),
+                ),
+              ],
+              const SizedBox(height: 16),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton.icon(
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => TeacherPayoutLedgerScreen(
+                          teacher: _teacher,
+                        ),
+                      ),
+                    );
+                  },
+                  icon: const Icon(Icons.receipt_long_rounded, color: Colors.white, size: 18),
+                  label: Text(
+                    'Open Payment Ledger',
+                    style: GoogleFonts.poppins(
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
                     ),
-                  ],
+                  ),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.indigo.shade900,
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
                 ),
               ),
             ],
-          ),
-          const SizedBox(height: 16),
-          SizedBox(
-            width: double.infinity,
-            child: ElevatedButton.icon(
-              onPressed: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) => TeacherPayoutLedgerScreen(
-                      teacher: _teacher,
-                    ),
-                  ),
-                );
-              },
-              icon: const Icon(Icons.receipt_long_rounded, color: Colors.white, size: 18),
-              label: Text(
-                'Open Payment Ledger',
-                style: GoogleFonts.poppins(
-                  fontWeight: FontWeight.bold,
-                  color: Colors.white,
-                ),
-              ),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.indigo.shade900,
-                padding: const EdgeInsets.symmetric(vertical: 12),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-              ),
-            ),
-          ),
-        ],
+          );
+        },
       ),
     );
   }
