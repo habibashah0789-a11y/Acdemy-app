@@ -545,7 +545,7 @@ class __CreateAnnouncementModalState extends State<_CreateAnnouncementModal> {
         if (url != null) {
           uploadedUrl = url;
         } else {
-          throw Exception('Failed to upload attachment to storage. Please check connection.');
+          debugPrint('[TeacherNotificationsScreen] Attachment upload warning: could not retrieve URL, publishing text announcement.');
         }
       }
 

@@ -1,4 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
 import '../models/teacher_payout_model.dart';
 import 'audit_log_service.dart';
@@ -128,10 +129,18 @@ class TeacherPayoutService {
     String teacherId, {
     String? teacherEmail,
     String? teacherName,
+    String? teacherSubject,
+    String? teacherSection,
   }) {
     final cleanId = teacherId.trim();
     final cleanEmail = (teacherEmail ?? '').trim().toLowerCase();
     final cleanName = (teacherName ?? '').trim().toLowerCase();
+    final cleanSubject = (teacherSubject ?? '').trim().toLowerCase();
+    final cleanSection = (teacherSection ?? '').trim().toLowerCase();
+
+    final authUser = FirebaseAuth.instance.currentUser;
+    final authUid = authUser?.uid ?? '';
+    final authEmail = (authUser?.email ?? '').trim().toLowerCase();
 
     return _firestore.collection(_collection).snapshots().map((snapshot) {
       final list = snapshot.docs
@@ -140,16 +149,25 @@ class TeacherPayoutService {
             final pId = p.teacherId.trim();
             final pEmail = p.teacherId.trim().toLowerCase();
             final pName = p.teacherName.trim().toLowerCase();
+            final pSubject = p.teacherSubject.trim().toLowerCase();
+            final pSection = p.teacherSection.trim().toLowerCase();
 
             // 1. Direct ID / Auth UID match
             if (cleanId.isNotEmpty && pId == cleanId) return true;
+            if (authUid.isNotEmpty && pId == authUid) return true;
 
             // 2. Email match
             if (cleanEmail.isNotEmpty && (pEmail == cleanEmail || p.teacherId.toLowerCase() == cleanEmail)) return true;
+            if (authEmail.isNotEmpty && (pEmail == authEmail || p.teacherId.toLowerCase() == authEmail)) return true;
 
             // 3. Name match (exact or substring)
             if (cleanName.isNotEmpty && pName.isNotEmpty) {
               if (pName == cleanName || pName.contains(cleanName) || cleanName.contains(pName)) return true;
+            }
+
+            // 4. Subject + Section match fallback
+            if (cleanSubject.isNotEmpty && cleanSection.isNotEmpty && pSubject.isNotEmpty && pSection.isNotEmpty) {
+              if (pSubject == cleanSubject && pSection == cleanSection) return true;
             }
 
             return false;

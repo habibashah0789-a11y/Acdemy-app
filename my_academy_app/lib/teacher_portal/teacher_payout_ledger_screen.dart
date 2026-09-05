@@ -62,6 +62,8 @@ class _TeacherPayoutLedgerScreenState
           widget.teacher.id,
           teacherEmail: widget.teacher.email,
           teacherName: widget.teacher.name,
+          teacherSubject: widget.teacher.subject,
+          teacherSection: widget.teacher.section,
         ),
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {

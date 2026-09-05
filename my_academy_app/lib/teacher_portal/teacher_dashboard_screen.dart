@@ -156,6 +156,8 @@ class _TeacherDashboardScreenState extends State<TeacherDashboardScreen> {
           _teacher.id,
           teacherEmail: _teacher.email,
           teacherName: _teacher.name,
+          teacherSubject: _teacher.subject,
+          teacherSection: _teacher.section,
         ),
         builder: (context, snapshot) {
           final payouts = snapshot.data ?? [];

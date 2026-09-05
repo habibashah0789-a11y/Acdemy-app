@@ -6,6 +6,7 @@ import 'package:flutter/foundation.dart';
 import '../models/teacher_model.dart';
 import '../models/student_model.dart';
 import '../services/notification_service.dart';
+import '../services/supabase_service.dart';
 import '../utils/image_utils.dart';
 
 class TeacherStats {
@@ -443,7 +444,6 @@ class TeacherService {
     required String fileName,
     required String mediaType, // 'image' | 'pdf' | 'audio'
   }) async {
-    if (FirebaseAuth.instance.currentUser == null) return null;
     try {
       Uint8List bytesToUpload = fileBytes;
       String extension = 'bin';
@@ -453,11 +453,13 @@ class TeacherService {
         extension = 'jpg';
         contentType = 'image/jpeg';
         // Compress announcement images to crisp 800x800 (~80KB-120KB instead of 10MB+) for 2-3s ultra-fast upload
-        bytesToUpload = await ImageUtils.compressAndResizeImage(
-          fileBytes,
-          targetWidth: 800,
-          targetHeight: 800,
-        );
+        try {
+          bytesToUpload = await ImageUtils.compressAndResizeImage(
+            fileBytes,
+            targetWidth: 800,
+            targetHeight: 800,
+          );
+        } catch (_) {}
       } else if (mediaType == 'pdf') {
         extension = 'pdf';
         contentType = 'application/pdf';
@@ -475,16 +477,35 @@ class TeacherService {
 
       final timestamp = DateTime.now().millisecondsSinceEpoch;
       final path = 'announcements/announcement_${timestamp}_$fileName';
-      final ref = _storage.ref().child(path);
 
-      await ref
-          .putData(
-            bytesToUpload,
-            SettableMetadata(contentType: contentType),
-          )
-          .timeout(const Duration(seconds: 20));
+      // 1. Try Firebase Storage
+      try {
+        final ref = _storage.ref().child(path);
+        await ref
+            .putData(
+              bytesToUpload,
+              SettableMetadata(contentType: contentType),
+            )
+            .timeout(const Duration(seconds: 15));
 
-      return await ref.getDownloadURL().timeout(const Duration(seconds: 10));
+        final downloadUrl = await ref.getDownloadURL().timeout(const Duration(seconds: 10));
+        if (downloadUrl.isNotEmpty) return downloadUrl;
+      } catch (e) {
+        debugPrint('[TeacherService] Firebase Storage upload note: $e');
+      }
+
+      // 2. Fallback to Supabase Storage if available
+      try {
+        final supabaseUrl = await SupabaseService.uploadAnnouncementAttachment(
+          fileBytes: bytesToUpload,
+          fileName: fileName,
+        );
+        if (supabaseUrl != null && supabaseUrl.isNotEmpty) return supabaseUrl;
+      } catch (e) {
+        debugPrint('[TeacherService] Supabase Storage fallback note: $e');
+      }
+
+      return null;
     } catch (e) {
       debugPrint('[TeacherService] uploadAnnouncementAttachment error: $e');
       return null;
@@ -536,7 +557,11 @@ class TeacherService {
       'attachmentType': mediaType,
     };
 
-    await notifDocRef.set(data);
+    // Save to both notifications and announcements collections for complete compatibility
+    await _firestore.collection('notifications').doc(notifDocRef.id).set(data);
+    try {
+      await _firestore.collection('announcements').doc(notifDocRef.id).set(data);
+    } catch (_) {}
 
     // Trigger push notification to student devices mapped to this teacher's class and subject
     try {
