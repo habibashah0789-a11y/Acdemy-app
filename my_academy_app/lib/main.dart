@@ -300,32 +300,40 @@ class _RoleRoutingWrapperState extends State<RoleRoutingWrapper> {
         }
       }
 
-      // 4. Default to admin role if not a teacher
+      // 4. Check admins collection or explicit server role
       if (role.isEmpty) {
-        role = 'admin';
         try {
-          await roleDocRef.set({
-            'role': 'admin',
-            'createdAt': FieldValue.serverTimestamp(),
-          }, SetOptions(merge: true)).timeout(const Duration(seconds: 3));
-        } catch (e) {
-          debugPrint('[RoleRoutingWrapper] Role set failed: $e');
-        }
+          final adminDoc = await firestore.collection('admins').doc(widget.user.uid).get().timeout(const Duration(seconds: 2));
+          if (adminDoc.exists && adminDoc.data()?['admin'] == true) {
+            role = 'admin';
+          }
+        } catch (_) {}
       }
 
+      if (role == 'admin') {
+        if (mounted) {
+          setState(() {
+            _role = 'admin';
+            _isLoading = false;
+          });
+        }
+        return;
+      }
+
+      // 5. Account not authorized as admin or teacher
       if (mounted) {
         setState(() {
-          _role = role;
+          _role = 'unauthorized';
+          _error = 'Your account has not been assigned authorization. Please contact Quaid Academy Administration.';
           _isLoading = false;
         });
       }
     } catch (e) {
-      debugPrint('[RoleRoutingWrapper] Exception encountered: $e. Defaulting to admin role.');
+      debugPrint('[RoleRoutingWrapper] Role lookup exception: $e');
       if (mounted) {
-        // Since the user is authenticated via Firebase Auth for the admin portal,
-        // default gracefully to 'admin' so network/timeout issues never block admin portal access.
         setState(() {
-          _role = 'admin';
+          _role = 'unauthorized';
+          _error = 'Role verification failed. Your request was not authorized by the server.';
           _isLoading = false;
         });
       }

@@ -47,10 +47,19 @@ class _LoginScreenState extends State<LoginScreen> {
           .get()
           .timeout(const Duration(seconds: 5));
 
-      final role = roleDoc.data()?['role'] as String? ?? 'admin';
+      final roleData = roleDoc.data();
+      String role = roleData?['role'] as String? ?? '';
+      
+      if (role.isEmpty) {
+        final adminDoc = await FirebaseFirestore.instance.collection('admins').doc(user.uid).get();
+        if (adminDoc.exists && adminDoc.data()?['admin'] == true) {
+          role = 'admin';
+        }
+      }
+
       if (role != 'admin') {
         await FirebaseAuth.instance.signOut();
-        throw Exception('This account is registered as a $role. Please use your designated portal.');
+        throw Exception('Access denied. Administrator privileges required.');
       }
 
       if (mounted) {

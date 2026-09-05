@@ -11,11 +11,21 @@ import 'package:path_provider/path_provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../models/student_model.dart';
 import 'database_service.dart';
-import 'pdf_helpers.dart';
 import '../student_portal/student_auth_service.dart';
+import 'audit_log_service.dart';
 
 class PrintService {
   static Future<void> printStudentReport(StudentModel student) async {
+    try {
+      await AuditLogService.logAction(
+        actorId: student.id,
+        actorName: student.name,
+        actorRole: 'USER',
+        action: 'STUDENT_REPORT_EXPORTED',
+        transactionId: student.id,
+        details: 'Exported PDF report for student ${student.name} (${student.id}).',
+      );
+    } catch (_) {}
     // Use a short timeout so a slow/offline Firestore call never hangs the print button.
     Map<String, dynamic>? authInfo;
     try {
