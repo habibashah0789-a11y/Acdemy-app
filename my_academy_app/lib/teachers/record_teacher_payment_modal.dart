@@ -28,19 +28,10 @@ class _RecordTeacherPaymentModalState extends State<RecordTeacherPaymentModal> {
   DateTime _selectedDate = DateTime.now();
   TimeOfDay _selectedTime = TimeOfDay.now();
 
-  final List<String> _quickReasons = [
-    'Monthly Salary',
-    'Teaching Allowance',
-    'Performance Bonus',
-    'Advance Payment',
-    'Special Incentive',
-  ];
-
   @override
   void initState() {
     super.initState();
     _selectedTeacher = widget.preselectedTeacher;
-    _reasonController.text = 'Monthly Salary';
     _loadTeachers();
   }
 
@@ -201,7 +192,7 @@ class _RecordTeacherPaymentModalState extends State<RecordTeacherPaymentModal> {
                       _buildVerifyRow('Target Teacher', _selectedTeacher!.name),
                       _buildVerifyRow('Subject & Section',
                           '${_selectedTeacher!.subject} (${_selectedTeacher!.section})'),
-                      _buildVerifyRow('Reason', _reasonController.text.trim()),
+                      _buildVerifyRow('Payment Note', _reasonController.text.trim()),
                       _buildVerifyRow(
                           'Date & Time',
                           DateFormat('dd MMM yyyy, hh:mm a')
@@ -489,35 +480,21 @@ class _RecordTeacherPaymentModalState extends State<RecordTeacherPaymentModal> {
               ),
               const SizedBox(height: 16),
 
-              // Quick Reasons Chips
-              const Text('Payment Reason',
+              // Payment Note / Reason Input
+              const Text('Payment Note / Reason',
                   style: TextStyle(
                       fontSize: 13,
                       fontWeight: FontWeight.bold,
                       color: Colors.black87)),
               const SizedBox(height: 6),
-              Wrap(
-                spacing: 8,
-                runSpacing: 4,
-                children: _quickReasons.map((reason) {
-                  final isSelected = _reasonController.text.trim() == reason;
-                  return ChoiceChip(
-                    label: Text(reason, style: const TextStyle(fontSize: 11)),
-                    selected: isSelected,
-                    selectedColor: Colors.indigo.shade100,
-                    onSelected: (selected) {
-                      if (selected) {
-                        setState(() => _reasonController.text = reason);
-                      }
-                    },
-                  );
-                }).toList(),
-              ),
-              const SizedBox(height: 8),
               TextFormField(
                 controller: _reasonController,
+                maxLines: 3,
+                minLines: 1,
                 decoration: InputDecoration(
-                  hintText: 'Or enter custom reason...',
+                  hintText: 'Enter payment note or reason in your own words...',
+                  prefixIcon: const Icon(Icons.note_alt_rounded,
+                      color: Colors.indigo),
                   filled: true,
                   fillColor: Colors.grey.shade50,
                   border: OutlineInputBorder(
@@ -527,7 +504,7 @@ class _RecordTeacherPaymentModalState extends State<RecordTeacherPaymentModal> {
                 ),
                 validator: (val) {
                   if (val == null || val.trim().isEmpty) {
-                    return 'Please specify payment reason';
+                    return 'Please enter a payment note or reason';
                   }
                   return null;
                 },
