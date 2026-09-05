@@ -14,37 +14,92 @@ service cloud.firestore {
       return isSignedIn();
     }
 
-    // Roles
+    // ── Roles ───────────────────────────────────────────────────────
     match /roles/{uid} {
       allow read, write: if true;
     }
 
-    // Teachers
+    // ── Teachers ────────────────────────────────────────────────────
     match /teachers/{teacherId} {
       allow read, write: if true;
+      match /{subcollection=**} {
+        allow read, write: if true;
+      }
     }
 
-    // Teacher Payouts
+    // ── Teacher Payouts ──────────────────────────────────────────────
     match /teacher_payouts/{payoutId} {
       allow read, write: if true;
     }
 
-    // Students
+    // ── Students ────────────────────────────────────────────────────
     match /students/{studentId} {
       allow read, write: if true;
+      match /{subcollection=**} {
+        allow read, write: if true;
+      }
     }
 
-    // Student Auth
+    // ── Student Auth ─────────────────────────────────────────────────
     match /student_auth/{studentId} {
       allow read, write: if true;
     }
 
-    // Notifications
+    // ── Notifications & Announcements ──────────────────────────────
     match /notifications/{notifId} {
       allow read, write: if true;
     }
 
-    // Everything else
+    match /announcements/{announcementId} {
+      allow read, write: if true;
+    }
+
+    // ── Devices (FCM Push Tokens) ────────────────────────────────────
+    match /devices/{deviceId} {
+      allow read, write: if true;
+    }
+
+    // ── Notification Triggers (Cloud Functions) ─────────────────────
+    match /notification_triggers/{triggerId} {
+      allow read, write: if true;
+    }
+
+    // ── Recycled Students ────────────────────────────────────────────
+    match /recycled_students/{studentId} {
+      allow read, write: if true;
+    }
+
+    // ── Payment Transactions & Financial Ledger ─────────────────────
+    match /payment_transactions/{txnId} {
+      allow read, write: if true;
+    }
+
+    match /payment_config/{configId} {
+      allow read, write: if true;
+    }
+
+    match /audit_logs/{logId} {
+      allow read, write: if true;
+    }
+
+    match /fee_records/{feeRecordId} {
+      allow read, write: if true;
+    }
+
+    // ── Academy Profile & Schedules ──────────────────────────────────
+    match /academy_profile/{uid} {
+      allow read, write: if true;
+    }
+
+    match /class_schedules/{scheduleId} {
+      allow read, write: if true;
+    }
+
+    match /daily_records/{recordId} {
+      allow read, write: if true;
+    }
+
+    // ── Fallback ─────────────────────────────────────────────────────
     match /{document=**} {
       allow read, write: if true;
     }

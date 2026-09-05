@@ -21,27 +21,29 @@ service cloud.firestore {
     }
 
     // ── Roles ───────────────────────────────────────────────────────
-    // Allow read & write so admin can seamlessly create & manage teacher roles
     match /roles/{uid} {
       allow read, write: if true;
     }
 
     // ── Teachers ────────────────────────────────────────────────────
-    // Public read & write for creating, updating, and managing teacher records
     match /teachers/{teacherId} {
       allow read, write: if true;
+      match /{subcollection=**} {
+        allow read, write: if true;
+      }
     }
 
     // ── Teacher Payouts ──────────────────────────────────────────────
-    // Public read & write for recording payouts and teacher payout ledger
     match /teacher_payouts/{payoutId} {
       allow read, write: if true;
     }
 
     // ── Students ────────────────────────────────────────────────────
-    // Public read & write for student portal and admin management
     match /students/{studentId} {
       allow read, write: if true;
+      match /{subcollection=**} {
+        allow read, write: if true;
+      }
     }
 
     // ── Student Auth ─────────────────────────────────────────────────
@@ -51,6 +53,10 @@ service cloud.firestore {
 
     // ── Notifications / Announcements ────────────────────────────────
     match /notifications/{notifId} {
+      allow read, write: if true;
+    }
+
+    match /announcements/{announcementId} {
       allow read, write: if true;
     }
 
@@ -69,8 +75,33 @@ service cloud.firestore {
       allow read, write: if true;
     }
 
-    // ── Academy Profile ──────────────────────────────────────────────
+    // ── Payment Transactions & Financial Ledger ─────────────────────
+    match /payment_transactions/{txnId} {
+      allow read, write: if true;
+    }
+
+    match /payment_config/{configId} {
+      allow read, write: if true;
+    }
+
+    match /audit_logs/{logId} {
+      allow read, write: if true;
+    }
+
+    match /fee_records/{feeRecordId} {
+      allow read, write: if true;
+    }
+
+    // ── Academy Profile & Schedules ──────────────────────────────────
     match /academy_profile/{uid} {
+      allow read, write: if true;
+    }
+
+    match /class_schedules/{scheduleId} {
+      allow read, write: if true;
+    }
+
+    match /daily_records/{recordId} {
       allow read, write: if true;
     }
 

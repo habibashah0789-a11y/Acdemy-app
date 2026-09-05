@@ -1,6 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart';
 import '../models/teacher_payout_model.dart';
+import 'audit_log_service.dart';
 import 'notification_service.dart';
 
 class TeacherPayoutService {
@@ -54,6 +55,20 @@ class TeacherPayoutService {
       await _dispatchPayoutNotification(payout);
     } catch (e) {
       debugPrint('[TeacherPayoutService] Error sending payout notification: $e');
+    }
+
+    // Log Audit action
+    try {
+      await AuditLogService.logAction(
+        actorId: 'ADMIN',
+        actorName: adminName,
+        actorRole: 'ADMIN',
+        action: 'TEACHER_PAYOUT_CREATED',
+        transactionId: payout.id,
+        details: 'Recorded payout of Rs ${amount.toStringAsFixed(0)} for teacher $teacherName ($teacherSubject - $teacherSection). Note: $reason',
+      );
+    } catch (e) {
+      debugPrint('[TeacherPayoutService] Error logging audit action: $e');
     }
 
     return payout;

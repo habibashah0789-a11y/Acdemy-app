@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../dashboard/dashboard_screen.dart';
+import '../screens/admin_finance_screen.dart';
 import '../students/student_list_screen.dart';
 import '../teachers/teacher_folder_screen.dart';
 import '../theme/app_theme.dart';
@@ -15,19 +16,18 @@ class MainWrapper extends StatefulWidget {
 
 class _MainWrapperState extends State<MainWrapper> {
   int _currentIndex = 0;
-  late final PageController _pageController;
 
   final List<Widget> _screens = [
     const DashboardScreen(),
     const StudentListScreen(),
     const TeacherFolderScreen(),
+    const AdminFinanceScreen(),
     const SettingsScreen(),
   ];
 
   @override
   void initState() {
     super.initState();
-    _pageController = PageController(initialPage: _currentIndex);
     // Initialize NotificationService to sync and listen to Firestore notifications
     NotificationService.notificationsStream();
     // Request permissions and subscribe to the push notifications topic
@@ -36,7 +36,6 @@ class _MainWrapperState extends State<MainWrapper> {
 
   @override
   void dispose() {
-    _pageController.dispose();
     super.dispose();
   }
 
@@ -72,6 +71,11 @@ class _MainWrapperState extends State<MainWrapper> {
             icon: Icon(Icons.supervisor_account_outlined),
             activeIcon: Icon(Icons.supervisor_account_rounded),
             label: 'Teachers',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.account_balance_wallet_outlined),
+            activeIcon: Icon(Icons.account_balance_wallet_rounded),
+            label: 'Finance',
           ),
           BottomNavigationBarItem(
             icon: Icon(Icons.settings_outlined),

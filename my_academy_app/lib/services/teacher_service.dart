@@ -523,6 +523,8 @@ class TeacherService {
       'targetSubject': formattedTeacherSubject,
       'targetSection': teacher.section,
       'class': displayClass,
+      'className': displayClass,
+      'targetClass': displayClass,
       'timestamp': FieldValue.serverTimestamp(),
       'createdAt': FieldValue.serverTimestamp(),
       'type': 'teacher_announcement',

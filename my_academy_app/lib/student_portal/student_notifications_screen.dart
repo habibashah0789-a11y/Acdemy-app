@@ -54,14 +54,18 @@ class _StudentNotificationsScreenState extends State<StudentNotificationsScreen>
 
     if (student == null) return true; // Fallback if student profile not yet loaded
 
-    // 2. Target Class / Grade Check
+    // 2. Target Class / Grade / Section Check
     final targetClass = n.className.trim().toLowerCase();
     final studentGrade = student.grade.trim().toLowerCase();
+    final studentClassType = student.classType.trim().toLowerCase();
 
     if (targetClass.isNotEmpty && targetClass != 'all') {
       bool classMatches = targetClass == studentGrade ||
+          targetClass == studentClassType ||
           studentGrade.contains(targetClass) ||
-          targetClass.contains(studentGrade);
+          targetClass.contains(studentGrade) ||
+          studentClassType.contains(targetClass) ||
+          targetClass.contains(studentClassType);
       if (!classMatches) return false;
     }
 

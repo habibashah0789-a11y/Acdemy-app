@@ -35,11 +35,11 @@ class _TeacherMainWrapperState extends State<TeacherMainWrapper> {
   }
 
   static const List<_NavItem> _navItems = [
-    _NavItem(Icons.dashboard_rounded, Icons.dashboard_outlined, 'Dashboard'),
-    _NavItem(Icons.people_rounded, Icons.people_outline_rounded, 'My Students'),
-    _NavItem(Icons.account_balance_wallet_rounded, Icons.account_balance_wallet_outlined, 'Payment Ledger'),
-    _NavItem(Icons.notifications_rounded, Icons.notifications_outlined, 'Notices'),
-    _NavItem(Icons.person_rounded, Icons.person_outline_rounded, 'Profile'),
+    _NavItem(Icons.dashboard_outlined, Icons.dashboard_rounded, 'Dashboard'),
+    _NavItem(Icons.people_outline_rounded, Icons.people_rounded, 'My Students'),
+    _NavItem(Icons.account_balance_wallet_outlined, Icons.account_balance_wallet_rounded, 'Payment Ledger'),
+    _NavItem(Icons.notifications_outlined, Icons.notifications_rounded, 'Notices'),
+    _NavItem(Icons.person_outline_rounded, Icons.person_rounded, 'Profile'),
   ];
 
   @override

@@ -28,11 +28,7 @@ class SoundService {
       await HapticFeedback.lightImpact();
       final player = _getPlayer();
       await player.stop();
-      try {
-        await player.play(AssetSource('sound/notification_chime.mp3'));
-      } catch (_) {
-        await player.play(AssetSource('sound/Soft_chime_new_messa_#2-1788553589976.mp3'));
-      }
+      await player.play(AssetSource('sound/notification_chime.mp3'));
     } catch (e) {
       debugPrint('Notice playing custom notification sound: $e');
       try {
@@ -49,11 +45,7 @@ class SoundService {
       await HapticFeedback.mediumImpact();
       final player = _getPlayer();
       await player.stop();
-      try {
-        await player.play(AssetSource('sound/notification_chime.mp3'));
-      } catch (_) {
-        await player.play(AssetSource('sound/Soft_chime_new_messa_#2-1788553589976.mp3'));
-      }
+      await player.play(AssetSource('sound/notification_chime.mp3'));
     } catch (e) {
       debugPrint('Notice playing custom notification sound: $e');
       try {

@@ -390,7 +390,6 @@ $st
             backgroundColor: Colors.transparent,
             onDestinationSelected: (index) {
               setState(() => _currentIndex = index);
-              _pageController.jumpToPage(index);
             },
             destinations: [
               const NavigationDestination(

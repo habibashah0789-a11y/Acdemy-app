@@ -241,9 +241,11 @@ Firebase projectId = ${Firebase.app().options.projectId}
         return;
       }
 
-      final token = await _messaging.getToken();
-      final tokenExists = token != null && token.isNotEmpty;
-      debugPrint('''
+      String? token;
+      try {
+        token = await _messaging.getToken();
+        final tokenExists = token != null && token.isNotEmpty;
+        debugPrint('''
 ==============================
 [FCM DEBUG TOKEN]
 token exists = ${tokenExists ? 'YES' : 'NO'}
@@ -252,8 +254,11 @@ platform = ${defaultTargetPlatform.name}
 Firebase projectId = ${Firebase.app().options.projectId}
 ==============================''');
 
-      await _messaging.subscribeToTopic('academy_all');
-      await _messaging.subscribeToTopic('students');
+        await _messaging.subscribeToTopic('academy_all');
+        await _messaging.subscribeToTopic('students');
+      } catch (e) {
+        debugPrint('[NotificationService] FCM token retrieval note (platform specific): $e');
+      }
       FirebaseMessaging.onBackgroundMessage(firebaseMessagingBackgroundHandler);
 
       // Handle Foreground Notifications (App OPEN)
