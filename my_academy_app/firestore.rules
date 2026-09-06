@@ -20,6 +20,12 @@ service cloud.firestore {
              get(/databases/$(database)/documents/roles/$(request.auth.uid)).data.role == 'teacher';
     }
 
+    function isStudent() {
+      return isSignedIn() &&
+             exists(/databases/$(database)/documents/roles/$(request.auth.uid)) &&
+             get(/databases/$(database)/documents/roles/$(request.auth.uid)).data.role == 'student';
+    }
+
     // ── Roles ───────────────────────────────────────────────────────
     match /roles/{uid} {
       allow read, write: if true;

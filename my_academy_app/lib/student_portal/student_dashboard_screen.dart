@@ -170,21 +170,6 @@ class _StudentDashboardScreenState extends State<StudentDashboardScreen> {
       // Listen to notifications in real-time
       _noticesSubscription = FirebaseFirestore.instance
           .collection('notifications')
-          .where(
-            Filter.or(
-              Filter('userId', isEqualTo: student.id),
-              Filter('type', isEqualTo: 'student_registered'),
-              Filter('type', isEqualTo: 'fee_reminder'),
-              Filter('type', isEqualTo: 'announcement'),
-              Filter.and(
-                Filter('type', isEqualTo: 'teacher_announcement'),
-                Filter.or(
-                  Filter('targetClass', whereIn: [student.classType, student.grade, 'All', 'General']),
-                  Filter('targetSubject', whereIn: studentSubjects)
-                )
-              )
-            )
-          )
           .orderBy('timestamp', descending: true)
           .snapshots()
           .listen((noticesSnapshot) {

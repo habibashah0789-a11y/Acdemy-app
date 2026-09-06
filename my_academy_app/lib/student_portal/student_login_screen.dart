@@ -325,36 +325,7 @@ class _StudentLoginScreenState extends State<StudentLoginScreen> {
 
                   const SizedBox(height: 32),
 
-                  // Admin Portal Link
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Text(
-                        'Are you staff? ',
-                        style: TextStyle(
-                          fontSize: 13,
-                          color: isDark ? AppTheme.darkTextSecondary : AppTheme.lightTextSecondary,
-                        ),
-                      ),
-                      GestureDetector(
-                        onTap: () {
-                          Navigator.of(context).push(
-                            MaterialPageRoute(builder: (_) => const LoginScreen()),
-                          );
-                        },
-                        child: Text(
-                          'Administration Portal →',
-                          style: TextStyle(
-                            fontSize: 13,
-                            fontWeight: FontWeight.bold,
-                            color: isDark ? AppTheme.primaryBlue.withValues(alpha: 0.85) : AppTheme.primaryBlue,
-                            decoration: TextDecoration.underline,
-                            decorationColor: AppTheme.primaryBlue,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
+
 
                   const SizedBox(height: 16),
 

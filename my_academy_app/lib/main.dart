@@ -119,10 +119,7 @@ class _AuthWrapperState extends State<AuthWrapper> {
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      NotificationService.init(key: appNavigatorKey);
-      NotificationService.requestPermissionWithRationale(context);
-    });
+    // Notification permission request removed per user request
   }
 
   Widget _buildStartupSplash(BuildContext context) {

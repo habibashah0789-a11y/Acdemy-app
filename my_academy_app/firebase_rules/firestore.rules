@@ -14,6 +14,10 @@ service cloud.firestore {
       return isSignedIn();
     }
 
+    function isStudent() {
+      return isSignedIn();
+    }
+
     // ── Roles ───────────────────────────────────────────────────────
     match /roles/{uid} {
       allow read, write: if true;
