@@ -7,7 +7,7 @@ import '../theme/app_theme.dart';
 import '../widgets/shimmer_loading_widget.dart';
 import '../widgets/custom_card.dart';
 import 'student_auth_service.dart';
-import 'student_main_wrapper.dart';
+import 'dart:ui';
 import 'student_qr_scanner_screen.dart';
 import '../services/notification_service.dart';
 
@@ -116,18 +116,50 @@ class _StudentLoginScreenState extends State<StudentLoginScreen> {
     return Scaffold(
       body: Stack(
         children: [
-          // Elegant Header Gradient Blob Background
+          // Premium Ambient Background
+          Positioned.fill(
+            child: Container(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: isDark 
+                    ? [const Color(0xFF020617), const Color(0xFF1E3A8A), const Color(0xFF0F172A)]
+                    : [const Color(0xFFF0FDF4), const Color(0xFFDCFCE7), const Color(0xFFBBF7D0)],
+                ),
+              ),
+            ),
+          ),
+          
+          // Animated Ambient Orbs
           Positioned(
             top: -100,
             left: -50,
-            right: -50,
             child: Container(
-              height: 320,
+              width: 300,
+              height: 300,
               decoration: BoxDecoration(
-                gradient: AppTheme.primaryGradient,
-                borderRadius: const BorderRadius.vertical(bottom: Radius.circular(160)),
+                shape: BoxShape.circle,
+                color: const Color(0xFF22C55E).withOpacity(isDark ? 0.15 : 0.08),
               ),
-            ),
+            ).animate(onPlay: (controller) => controller.repeat(reverse: true))
+             .scale(begin: const Offset(1, 1), end: const Offset(1.2, 1.2), duration: 4.seconds)
+             .move(begin: const Offset(0, 0), end: const Offset(20, 20), duration: 5.seconds),
+          ),
+          
+          Positioned(
+            bottom: -50,
+            right: -100,
+            child: Container(
+              width: 400,
+              height: 400,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: const Color(0xFF3B82F6).withOpacity(isDark ? 0.1 : 0.05),
+              ),
+            ).animate(onPlay: (controller) => controller.repeat(reverse: true))
+             .scale(begin: const Offset(1, 1), end: const Offset(1.1, 1.1), duration: 6.seconds)
+             .move(begin: const Offset(0, 0), end: const Offset(-30, -20), duration: 7.seconds),
           ),
           SafeArea(
             child: SingleChildScrollView(
@@ -137,48 +169,55 @@ class _StudentLoginScreenState extends State<StudentLoginScreen> {
                 children: [
                   const SizedBox(height: 36),
 
-                  // Brand Icon & Title
+                  // Premium Logo
                   Container(
-                    height: 96,
-                    width: 96,
+                    height: 110,
+                    width: 110,
                     decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(26),
+                      gradient: LinearGradient(
+                        colors: [const Color(0xFF22C55E), const Color(0xFF16A34A)],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                      ),
+                      borderRadius: BorderRadius.circular(30),
                       boxShadow: [
                         BoxShadow(
-                          color: AppTheme.primaryBlue.withValues(alpha: 0.25),
-                          blurRadius: 20,
-                          offset: const Offset(0, 8),
+                          color: const Color(0xFF22C55E).withOpacity(0.4),
+                          blurRadius: 30,
+                          offset: const Offset(0, 10),
                         )
                       ],
+                      border: Border.all(
+                        color: Colors.white.withOpacity(0.2),
+                        width: 1.5,
+                      ),
                     ),
-                    child: const Icon(
-                      Icons.school_rounded,
-                      size: 52,
-                      color: AppTheme.primaryBlue,
+                    child: const Center(
+                      child: Text('🎓', style: TextStyle(fontSize: 48)),
                     ),
-                  ).animate().fadeIn(duration: 500.ms).scale(begin: const Offset(0.85, 0.85)),
+                  ).animate().fadeIn(duration: 600.ms).scale(begin: const Offset(0.8, 0.8), curve: Curves.easeOutBack),
 
-                  const SizedBox(height: 20),
-
-                  Text(
-                    'Quaid Academy',
-                    style: GoogleFonts.poppins(
-                      fontSize: 26,
-                      fontWeight: FontWeight.bold,
-                      color: isDark ? Colors.white : AppTheme.primaryDarkBlue,
-                    ),
-                  ).animate().fadeIn(),
+                  const SizedBox(height: 28),
 
                   Text(
-                    'Student Access Portal',
-                    style: GoogleFonts.poppins(
-                      fontSize: 14,
-                      color: isDark ? AppTheme.darkTextSecondary : AppTheme.lightTextSecondary,
+                    'Student Portal',
+                    style: GoogleFonts.outfit(
+                      fontSize: 32,
+                      fontWeight: FontWeight.w800,
+                      letterSpacing: -0.5,
+                      color: isDark ? Colors.white : const Color(0xFF0F172A),
+                    ),
+                  ).animate().fadeIn().slideY(begin: 0.1),
+
+                  Text(
+                    'Quaid Academy — Student Access',
+                    style: GoogleFonts.outfit(
+                      fontSize: 15,
+                      color: isDark ? Colors.grey[400] : Colors.grey[600],
                       fontWeight: FontWeight.w500,
-                      letterSpacing: 0.5,
+                      letterSpacing: 0.2,
                     ),
-                  ).animate().fadeIn(),
+                  ).animate().fadeIn().slideY(begin: 0.15),
 
                   if (widget.message != null) ...[
                     const SizedBox(height: 18),
