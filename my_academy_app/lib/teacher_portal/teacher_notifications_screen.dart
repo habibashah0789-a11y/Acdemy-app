@@ -58,31 +58,42 @@ class _TeacherNotificationsScreenState
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(
-          'Announcements & Notices',
-          style: GoogleFonts.poppins(fontWeight: FontWeight.bold),
-        ),
-      ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: _openCreateAnnouncementModal,
-        backgroundColor: AppTheme.primaryBlue,
-        icon: const Icon(Icons.campaign_rounded, color: Colors.white),
-        label: Text(
-          'New Announcement',
-          style: GoogleFonts.poppins(
-            fontWeight: FontWeight.w600,
-            color: Colors.white,
+    return DefaultTabController(
+      length: 2,
+      child: Scaffold(
+        appBar: AppBar(
+          title: Text(
+            'Announcements & Notices',
+            style: GoogleFonts.poppins(fontWeight: FontWeight.bold),
+          ),
+          bottom: const TabBar(
+            indicatorColor: Colors.white,
+            labelColor: Colors.white,
+            unselectedLabelColor: Colors.white70,
+            tabs: [
+              Tab(text: 'Academy Notices'),
+              Tab(text: 'My Announcements'),
+            ],
           ),
         ),
-      ),
-      body: StreamBuilder<QuerySnapshot>(
-        stream: FirebaseFirestore.instance
-            .collection('notifications')
-            .orderBy('createdAt', descending: true)
-            .limit(60)
-            .snapshots(),
+        floatingActionButton: FloatingActionButton.extended(
+          onPressed: _openCreateAnnouncementModal,
+          backgroundColor: AppTheme.primaryBlue,
+          icon: const Icon(Icons.campaign_rounded, color: Colors.white),
+          label: Text(
+            'New Announcement',
+            style: GoogleFonts.poppins(
+              fontWeight: FontWeight.w600,
+              color: Colors.white,
+            ),
+          ),
+        ),
+        body: StreamBuilder<QuerySnapshot>(
+          stream: FirebaseFirestore.instance
+              .collection('notifications')
+              .orderBy('timestamp', descending: true)
+              .limit(60)
+              .snapshots(),
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
             return const Center(child: CircularProgressIndicator());
@@ -97,8 +108,16 @@ class _TeacherNotificationsScreenState
           }
 
           final docs = snapshot.data?.docs ?? [];
-          final filtered = docs.where((doc) {
+          // Academy Notices filter
+          final academyNotices = docs.where((doc) {
             final data = doc.data() as Map<String, dynamic>;
+            final senderId = data['senderId'] as String? ?? data['teacherId'] as String? ?? '';
+            
+            // Exclude teacher's own announcements from this tab
+            if (_currentTeacher != null && senderId == _currentTeacher!.id) {
+              return false;
+            }
+
             final notifType = data['notificationType'] as String? ?? '';
             
             // Targeted teacher payout notifications
@@ -125,22 +144,47 @@ class _TeacherNotificationsScreenState
                 (targetSection.isEmpty || targetSection == mySection);
           }).toList();
 
-          if (filtered.isEmpty) {
-            return _buildEmpty();
-          }
+          // My Announcements filter
+          final myAnnouncements = docs.where((doc) {
+            final data = doc.data() as Map<String, dynamic>;
+            final senderId = data['senderId'] as String? ?? data['teacherId'] as String? ?? '';
+            final registeredBy = data['registeredBy'] as String? ?? '';
 
-          return ListView.builder(
-            padding: const EdgeInsets.fromLTRB(16, 16, 16, 80),
-            itemCount: filtered.length,
-            itemBuilder: (context, i) {
-              final doc = filtered[i];
-              final data = doc.data() as Map<String, dynamic>;
-              data['id'] = doc.id;
-              return _buildNotifCard(data, i, isDark);
-            },
+            if (_currentTeacher != null) {
+              if (senderId.isNotEmpty) {
+                return senderId == _currentTeacher!.id;
+              } else if (registeredBy.isNotEmpty && _currentTeacher!.name.isNotEmpty) {
+                return registeredBy.toLowerCase().contains(_currentTeacher!.name.toLowerCase());
+              }
+            }
+            return false;
+          }).toList();
+
+          return TabBarView(
+            children: [
+              _buildList(academyNotices, isDark, 'No Academy Notices', 'All official updates from the administration will appear here.'),
+              _buildList(myAnnouncements, isDark, 'No Announcements Yet', 'Tap the button below to publish your first announcement to your students.'),
+            ],
           );
         },
       ),
+      ),
+    );
+  }
+
+  Widget _buildList(List<QueryDocumentSnapshot> docs, bool isDark, String emptyTitle, String emptySubtitle) {
+    if (docs.isEmpty) {
+      return _buildEmpty(emptyTitle, emptySubtitle);
+    }
+    return ListView.builder(
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 80),
+      itemCount: docs.length,
+      itemBuilder: (context, i) {
+        final doc = docs[i];
+        final data = doc.data() as Map<String, dynamic>;
+        data['id'] = doc.id;
+        return _buildNotifCard(data, i, isDark);
+      },
     );
   }
 
@@ -530,7 +574,7 @@ class _TeacherNotificationsScreenState
     }
   }
 
-  Widget _buildEmpty() {
+  Widget _buildEmpty(String title, String subtitle) {
     return Center(
       child: Padding(
         padding: const EdgeInsets.all(40),
@@ -541,13 +585,13 @@ class _TeacherNotificationsScreenState
                 size: 72, color: Colors.grey.shade300),
             const SizedBox(height: 16),
             Text(
-              'No Announcements Yet',
+              title,
               style: GoogleFonts.poppins(
                   fontSize: 18, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 8),
             Text(
-              'Tap the button below to publish your first announcement to your students.',
+              subtitle,
               textAlign: TextAlign.center,
               style: TextStyle(color: Colors.grey.shade500, fontSize: 13),
             ),

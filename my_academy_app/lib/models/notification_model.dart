@@ -145,6 +145,8 @@ class NotificationModel {
         map['targetSubject']?.toString() ??
         '';
 
+    final parsedTeacherId = map['teacherId']?.toString() ?? map['senderId']?.toString() ?? '';
+
     final parsedClassName = map['className']?.toString() ??
         map['targetClass']?.toString() ??
         map['class']?.toString() ??
@@ -172,7 +174,7 @@ class NotificationModel {
       mediaType: map['mediaType']?.toString() ?? map['attachmentType']?.toString() ?? 'none',
       teacherName: rawTeacherName,
       teacherSubject: rawTeacherSubject,
-      teacherId: map['teacherId']?.toString() ?? '',
+      teacherId: parsedTeacherId,
     );
   }
 

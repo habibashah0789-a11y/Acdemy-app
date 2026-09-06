@@ -1026,13 +1026,19 @@ status = PENDING
             final classType = student.classType.trim().toLowerCase();
             final subjects = student.subject.split(',').map((e) => e.trim().toLowerCase()).toList();
             
+            final grade = student.grade.trim().toLowerCase();
             final nClass = n.className.trim().toLowerCase();
             final nSubj = n.subject.trim().toLowerCase();
             
-            final matchesClass = (nClass.isEmpty || nClass == classType || nClass == 'all');
-            final matchesSubject = (nSubj.isEmpty || nSubj == 'all' || subjects.contains(nSubj));
+            final matchesClass = nClass.isEmpty || nClass == 'all' || 
+                nClass == classType || nClass == grade ||
+                grade.contains(nClass) || nClass.contains(grade) ||
+                classType.contains(nClass) || nClass.contains(classType);
+                
+            final matchesSubject = nSubj.isEmpty || nSubj == 'all' || 
+                subjects.any((sub) => sub == nSubj || sub.contains(nSubj) || nSubj.contains(sub));
             
-            return matchesClass && matchesSubject;
+            return matchesClass || matchesSubject;
           }
           
           // General broadcasts / Admin announcements
@@ -1148,11 +1154,11 @@ status = PENDING
           final targetSection = n.className.trim().toLowerCase();
           
           if (targetSubject.isEmpty || targetSubject == 'all' || targetSection == 'all') {
-            return true;
+            return n.teacherId != teacher.id;
           }
           final mySubject = teacher.subject.toLowerCase();
           final mySection = teacher.section.toLowerCase();
-          return targetSubject == mySubject && (targetSection.isEmpty || targetSection == mySection);
+          return n.teacherId != teacher.id && targetSubject == mySubject && (targetSection.isEmpty || targetSection == mySection);
         }).toList();
 
         _lastTeacherFilteredNotices = filteredNotices;
