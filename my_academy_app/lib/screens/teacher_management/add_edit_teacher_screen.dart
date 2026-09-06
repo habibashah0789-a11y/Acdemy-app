@@ -124,7 +124,7 @@ class _AddEditTeacherScreenState extends State<AddEditTeacherScreen> {
                 ListTile(
                   leading: CircleAvatar(
                     backgroundColor: Colors.red.shade50,
-                    child: const Icon(Icons.delete_outline, color: Colors.red),
+                    child: const Icon(Icons.delete_outline_rounded, color: Colors.red),
                   ),
                   title: const Text('Remove Photo', style: TextStyle(color: Colors.red)),
                   onTap: () {
@@ -332,7 +332,7 @@ class _AddEditTeacherScreenState extends State<AddEditTeacherScreen> {
                                         )
                                       : Center(
                                           child: Icon(
-                                            Icons.person,
+                                            Icons.person_rounded,
                                             size: 50,
                                             color: AppTheme.primaryBlue
                                                 .withOpacity(0.7),
@@ -354,7 +354,7 @@ class _AddEditTeacherScreenState extends State<AddEditTeacherScreen> {
                                 border: Border.all(color: Colors.white, width: 2),
                               ),
                               child: const Icon(
-                                Icons.camera_alt,
+                                Icons.camera_alt_rounded,
                                 color: Colors.white,
                                 size: 18,
                               ),
@@ -382,7 +382,7 @@ class _AddEditTeacherScreenState extends State<AddEditTeacherScreen> {
               const SizedBox(height: 20),
 
               // ── Section: Basic Info ──
-              _sectionHeader('Basic Information', Icons.person),
+              _sectionHeader('Basic Information', Icons.person_rounded),
               const SizedBox(height: 12),
 
               TextFormField(
@@ -391,7 +391,7 @@ class _AddEditTeacherScreenState extends State<AddEditTeacherScreen> {
                 onChanged: (_) => setState(() {}),
                 decoration: const InputDecoration(
                   labelText: 'Full Name *',
-                  prefixIcon: Icon(Icons.person_outline,
+                  prefixIcon: Icon(Icons.person_outline_rounded,
                       color: AppTheme.primaryBlue),
                 ),
                 validator: (v) =>
@@ -421,7 +421,7 @@ class _AddEditTeacherScreenState extends State<AddEditTeacherScreen> {
               const SizedBox(height: 8),
 
               // ── Section: Academic Assignment ──
-              _sectionHeader('Academic Assignment', Icons.school),
+              _sectionHeader('Academic Assignment', Icons.school_rounded),
               const SizedBox(height: 12),
 
               // Section
@@ -429,7 +429,7 @@ class _AddEditTeacherScreenState extends State<AddEditTeacherScreen> {
                 value: _selectedSection,
                 decoration: const InputDecoration(
                   labelText: 'Section *',
-                  prefixIcon: Icon(Icons.account_balance,
+                  prefixIcon: Icon(Icons.account_balance_rounded,
                       color: AppTheme.primaryBlue),
                 ),
                 items: _sections
@@ -452,7 +452,7 @@ class _AddEditTeacherScreenState extends State<AddEditTeacherScreen> {
                 decoration: const InputDecoration(
                   labelText: 'Subject *',
                   prefixIcon:
-                      Icon(Icons.auto_stories, color: AppTheme.primaryBlue),
+                      Icon(Icons.auto_stories_rounded, color: AppTheme.primaryBlue),
                 ),
                 items: _subjects
                     .map((s) => DropdownMenuItem(value: s, child: Text(s)))
