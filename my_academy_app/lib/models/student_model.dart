@@ -205,7 +205,7 @@ class StudentModel extends HiveObject {
       }
     }
     // Fallback to legacy single fields
-    if (subject.trim().toLowerCase() == cleanSubj) {
+    if (subject.toLowerCase().contains(cleanSubj)) {
       return schedule;
     }
     return '';

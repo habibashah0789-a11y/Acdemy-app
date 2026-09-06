@@ -541,7 +541,14 @@ class _AdminFinanceScreenState extends State<AdminFinanceScreen>
                       title: Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          Text(p.teacherName, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+                          Expanded(
+                            child: Text(
+                              p.teacherName, 
+                              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                          const SizedBox(width: 8),
                           Text('Rs ${NumberFormat('#,##0').format(p.amount)}', style: const TextStyle(fontWeight: FontWeight.bold, color: AppTheme.secondaryGreen)),
                         ],
                       ),
@@ -681,6 +688,7 @@ class _PaymentConfigEditorState extends State<_PaymentConfigEditor> {
       isBankTransferEnabled: _bankEnabled,
       isEasypaisaEnabled: _easypaisaEnabled,
       isJazzcashEnabled: _jazzcashEnabled,
+      isGatewayEnabled: widget.config.isGatewayEnabled,
     );
 
     try {

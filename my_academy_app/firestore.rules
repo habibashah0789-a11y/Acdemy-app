@@ -46,9 +46,11 @@ service cloud.firestore {
 
     // ── Students ────────────────────────────────────────────────────
     match /students/{studentId} {
-      allow read, write: if true;
+      allow read: if true;
+      allow write: if isAdmin();
       match /{subcollection=**} {
-        allow read, write: if true;
+        allow read: if true;
+        allow write: if isAdmin();
       }
     }
 
@@ -59,11 +61,13 @@ service cloud.firestore {
 
     // ── Notifications, Announcements & Notices ──────────────────────
     match /notifications/{notifId} {
-      allow read, write: if true;
+      allow read: if true;
+      allow write: if isSignedIn();
     }
 
     match /announcements/{announcementId} {
-      allow read, write: if true;
+      allow read: if true;
+      allow write: if isAdmin() || isTeacher();
     }
 
     match /notices/{noticeId} {
@@ -95,11 +99,14 @@ service cloud.firestore {
 
     // ── Payment Transactions & Financial Ledger ─────────────────────
     match /payment_transactions/{txnId} {
-      allow read, write: if true;
+      allow read: if true;
+      allow create: if true;
+      allow update, delete: if isAdmin();
     }
 
     match /payment_config/{configId} {
-      allow read, write: if true;
+      allow read: if true;
+      allow write: if isAdmin();
     }
 
     match /audit_logs/{logId} {

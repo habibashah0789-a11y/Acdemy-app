@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
+import 'package:hive/hive.dart';
 import '../models/payment_config_model.dart';
 import '../models/payment_transaction_model.dart';
 import '../models/student_model.dart';
@@ -71,6 +72,7 @@ class _StudentFeeScreenState extends State<StudentFeeScreen> {
               _student = StudentModel.fromFirestore(doc);
               _isLoading = false;
             });
+            _checkAndShowCelebration(_student!);
           }
         }, onError: (e) {
           if (mounted) {
@@ -86,6 +88,7 @@ class _StudentFeeScreenState extends State<StudentFeeScreen> {
             _student = student;
             _isLoading = false;
           });
+          _checkAndShowCelebration(student);
         }
       } else {
         if (mounted) {
@@ -107,6 +110,64 @@ class _StudentFeeScreenState extends State<StudentFeeScreen> {
 
   Future<void> _refreshData() async {
     _initRealTimeListener();
+  }
+
+  void _checkAndShowCelebration(StudentModel student) async {
+    if (student.feeRemaining <= 0 && student.totalFee > 0) {
+      try {
+        final box = Hive.box('studentSession');
+        final hasSeen = box.get('seenFeeCelebration_${student.id}') ?? false;
+        if (!hasSeen) {
+          box.put('seenFeeCelebration_${student.id}', true);
+          
+          if (mounted) {
+            showDialog(
+              context: context,
+              builder: (ctx) => AlertDialog(
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                content: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(Icons.celebration_rounded, color: AppTheme.secondaryGreen, size: 80)
+                        .animate(onPlay: (controller) => controller.repeat())
+                        .shimmer(duration: 1200.ms, color: Colors.yellow)
+                        .scale(begin: const Offset(0.9, 0.9), end: const Offset(1.1, 1.1), duration: 800.ms)
+                        .then(delay: 200.ms)
+                        .scale(begin: const Offset(1.1, 1.1), end: const Offset(0.9, 0.9), duration: 800.ms),
+                    const SizedBox(height: 20),
+                    Text(
+                      'Congratulations! 🎉',
+                      style: GoogleFonts.poppins(fontWeight: FontWeight.bold, fontSize: 20, color: AppTheme.secondaryGreen),
+                    ),
+                    const SizedBox(height: 10),
+                    const Text(
+                      'You have successfully cleared your full academy fee for this session.',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(fontSize: 14),
+                    ),
+                    const SizedBox(height: 24),
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton(
+                        onPressed: () => Navigator.pop(ctx),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppTheme.secondaryGreen,
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                        ),
+                        child: const Text('Awesome!', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16)),
+                      ),
+                    )
+                  ],
+                ),
+              ),
+            );
+          }
+        }
+      } catch (e) {
+        // Ignore hive errors
+      }
+    }
   }
 
   @override

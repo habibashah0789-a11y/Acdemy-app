@@ -21,8 +21,9 @@ class StudentNotificationsScreen extends StatefulWidget {
   State<StudentNotificationsScreen> createState() => _StudentNotificationsScreenState();
 }
 
-class _StudentNotificationsScreenState extends State<StudentNotificationsScreen> {
+class _StudentNotificationsScreenState extends State<StudentNotificationsScreen> with SingleTickerProviderStateMixin {
   String? _studentId;
+  TabController? _tabController;
   StudentModel? _student;
   bool _isLoading = true;
   String? _errorMessage;
@@ -33,6 +34,7 @@ class _StudentNotificationsScreenState extends State<StudentNotificationsScreen>
   @override
   void initState() {
     super.initState();
+    _tabController = TabController(length: 2, vsync: this);
     _initRealTimeNotices();
     _readStatusSubscription = NotificationService.readStatusStream.listen((_) {
       if (mounted) setState(() {});
@@ -43,6 +45,7 @@ class _StudentNotificationsScreenState extends State<StudentNotificationsScreen>
   void dispose() {
     _noticesSubscription?.cancel();
     _readStatusSubscription?.cancel();
+    _tabController?.dispose();
     super.dispose();
   }
 
@@ -194,6 +197,19 @@ class _StudentNotificationsScreenState extends State<StudentNotificationsScreen>
         ),
         backgroundColor: AppTheme.primaryBlue,
         foregroundColor: Colors.white,
+        bottom: TabBar(
+          controller: _tabController,
+          indicatorColor: Colors.white,
+          indicatorWeight: 3,
+          labelColor: Colors.white,
+          unselectedLabelColor: Colors.white.withOpacity(0.7),
+          labelStyle: GoogleFonts.poppins(fontWeight: FontWeight.w600, fontSize: 14),
+          unselectedLabelStyle: GoogleFonts.poppins(fontWeight: FontWeight.normal, fontSize: 14),
+          tabs: const [
+            Tab(text: 'Administration'),
+            Tab(text: 'Teachers'),
+          ],
+        ),
       ),
       body: _isLoading
           ? ListView.builder(
@@ -220,14 +236,37 @@ class _StudentNotificationsScreenState extends State<StudentNotificationsScreen>
                       actionLabel: 'Refresh',
                       onAction: _refreshData,
                     )
-                  : RefreshIndicator(
-                      onRefresh: _refreshData,
-                      color: AppTheme.primaryBlue,
-                      child: ListView.builder(
-                        padding: const EdgeInsets.all(20),
-                        itemCount: _notices.length,
-                        itemBuilder: (context, index) {
-                          final item = _notices[index];
+                  : TabBarView(
+                      controller: _tabController,
+                      children: [
+                        _buildNoticesList(_notices.where((n) => !n.isTeacherAnnouncement).toList()),
+                        _buildNoticesList(_notices.where((n) => n.isTeacherAnnouncement).toList()),
+                      ],
+                    ),
+    );
+  }
+
+  Widget _buildNoticesList(List<NotificationModel> currentNotices) {
+    if (currentNotices.isEmpty) {
+      return EmptyStateWidget(
+        title: 'No Announcements Yet',
+        description: 'All official notices and updates will appear here.',
+        icon: Icons.notifications_off_outlined,
+        actionLabel: 'Refresh',
+        onAction: _refreshData,
+      );
+    }
+    
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    return RefreshIndicator(
+      onRefresh: _refreshData,
+      color: AppTheme.primaryBlue,
+      child: ListView.builder(
+        padding: const EdgeInsets.all(20),
+        itemCount: currentNotices.length,
+        itemBuilder: (context, index) {
+          final item = currentNotices[index];
                           
                           IconData leadingIcon = Icons.campaign_rounded;
                           Color themeColor = AppTheme.primaryBlue;
@@ -241,11 +280,11 @@ class _StudentNotificationsScreenState extends State<StudentNotificationsScreen>
                             leadingIcon = Icons.school_rounded;
                             themeColor = AppTheme.accentIndigo;
                             bgActiveColor = AppTheme.accentIndigo.withValues(alpha: 0.12);
-                          } else if (item.notificationType == 'fee_payment' || item.notificationType == 'second_installment') {
+                          } else if (item.notificationType == 'fee_payment' || item.notificationType == 'second_installment' || item.notificationType == 'fee_payment_verified') {
                             leadingIcon = Icons.payments_rounded;
                             themeColor = AppTheme.secondaryGreen;
                             bgActiveColor = AppTheme.secondaryGreen.withValues(alpha: 0.12);
-                          } else if (item.notificationType == 'fee_reminder') {
+                          } else if (item.notificationType == 'fee_reminder' || item.notificationType == 'fee_payment_rejected') {
                             leadingIcon = Icons.credit_card_rounded;
                             themeColor = AppTheme.warningRed;
                             bgActiveColor = AppTheme.warningRed.withValues(alpha: 0.12);
@@ -392,7 +431,7 @@ class _StudentNotificationsScreenState extends State<StudentNotificationsScreen>
                                                         ],
                                                       )
                                                     : Text(
-                                                        'Issued by: ${item.registeredBy.isNotEmpty ? item.registeredBy : "Administration"}',
+                                                        'Issued by: Administration / Admin',
                                                         style: TextStyle(
                                                           fontSize: 11,
                                                           color: isDark ? AppTheme.darkTextSecondary : AppTheme.lightTextSecondary,
@@ -421,8 +460,7 @@ class _StudentNotificationsScreenState extends State<StudentNotificationsScreen>
                           ).animate().fadeIn().slideY(begin: 0.05);
                         },
                       ),
-                    ),
-    );
+                    );
   }
 
   void _openNotificationDetail(
@@ -644,7 +682,7 @@ class _StudentNotificationsScreenState extends State<StudentNotificationsScreen>
                                   const SizedBox(width: 8),
                                   Expanded(
                                     child: Text(
-                                      'Issued by: ${item.registeredBy.isNotEmpty ? item.registeredBy : "Administration"}',
+                                      'Issued by: Administration / Admin',
                                       style: TextStyle(
                                         fontSize: 12,
                                         color: isDark ? AppTheme.darkTextSecondary : AppTheme.lightTextSecondary,

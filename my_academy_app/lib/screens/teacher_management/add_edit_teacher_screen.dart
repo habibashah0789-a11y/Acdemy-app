@@ -25,9 +25,6 @@ class _AddEditTeacherScreenState extends State<AddEditTeacherScreen> {
   final _formKey = GlobalKey<FormState>();
   final _nameCtrl = TextEditingController();
   final _emailCtrl = TextEditingController();
-  final _uidCtrl = TextEditingController();
-  final _teacherIdCtrl = TextEditingController();
-  final _profilePicUrlCtrl = TextEditingController();
 
   Uint8List? _imageBytes;
 
@@ -66,13 +63,10 @@ class _AddEditTeacherScreenState extends State<AddEditTeacherScreen> {
       final t = widget.teacher!;
       _nameCtrl.text = t.name;
       _emailCtrl.text = t.email;
-      _uidCtrl.text = t.id;
-      _teacherIdCtrl.text = t.teacherId;
       _selectedSection = t.section;
       _selectedSubject = t.subject;
       _selectedClasses.addAll(t.assignedClasses);
       _isActive = t.isActive;
-      _profilePicUrlCtrl.text = t.profilePicUrl;
     }
   }
 
@@ -80,9 +74,6 @@ class _AddEditTeacherScreenState extends State<AddEditTeacherScreen> {
   void dispose() {
     _nameCtrl.dispose();
     _emailCtrl.dispose();
-    _uidCtrl.dispose();
-    _teacherIdCtrl.dispose();
-    _profilePicUrlCtrl.dispose();
     super.dispose();
   }
 
@@ -128,7 +119,7 @@ class _AddEditTeacherScreenState extends State<AddEditTeacherScreen> {
                   _pickImage(ImageSource.gallery);
                 },
               ),
-              if (_imageBytes != null || _profilePicUrlCtrl.text.trim().isNotEmpty)
+              if (_imageBytes != null || (widget.isEditing && widget.teacher!.profilePicUrl.isNotEmpty))
                 ListTile(
                   leading: CircleAvatar(
                     backgroundColor: Colors.red.shade50,
@@ -139,7 +130,9 @@ class _AddEditTeacherScreenState extends State<AddEditTeacherScreen> {
                     Navigator.pop(ctx);
                     setState(() {
                       _imageBytes = null;
-                      _profilePicUrlCtrl.clear();
+                      if (widget.isEditing) {
+                        widget.teacher!.profilePicUrl = ''; // Mark as removed in memory temporarily
+                      }
                     });
                   },
                 ),
@@ -188,21 +181,8 @@ class _AddEditTeacherScreenState extends State<AddEditTeacherScreen> {
   List<String> get _availableClasses =>
       _classesBySection[_selectedSection] ?? [];
 
-  Future<void> _generateTeacherId() async {
-    setState(() => _isLoading = true);
-    final id = await TeacherService.generateTeacherId(
-      section: _selectedSection,
-      subject: _selectedSubject,
-    );
-    if (mounted) {
-      setState(() {
-        _teacherIdCtrl.text = id;
-        _isLoading = false;
-      });
-    }
-  }
-
   Future<void> _handleSave() async {
+    if (_isLoading) return;
     if (!_formKey.currentState!.validate()) return;
     if (_selectedClasses.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -218,16 +198,13 @@ class _AddEditTeacherScreenState extends State<AddEditTeacherScreen> {
     setState(() => _isLoading = true);
 
     try {
-      final teacherUid =
-          widget.isEditing ? widget.teacher!.id : _uidCtrl.text.trim();
-      String finalPicUrl = _profilePicUrlCtrl.text.trim();
+      final teacherUid = widget.isEditing ? widget.teacher!.id : FirebaseFirestore.instance.collection('teachers').doc().id;
+      String finalPicUrl = '';
 
       if (_imageBytes != null) {
         final uploadedUrl = await TeacherService.uploadTeacherProfileImage(
           _imageBytes!,
-          teacherUid.isNotEmpty
-              ? teacherUid
-              : DateTime.now().millisecondsSinceEpoch.toString(),
+          teacherUid,
         );
 
         if (uploadedUrl != null && uploadedUrl.isNotEmpty) {
@@ -235,15 +212,22 @@ class _AddEditTeacherScreenState extends State<AddEditTeacherScreen> {
         } else {
           finalPicUrl = 'data:image/jpeg;base64,${base64Encode(_imageBytes!)}';
         }
-      } else if (finalPicUrl.isEmpty && widget.isEditing) {
+      } else if (widget.isEditing) {
         finalPicUrl = widget.teacher?.profilePicUrl ?? '';
       }
+
+      final generatedTeacherId = widget.isEditing 
+          ? widget.teacher!.teacherId 
+          : await TeacherService.generateTeacherId(
+              section: _selectedSection,
+              subject: _selectedSubject,
+            );
 
       final teacher = TeacherModel(
         id: teacherUid,
         name: _nameCtrl.text.trim(),
         email: _emailCtrl.text.trim(),
-        teacherId: _teacherIdCtrl.text.trim(),
+        teacherId: generatedTeacherId,
         subject: _selectedSubject,
         section: _selectedSection,
         assignedClasses: List.from(_selectedClasses),
@@ -338,13 +322,9 @@ class _AddEditTeacherScreenState extends State<AddEditTeacherScreen> {
                             child: ClipOval(
                               child: _imageBytes != null
                                   ? Image.memory(_imageBytes!, fit: BoxFit.cover)
-                                  : (_profilePicUrlCtrl.text.trim().isNotEmpty
+                                  : (widget.isEditing && widget.teacher!.profilePicUrl.isNotEmpty
                                       ? TeacherAvatar(
-                                          teacher: TeacherModel.empty().copyWith(
-                                            name: _nameCtrl.text,
-                                            profilePicUrl:
-                                                _profilePicUrlCtrl.text.trim(),
-                                          ),
+                                          teacher: widget.teacher!,
                                           size: 104,
                                         )
                                       : Center(
@@ -386,7 +366,7 @@ class _AddEditTeacherScreenState extends State<AddEditTeacherScreen> {
                       icon: const Icon(Icons.add_a_photo_outlined, size: 16),
                       label: Text(
                         _imageBytes != null ||
-                                _profilePicUrlCtrl.text.trim().isNotEmpty
+                                (widget.isEditing && widget.teacher!.profilePicUrl.isNotEmpty)
                             ? 'Change Profile Picture'
                             : 'Upload Profile Picture',
                         style: GoogleFonts.poppins(
@@ -416,17 +396,6 @@ class _AddEditTeacherScreenState extends State<AddEditTeacherScreen> {
               ),
               const SizedBox(height: 14),
 
-              TextFormField(
-                controller: _profilePicUrlCtrl,
-                onChanged: (v) => setState(() {}),
-                decoration: const InputDecoration(
-                  labelText: 'Profile Picture URL (Optional)',
-                  prefixIcon: Icon(Icons.link_rounded,
-                      color: AppTheme.primaryBlue),
-                  helperText: 'Or tap avatar above to upload/capture photo',
-                ),
-              ),
-              const SizedBox(height: 14),
 
               TextFormField(
                 controller: _emailCtrl,
@@ -445,48 +414,6 @@ class _AddEditTeacherScreenState extends State<AddEditTeacherScreen> {
               ),
               const SizedBox(height: 14),
 
-              if (!widget.isEditing) ...[
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Expanded(
-                      child: TextFormField(
-                        controller: _uidCtrl,
-                        decoration: const InputDecoration(
-                          labelText: 'Firebase Auth UID *',
-                          prefixIcon: Icon(Icons.fingerprint_rounded,
-                              color: AppTheme.primaryBlue),
-                          helperText:
-                              'Paste from Firebase Auth or tap button to auto-generate',
-                          helperMaxLines: 2,
-                        ),
-                        validator: (v) =>
-                            (v == null || v.trim().isEmpty) ? 'UID is required' : null,
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    Tooltip(
-                      message: 'Auto-generate UID',
-                      child: ElevatedButton(
-                        onPressed: () {
-                          setState(() {
-                            _uidCtrl.text = FirebaseFirestore.instance
-                                .collection('teachers')
-                                .doc()
-                                .id;
-                          });
-                        },
-                        style: ElevatedButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 12, vertical: 18),
-                        ),
-                        child: const Icon(Icons.auto_fix_high_rounded, size: 18),
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 14),
-              ],
 
               const SizedBox(height: 8),
 
@@ -574,34 +501,6 @@ class _AddEditTeacherScreenState extends State<AddEditTeacherScreen> {
               ),
               const SizedBox(height: 20),
 
-              // Teacher ID
-              Row(
-                children: [
-                  Expanded(
-                    child: TextFormField(
-                      controller: _teacherIdCtrl,
-                      decoration: const InputDecoration(
-                        labelText: 'Teacher ID *',
-                        prefixIcon:
-                            Icon(Icons.tag_rounded, color: AppTheme.primaryBlue),
-                        helperText: 'Auto-generated or custom ID',
-                      ),
-                      validator: (v) =>
-                          (v == null || v.trim().isEmpty) ? 'ID is required' : null,
-                    ),
-                  ),
-                  const SizedBox(width: 10),
-                  ElevatedButton(
-                    onPressed: _isLoading ? null : _generateTeacherId,
-                    style: ElevatedButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 12, vertical: 18),
-                    ),
-                    child: const Icon(Icons.auto_fix_high_rounded, size: 18),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 16),
 
               // Status toggle (edit mode only)
               if (widget.isEditing) ...[
@@ -625,39 +524,7 @@ class _AddEditTeacherScreenState extends State<AddEditTeacherScreen> {
                 const SizedBox(height: 8),
               ],
 
-              // Info box for new teacher
-              if (!widget.isEditing) ...[
-                Container(
-                  padding: const EdgeInsets.all(14),
-                  decoration: BoxDecoration(
-                    color: AppTheme.accentOrange.withValues(alpha: 0.08),
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(
-                        color: AppTheme.accentOrange.withValues(alpha: 0.3)),
-                  ),
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Icon(Icons.info_outline_rounded,
-                          color: AppTheme.accentOrange, size: 18),
-                      const SizedBox(width: 10),
-                      Expanded(
-                        child: Text(
-                          'You must create the teacher\'s Firebase Auth account FIRST '
-                          'in the Firebase Console (Authentication → Add User), then '
-                          'paste the UID here. The UID links this profile to their login.',
-                          style: TextStyle(
-                            fontSize: 12,
-                            color: AppTheme.accentOrange,
-                            height: 1.4,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 20),
-              ],
+
 
               // ── Save Button ──
               SizedBox(

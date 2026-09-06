@@ -955,8 +955,6 @@ class _StudentDashboardScreenState extends State<StudentDashboardScreen> {
                                       fontWeight: FontWeight.bold,
                                       fontSize: 14,
                                     ),
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
                                   ),
                                 ),
                               ],
@@ -978,8 +976,6 @@ class _StudentDashboardScreenState extends State<StudentDashboardScreen> {
                             color: isDark ? AppTheme.darkTextSecondary : AppTheme.lightTextSecondary,
                             height: 1.4,
                           ),
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
                         ),
                       ),
                       const SizedBox(height: 6),
@@ -997,7 +993,7 @@ class _StudentDashboardScreenState extends State<StudentDashboardScreen> {
                               child: Text(
                                 notice.isTeacherAnnouncement
                                     ? notice.authorDisplay
-                                    : (notice.registeredBy.isNotEmpty ? notice.registeredBy : 'Administration'),
+                                    : 'Administration / Admin',
                                 style: TextStyle(
                                   fontSize: 11,
                                   fontWeight: notice.isTeacherAnnouncement ? FontWeight.w600 : FontWeight.normal,
@@ -1005,7 +1001,6 @@ class _StudentDashboardScreenState extends State<StudentDashboardScreen> {
                                       ? AppTheme.primaryBlue
                                       : (isDark ? AppTheme.darkTextSecondary : AppTheme.lightTextSecondary),
                                 ),
-                                overflow: TextOverflow.ellipsis,
                               ),
                             ),
                           ],

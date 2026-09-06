@@ -361,8 +361,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   alignment: BarChartAlignment.spaceAround,
                   maxY: maxY,
                   barTouchData: BarTouchData(
+                    handleBuiltInTouches: false,
                     touchCallback: (FlTouchEvent event, barTouchResponse) {
-                      if (event is! FlTapUpEvent) {
+                      if (event is! FlTapDownEvent) {
                         return;
                       }
                       if (barTouchResponse == null ||
@@ -1101,11 +1102,16 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 _buildStatsGrid(students),
 
                  const SizedBox(height: 32),
-                _buildHeaderWithAction('Revenue Overview', 'This Month'),
+                _buildHeaderWithAction('Revenue Overview', 'This Month', null),
                 const SizedBox(height: 16),
                 _buildRevenueChartDirect(students),
                 const SizedBox(height: 32),
-                _buildHeaderWithAction('Recent Activity', 'View All'),
+                _buildHeaderWithAction('Recent Activity', 'View All', () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => const DailyRecordsScreen()),
+                  );
+                }),
                 const SizedBox(height: 16),
                 _buildRecentActivityListDirect(students),
               ],
@@ -1116,7 +1122,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
     );
   }
 
-  Widget _buildHeaderWithAction(String title, String actionText) {
+  Widget _buildHeaderWithAction(String title, String actionText, VoidCallback? onActionTap) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final accentColor = isDark ? const Color(0xFF3B82F6) : AppTheme.primaryBlue;
 
@@ -1144,28 +1150,31 @@ class _DashboardScreenState extends State<DashboardScreen> {
             ),
           ],
         ),
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-          decoration: BoxDecoration(
-            color: accentColor.withValues(alpha: isDark ? 0.15 : 0.08),
-            borderRadius: BorderRadius.circular(12),
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                actionText,
-                style: GoogleFonts.poppins(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w600,
-                  color: accentColor,
+        GestureDetector(
+          onTap: onActionTap,
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+            decoration: BoxDecoration(
+              color: accentColor.withValues(alpha: isDark ? 0.15 : 0.08),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  actionText,
+                  style: GoogleFonts.poppins(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    color: accentColor,
+                  ),
                 ),
-              ),
-              if (actionText.contains('Month')) ...[
-                const SizedBox(width: 2),
-                Icon(Icons.keyboard_arrow_down_rounded, size: 16, color: accentColor),
+                if (actionText.contains('Month')) ...[
+                  const SizedBox(width: 2),
+                  Icon(Icons.keyboard_arrow_down_rounded, size: 16, color: accentColor),
+                ],
               ],
-            ],
+            ),
           ),
         ),
       ],

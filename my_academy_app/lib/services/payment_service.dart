@@ -352,7 +352,7 @@ class PaymentService {
           'timestamp': FieldValue.serverTimestamp(),
           'notificationType': 'fee_payment_verified',
           'isRead': false,
-          'targetStudentId': updatedTxn.studentId,
+          'studentId': updatedTxn.studentId,
         });
       }
     } catch (e) {
@@ -402,7 +402,7 @@ class PaymentService {
           'timestamp': FieldValue.serverTimestamp(),
           'notificationType': 'fee_payment_rejected',
           'isRead': false,
-          'targetStudentId': txn.studentId,
+          'studentId': txn.studentId,
         });
       }
     } catch (e) {
