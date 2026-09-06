@@ -123,7 +123,7 @@ class _AddEditTeacherScreenState extends State<AddEditTeacherScreen> {
                 ListTile(
                   leading: CircleAvatar(
                     backgroundColor: Colors.red.shade50,
-                    child: const Icon(Icons.delete_outline_rounded, color: Colors.red),
+                    child: const Icon(Icons.delete_outline, color: Colors.red),
                   ),
                   title: const Text('Remove Photo', style: TextStyle(color: Colors.red)),
                   onTap: () {
@@ -161,9 +161,11 @@ class _AddEditTeacherScreenState extends State<AddEditTeacherScreen> {
               targetHeight: 360,
               quality: 75,
             );
-            setState(() {
-              _imageBytes = compressed;
-            });
+            if (mounted) {
+              setState(() {
+                _imageBytes = compressed;
+              });
+            }
           }
         }
       }
@@ -172,7 +174,7 @@ class _AddEditTeacherScreenState extends State<AddEditTeacherScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
               content: Text('Failed to pick image: $e'),
-              backgroundColor: AppTheme.warningRed),
+              backgroundColor: Colors.red),
         );
       }
     }
@@ -188,7 +190,7 @@ class _AddEditTeacherScreenState extends State<AddEditTeacherScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Please select at least one class.'),
-          backgroundColor: AppTheme.warningRed,
+          backgroundColor: Colors.red,
           behavior: SnackBarBehavior.floating,
         ),
       );
@@ -257,7 +259,7 @@ class _AddEditTeacherScreenState extends State<AddEditTeacherScreen> {
                   ? '${_nameCtrl.text.trim()}\'s profile & picture updated successfully.'
                   : '${_nameCtrl.text.trim()} has been registered as a teacher with profile photo. They can now log in with their email and password.',
             ),
-            backgroundColor: AppTheme.secondaryGreen,
+            backgroundColor: Colors.green,
             behavior: SnackBarBehavior.floating,
             duration: const Duration(seconds: 4),
           ),
@@ -269,7 +271,7 @@ class _AddEditTeacherScreenState extends State<AddEditTeacherScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Failed: $e'),
-            backgroundColor: AppTheme.warningRed,
+            backgroundColor: Colors.red,
             behavior: SnackBarBehavior.floating,
           ),
         );
@@ -329,7 +331,7 @@ class _AddEditTeacherScreenState extends State<AddEditTeacherScreen> {
                                         )
                                       : Center(
                                           child: Icon(
-                                            Icons.person_rounded,
+                                            Icons.person,
                                             size: 50,
                                             color: AppTheme.primaryBlue
                                                 .withValues(alpha: 0.7),
@@ -351,7 +353,7 @@ class _AddEditTeacherScreenState extends State<AddEditTeacherScreen> {
                                 border: Border.all(color: Colors.white, width: 2),
                               ),
                               child: const Icon(
-                                Icons.camera_alt_rounded,
+                                Icons.camera_alt,
                                 color: Colors.white,
                                 size: 18,
                               ),
@@ -379,7 +381,7 @@ class _AddEditTeacherScreenState extends State<AddEditTeacherScreen> {
               const SizedBox(height: 20),
 
               // ── Section: Basic Info ──
-              _sectionHeader('Basic Information', Icons.person_rounded),
+              _sectionHeader('Basic Information', Icons.person),
               const SizedBox(height: 12),
 
               TextFormField(
@@ -388,7 +390,7 @@ class _AddEditTeacherScreenState extends State<AddEditTeacherScreen> {
                 onChanged: (_) => setState(() {}),
                 decoration: const InputDecoration(
                   labelText: 'Full Name *',
-                  prefixIcon: Icon(Icons.person_outline_rounded,
+                  prefixIcon: Icon(Icons.person_outline,
                       color: AppTheme.primaryBlue),
                 ),
                 validator: (v) =>
@@ -418,7 +420,7 @@ class _AddEditTeacherScreenState extends State<AddEditTeacherScreen> {
               const SizedBox(height: 8),
 
               // ── Section: Academic Assignment ──
-              _sectionHeader('Academic Assignment', Icons.school_rounded),
+              _sectionHeader('Academic Assignment', Icons.school),
               const SizedBox(height: 12),
 
               // Section
@@ -426,7 +428,7 @@ class _AddEditTeacherScreenState extends State<AddEditTeacherScreen> {
                 value: _selectedSection,
                 decoration: const InputDecoration(
                   labelText: 'Section *',
-                  prefixIcon: Icon(Icons.account_balance_rounded,
+                  prefixIcon: Icon(Icons.account_balance,
                       color: AppTheme.primaryBlue),
                 ),
                 items: _sections
@@ -449,7 +451,7 @@ class _AddEditTeacherScreenState extends State<AddEditTeacherScreen> {
                 decoration: const InputDecoration(
                   labelText: 'Subject *',
                   prefixIcon:
-                      Icon(Icons.auto_stories_rounded, color: AppTheme.primaryBlue),
+                      Icon(Icons.auto_stories, color: AppTheme.primaryBlue),
                 ),
                 items: _subjects
                     .map((s) => DropdownMenuItem(value: s, child: Text(s)))
@@ -519,7 +521,7 @@ class _AddEditTeacherScreenState extends State<AddEditTeacherScreen> {
                   ),
                   value: _isActive,
                   onChanged: (v) => setState(() => _isActive = v),
-                  activeColor: AppTheme.secondaryGreen,
+                  activeColor: Colors.green,
                 ),
                 const SizedBox(height: 8),
               ],
