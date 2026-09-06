@@ -21,7 +21,7 @@ class TeacherManagementScreen extends StatelessWidget {
         ),
         actions: [
           IconButton(
-            icon: const Icon(Icons.info_outline_rounded),
+            icon: const Icon(Icons.info_outline),
             tooltip: 'How teacher accounts are created',
             onPressed: () => _showAccountCreationInfo(context),
           ),
@@ -32,7 +32,7 @@ class TeacherManagementScreen extends StatelessWidget {
           context,
           MaterialPageRoute(builder: (_) => const AddEditTeacherScreen()),
         ),
-        icon: const Icon(Icons.person_add_rounded),
+        icon: const Icon(Icons.person_add),
         label: Text('Add Teacher', style: GoogleFonts.poppins()),
       ),
       body: StreamBuilder<List<TeacherModel>>(
@@ -200,7 +200,7 @@ class TeacherManagementScreen extends StatelessWidget {
                             AddEditTeacherScreen(teacher: teacher),
                       ),
                     ),
-                    icon: const Icon(Icons.edit_rounded, size: 16),
+                    icon: const Icon(Icons.edit, size: 16),
                     label: const Text('Edit'),
                     style: OutlinedButton.styleFrom(
                       padding: const EdgeInsets.symmetric(vertical: 8),
@@ -220,7 +220,7 @@ class TeacherManagementScreen extends StatelessWidget {
                         ),
                       );
                     },
-                    icon: const Icon(Icons.payments_rounded, size: 16, color: Color(0xFF10B981)),
+                    icon: const Icon(Icons.payment, size: 16, color: Color(0xFF10B981)),
                     label: const Text('Pay', style: TextStyle(color: Color(0xFF10B981), fontWeight: FontWeight.bold)),
                     style: OutlinedButton.styleFrom(
                       padding: const EdgeInsets.symmetric(vertical: 8),
@@ -234,8 +234,8 @@ class TeacherManagementScreen extends StatelessWidget {
                     onPressed: () => _toggleActive(context, teacher),
                     icon: Icon(
                       teacher.isActive
-                          ? Icons.block_rounded
-                          : Icons.check_circle_outline_rounded,
+                          ? Icons.block
+                          : Icons.check_circle_outline,
                       size: 16,
                       color: teacher.isActive ? Colors.red : Colors.green,
                     ),
@@ -262,7 +262,7 @@ class TeacherManagementScreen extends StatelessWidget {
               width: double.infinity,
               child: OutlinedButton.icon(
                 onPressed: () => _deleteTeacher(context, teacher),
-                icon: const Icon(Icons.delete_forever_rounded,
+                icon: const Icon(Icons.delete_forever,
                     size: 16, color: Colors.red),
                 label: const Text(
                   'Delete Teacher',
@@ -294,11 +294,11 @@ class TeacherManagementScreen extends StatelessWidget {
         actions: [
           TextButton.icon(
               onPressed: () => Navigator.of(ctx).pop(false),
-              icon: const Icon(Icons.close_rounded, size: 16),
+              icon: const Icon(Icons.close, size: 16),
               label: const Text('Cancel')),
           ElevatedButton.icon(
             onPressed: () => Navigator.of(ctx).pop(true),
-            icon: const Icon(Icons.delete_forever_rounded, color: Colors.white, size: 16),
+            icon: const Icon(Icons.delete_forever, color: Colors.white, size: 16),
             style: ElevatedButton.styleFrom(
               backgroundColor: Colors.red,
               foregroundColor: Colors.white,
@@ -312,6 +312,7 @@ class TeacherManagementScreen extends StatelessWidget {
     if (firstConfirm != true) return;
 
     // Second confirmation
+    if (!context.mounted) return;
     final secondConfirm = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -323,11 +324,11 @@ class TeacherManagementScreen extends StatelessWidget {
         actions: [
           TextButton.icon(
               onPressed: () => Navigator.of(ctx).pop(false),
-              icon: const Icon(Icons.close_rounded, size: 16),
+              icon: const Icon(Icons.close, size: 16),
               label: const Text('Cancel')),
           ElevatedButton.icon(
             onPressed: () => Navigator.of(ctx).pop(true),
-            icon: const Icon(Icons.delete_forever_rounded, color: Colors.white, size: 16),
+            icon: const Icon(Icons.delete_forever, color: Colors.white, size: 16),
             style: ElevatedButton.styleFrom(
               backgroundColor: Colors.red.shade800,
               foregroundColor: Colors.white,
@@ -377,18 +378,18 @@ class TeacherManagementScreen extends StatelessWidget {
         actions: [
           TextButton.icon(
               onPressed: () => Navigator.of(ctx).pop(false),
-              icon: const Icon(Icons.close_rounded, size: 16),
+              icon: const Icon(Icons.close, size: 16),
               label: const Text('Cancel')),
           ElevatedButton.icon(
             onPressed: () => Navigator.of(ctx).pop(true),
             icon: Icon(
-              teacher.isActive ? Icons.block_rounded : Icons.check_circle_rounded,
+              teacher.isActive ? Icons.block : Icons.check_circle,
               color: Colors.white,
               size: 16,
             ),
             style: ElevatedButton.styleFrom(
               backgroundColor:
-                  teacher.isActive ? AppTheme.warningRed : AppTheme.secondaryGreen,
+                  teacher.isActive ? Colors.red : Colors.green,
               foregroundColor: Colors.white,
             ),
             label: Text(action[0].toUpperCase() + action.substring(1)),
@@ -408,8 +409,8 @@ class TeacherManagementScreen extends StatelessWidget {
               ),
               behavior: SnackBarBehavior.floating,
               backgroundColor: teacher.isActive
-                  ? AppTheme.warningRed
-                  : AppTheme.secondaryGreen,
+                  ? Colors.red
+                  : Colors.green,
             ),
           );
         }
@@ -418,7 +419,7 @@ class TeacherManagementScreen extends StatelessWidget {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text('Failed: $e'),
-              backgroundColor: AppTheme.warningRed,
+              backgroundColor: Colors.red,
               behavior: SnackBarBehavior.floating,
             ),
           );
@@ -462,7 +463,7 @@ class TeacherManagementScreen extends StatelessWidget {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(Icons.people_outline_rounded,
+            Icon(Icons.people_outline,
                 size: 72, color: Colors.grey.shade300),
             const SizedBox(height: 16),
             Text(
@@ -483,7 +484,7 @@ class TeacherManagementScreen extends StatelessWidget {
                 MaterialPageRoute(
                     builder: (_) => const AddEditTeacherScreen()),
               ),
-              icon: const Icon(Icons.person_add_rounded),
+              icon: const Icon(Icons.person_add),
               label: const Text('Add First Teacher'),
             ),
           ],
@@ -499,8 +500,8 @@ class TeacherManagementScreen extends StatelessWidget {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const Icon(Icons.wifi_off_rounded,
-                size: 56, color: AppTheme.warningRed),
+            const Icon(Icons.wifi_off,
+                size: 56, color: Colors.red),
             const SizedBox(height: 16),
             Text('Failed to load teachers',
                 style: GoogleFonts.poppins(fontWeight: FontWeight.bold)),
