@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../theme/app_theme.dart';
+import 'dart:ui';
 import '../models/teacher_model.dart';
 import '../services/teacher_service.dart';
 import 'teacher_main_wrapper.dart';
@@ -173,29 +174,57 @@ class _TeacherLoginScreenState extends State<TeacherLoginScreen> {
     return Scaffold(
       body: Stack(
         children: [
-          // Background
-          Positioned(
-            top: -120,
-            left: -60,
-            right: -60,
+          // Premium Ambient Background
+          Positioned.fill(
             child: Container(
-              height: 360,
-              decoration: const BoxDecoration(
+              decoration: BoxDecoration(
                 gradient: LinearGradient(
-                  colors: [Color(0xFF0F172A), Color(0xFF1E3A8A), Color(0xFF1565C0)],
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
+                  colors: isDark 
+                    ? [const Color(0xFF020617), const Color(0xFF1E3A8A), const Color(0xFF0F172A)]
+                    : [const Color(0xFFF0F9FF), const Color(0xFFE0F2FE), const Color(0xFFBAE6FD)],
                 ),
-                borderRadius: BorderRadius.vertical(bottom: Radius.circular(180)),
               ),
             ),
+          ),
+          
+          // Animated Ambient Orbs
+          Positioned(
+            top: -100,
+            left: -50,
+            child: Container(
+              width: 300,
+              height: 300,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: const Color(0xFF3B82F6).withOpacity(isDark ? 0.15 : 0.08),
+              ),
+            ).animate(onPlay: (controller) => controller.repeat(reverse: true))
+             .scale(begin: const Offset(1, 1), end: const Offset(1.2, 1.2), duration: 4.seconds)
+             .move(begin: const Offset(0, 0), end: const Offset(20, 20), duration: 5.seconds),
+          ),
+          
+          Positioned(
+            bottom: -50,
+            right: -100,
+            child: Container(
+              width: 400,
+              height: 400,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: const Color(0xFF8B5CF6).withOpacity(isDark ? 0.1 : 0.05),
+              ),
+            ).animate(onPlay: (controller) => controller.repeat(reverse: true))
+             .scale(begin: const Offset(1, 1), end: const Offset(1.1, 1.1), duration: 6.seconds)
+             .move(begin: const Offset(0, 0), end: const Offset(-30, -20), duration: 7.seconds),
           ),
 
           SafeArea(
             child: Center(
               child: SingleChildScrollView(
                 padding: EdgeInsets.symmetric(
-                  horizontal: isWide ? size.width * 0.2 : 24,
+                  horizontal: isWide ? size.width * 0.2 : 28,
                   vertical: 24,
                 ),
                 child: Column(
@@ -207,242 +236,257 @@ class _TeacherLoginScreenState extends State<TeacherLoginScreen> {
                       alignment: Alignment.centerLeft,
                       child: TextButton.icon(
                         onPressed: () => Navigator.of(context).pop(),
-                        icon: const Icon(Icons.arrow_back_rounded,
-                            color: Colors.white, size: 18),
+                        icon: Icon(Icons.arrow_back_rounded,
+                            color: isDark ? Colors.white : AppTheme.primaryDarkBlue, size: 18),
                         label: Text(
                           'Back',
-                          style: GoogleFonts.poppins(
-                              color: Colors.white, fontSize: 14),
+                          style: GoogleFonts.outfit(
+                              color: isDark ? Colors.white : AppTheme.primaryDarkBlue, fontSize: 15, fontWeight: FontWeight.w500),
                         ),
                       ),
                     ).animate().fadeIn(duration: 400.ms),
 
                     const SizedBox(height: 12),
 
-                    // Icon
+                    // Premium Icon
                     Container(
-                      width: 90,
-                      height: 90,
+                      width: 110,
+                      height: 110,
                       decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(24),
+                        gradient: LinearGradient(
+                          colors: [const Color(0xFF3B82F6), const Color(0xFF2563EB)],
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                        ),
+                        borderRadius: BorderRadius.circular(30),
                         boxShadow: [
                           BoxShadow(
-                            color: AppTheme.primaryBlue.withValues(alpha: 0.3),
-                            blurRadius: 20,
-                            offset: const Offset(0, 8),
+                            color: const Color(0xFF3B82F6).withOpacity(0.4),
+                            blurRadius: 30,
+                            offset: const Offset(0, 10),
                           )
                         ],
+                        border: Border.all(
+                          color: Colors.white.withOpacity(0.2),
+                          width: 1.5,
+                        ),
                       ),
                       child: const Center(
-                        child: Text('👨‍🏫', style: TextStyle(fontSize: 42)),
+                        child: Text('👨‍🏫', style: TextStyle(fontSize: 48)),
                       ),
-                    )
-                        .animate()
-                        .fadeIn(duration: 600.ms)
-                        .scale(begin: const Offset(0.8, 0.8)),
+                    ).animate().fadeIn(duration: 600.ms).scale(begin: const Offset(0.8, 0.8), curve: Curves.easeOutBack),
 
-                    const SizedBox(height: 20),
+                    const SizedBox(height: 28),
 
                     Text(
                       'Teacher Portal',
-                      style: GoogleFonts.poppins(
-                        fontSize: 26,
-                        fontWeight: FontWeight.bold,
-                        color: isDark ? Colors.white : AppTheme.primaryDarkBlue,
+                      style: GoogleFonts.outfit(
+                        fontSize: 32,
+                        fontWeight: FontWeight.w800,
+                        letterSpacing: -0.5,
+                        color: isDark ? Colors.white : const Color(0xFF0F172A),
                       ),
-                    ).animate().fadeIn(),
+                    ).animate().fadeIn().slideY(begin: 0.1),
 
                     Text(
                       'Quaid Academy — Faculty Access',
-                      style: GoogleFonts.poppins(
-                        fontSize: 13,
-                        color: isDark
-                            ? AppTheme.darkTextSecondary
-                            : AppTheme.lightTextSecondary,
+                      style: GoogleFonts.outfit(
+                        fontSize: 15,
+                        color: isDark ? Colors.grey[400] : Colors.grey[600],
+                        fontWeight: FontWeight.w500,
+                        letterSpacing: 0.2,
                       ),
-                    ).animate().fadeIn(),
+                    ).animate().fadeIn().slideY(begin: 0.15),
 
-                    const SizedBox(height: 32),
+                    const SizedBox(height: 40),
 
-                    // Login Card
-                    Card(
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(20),
-                        side: BorderSide(
-                          color: isDark
-                              ? AppTheme.darkBorder
-                              : AppTheme.lightBorder,
-                        ),
-                      ),
-                      child: Padding(
-                        padding: const EdgeInsets.all(24),
-                        child: Form(
-                          key: _formKey,
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                'Sign In',
-                                style: GoogleFonts.poppins(
-                                  fontSize: 18,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                              const SizedBox(height: 4),
-                              Text(
-                                'Use your teacher email and password',
-                                style: GoogleFonts.poppins(
-                                  fontSize: 12,
-                                  color: AppTheme.lightTextSecondary,
-                                ),
-                              ),
-                              const SizedBox(height: 24),
-
-                              // Error message
-                              if (_errorMessage != null) ...[
-                                Container(
-                                  padding: const EdgeInsets.all(12),
-                                  decoration: BoxDecoration(
-                                    color: AppTheme.warningRed
-                                        .withValues(alpha: 0.08),
-                                    borderRadius: BorderRadius.circular(10),
-                                    border: Border.all(
-                                      color: AppTheme.warningRed
-                                          .withValues(alpha: 0.3),
-                                    ),
-                                  ),
-                                  child: Row(
-                                    children: [
-                                      const Icon(Icons.error_outline_rounded,
-                                          color: AppTheme.warningRed, size: 18),
-                                      const SizedBox(width: 8),
-                                      Expanded(
-                                        child: Text(
-                                          _errorMessage!,
-                                          style: GoogleFonts.poppins(
-                                            fontSize: 12,
-                                            color: AppTheme.warningRed,
-                                          ),
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                                const SizedBox(height: 16),
-                              ],
-
-                              // Email
-                              TextFormField(
-                                controller: _emailController,
-                                keyboardType: TextInputType.emailAddress,
-                                textInputAction: TextInputAction.next,
-                                decoration: const InputDecoration(
-                                  labelText: 'Email Address',
-                                  hintText: 'teacher@academy.com',
-                                  prefixIcon: Icon(Icons.email_outlined,
-                                      color: AppTheme.primaryBlue),
-                                ),
-                                validator: (v) => (v == null || !v.contains('@'))
-                                    ? 'Please enter a valid email'
-                                    : null,
-                              ),
-
-                              const SizedBox(height: 16),
-
-                              // Password
-                              TextFormField(
-                                controller: _passwordController,
-                                obscureText: _obscurePassword,
-                                textInputAction: TextInputAction.done,
-                                onFieldSubmitted: (_) {
-                                  if (!_isLoading) _handleLogin();
-                                },
-                                decoration: InputDecoration(
-                                  labelText: 'Password',
-                                  prefixIcon: const Icon(
-                                      Icons.lock_outline_rounded,
-                                      color: AppTheme.primaryBlue),
-                                  suffixIcon: IconButton(
-                                    icon: Icon(
-                                      _obscurePassword
-                                          ? Icons.visibility_off
-                                          : Icons.visibility,
-                                      color: Colors.grey,
-                                    ),
-                                    onPressed: () => setState(() =>
-                                        _obscurePassword = !_obscurePassword),
-                                  ),
-                                ),
-                                validator: (v) =>
-                                    (v == null || v.length < 6)
-                                        ? 'Password must be at least 6 characters'
-                                        : null,
-                              ),
-
-                              const SizedBox(height: 8),
-
-                              Align(
-                                alignment: Alignment.centerRight,
-                                child: TextButton.icon(
-                                  onPressed: _handleForgotPassword,
-                                  icon: const Icon(Icons.help_outline_rounded, size: 16),
-                                  label: const Text('Forgot Password?'),
-                                ),
-                              ),
-
-                              const SizedBox(height: 16),
-
-                              SizedBox(
-                                width: double.infinity,
-                                child: ElevatedButton.icon(
-                                  onPressed: _isLoading ? null : _handleLogin,
-                                  icon: _isLoading
-                                      ? const SizedBox.shrink()
-                                      : const Icon(Icons.login_rounded, color: Colors.white),
-                                  style: ElevatedButton.styleFrom(
-                                    padding: const EdgeInsets.symmetric(
-                                        vertical: 16),
-                                    shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(14),
-                                    ),
-                                    backgroundColor: AppTheme.primaryBlue,
-                                  ),
-                                  label: _isLoading
-                                      ? const SizedBox(
-                                          height: 20,
-                                          width: 20,
-                                          child: CircularProgressIndicator(
-                                            strokeWidth: 2,
-                                            color: Colors.white,
-                                          ),
-                                        )
-                                      : Text(
-                                          'LOGIN TO TEACHER PORTAL',
-                                          style: GoogleFonts.poppins(
-                                            fontWeight: FontWeight.w700,
-                                            fontSize: 14,
-                                            color: Colors.white,
-                                            letterSpacing: 0.5,
-                                          ),
-                                        ),
-                                ),
-                              ),
+                    // Glassmorphic Login Card
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(28),
+                      child: BackdropFilter(
+                        filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
+                        child: Container(
+                          padding: const EdgeInsets.all(32),
+                          decoration: BoxDecoration(
+                            color: isDark ? Colors.white.withOpacity(0.05) : Colors.white.withOpacity(0.7),
+                            borderRadius: BorderRadius.circular(28),
+                            border: Border.all(
+                              color: isDark ? Colors.white.withOpacity(0.1) : Colors.white,
+                              width: 1.5,
+                            ),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withOpacity(0.05),
+                                blurRadius: 30,
+                                offset: const Offset(0, 10),
+                              )
                             ],
+                          ),
+                          child: Form(
+                            key: _formKey,
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                // Error message
+                                if (_errorMessage != null) ...[
+                                  Container(
+                                    padding: const EdgeInsets.all(12),
+                                    decoration: BoxDecoration(
+                                      color: AppTheme.warningRed.withOpacity(0.1),
+                                      borderRadius: BorderRadius.circular(12),
+                                      border: Border.all(
+                                        color: AppTheme.warningRed.withOpacity(0.3),
+                                      ),
+                                    ),
+                                    child: Row(
+                                      children: [
+                                        const Icon(Icons.error_outline_rounded,
+                                            color: AppTheme.warningRed, size: 18),
+                                        const SizedBox(width: 8),
+                                        Expanded(
+                                          child: Text(
+                                            _errorMessage!,
+                                            style: GoogleFonts.outfit(
+                                              fontSize: 13,
+                                              color: AppTheme.warningRed,
+                                              fontWeight: FontWeight.w500,
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ).animate().shake(hz: 3, curve: Curves.easeInOut),
+                                  const SizedBox(height: 20),
+                                ],
+
+                                // Email
+                                TextFormField(
+                                  controller: _emailController,
+                                  keyboardType: TextInputType.emailAddress,
+                                  textInputAction: TextInputAction.next,
+                                  style: TextStyle(color: isDark ? Colors.white : Colors.black87),
+                                  decoration: InputDecoration(
+                                    labelText: 'Email Address',
+                                    hintText: 'teacher@academy.com',
+                                    filled: true,
+                                    fillColor: isDark ? Colors.black.withOpacity(0.2) : Colors.white,
+                                    border: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(16),
+                                      borderSide: BorderSide.none,
+                                    ),
+                                    enabledBorder: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(16),
+                                      borderSide: BorderSide(color: isDark ? Colors.white.withOpacity(0.1) : Colors.grey.shade200),
+                                    ),
+                                    focusedBorder: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(16),
+                                      borderSide: const BorderSide(color: AppTheme.primaryBlue, width: 2),
+                                    ),
+                                    prefixIcon: const Icon(Icons.email_outlined, color: AppTheme.primaryBlue),
+                                  ),
+                                  validator: (v) => (v == null || !v.contains('@'))
+                                      ? 'Valid email required'
+                                      : null,
+                                ),
+
+                                const SizedBox(height: 20),
+
+                                // Password
+                                TextFormField(
+                                  controller: _passwordController,
+                                  obscureText: _obscurePassword,
+                                  textInputAction: TextInputAction.done,
+                                  style: TextStyle(color: isDark ? Colors.white : Colors.black87),
+                                  onFieldSubmitted: (_) {
+                                    if (!_isLoading) _handleLogin();
+                                  },
+                                  decoration: InputDecoration(
+                                    labelText: 'Password',
+                                    filled: true,
+                                    fillColor: isDark ? Colors.black.withOpacity(0.2) : Colors.white,
+                                    border: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(16),
+                                      borderSide: BorderSide.none,
+                                    ),
+                                    enabledBorder: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(16),
+                                      borderSide: BorderSide(color: isDark ? Colors.white.withOpacity(0.1) : Colors.grey.shade200),
+                                    ),
+                                    focusedBorder: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(16),
+                                      borderSide: const BorderSide(color: AppTheme.primaryBlue, width: 2),
+                                    ),
+                                    prefixIcon: const Icon(Icons.lock_outline_rounded, color: AppTheme.primaryBlue),
+                                    suffixIcon: IconButton(
+                                      icon: Icon(
+                                        _obscurePassword ? Icons.visibility_off : Icons.visibility,
+                                        color: isDark ? Colors.grey.shade400 : Colors.grey,
+                                      ),
+                                      onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
+                                    ),
+                                  ),
+                                  validator: (v) => (v == null || v.length < 6)
+                                      ? 'Minimum 6 characters'
+                                      : null,
+                                ),
+
+                                const SizedBox(height: 12),
+
+                                Align(
+                                  alignment: Alignment.centerRight,
+                                  child: TextButton(
+                                    onPressed: _handleForgotPassword,
+                                    style: TextButton.styleFrom(
+                                      foregroundColor: AppTheme.primaryBlue,
+                                      padding: const EdgeInsets.symmetric(horizontal: 8),
+                                    ),
+                                    child: Text('Forgot Password?', style: GoogleFonts.outfit(fontWeight: FontWeight.w600)),
+                                  ),
+                                ),
+
+                                const SizedBox(height: 24),
+
+                                SizedBox(
+                                  width: double.infinity,
+                                  height: 56,
+                                  child: ElevatedButton(
+                                    onPressed: _isLoading ? null : _handleLogin,
+                                    style: ElevatedButton.styleFrom(
+                                      backgroundColor: AppTheme.primaryBlue,
+                                      foregroundColor: Colors.white,
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(16),
+                                      ),
+                                      elevation: 8,
+                                      shadowColor: AppTheme.primaryBlue.withOpacity(0.5),
+                                    ),
+                                    child: _isLoading 
+                                        ? const SizedBox(height: 24, width: 24, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+                                        : Row(
+                                            mainAxisAlignment: MainAxisAlignment.center,
+                                            children: [
+                                              Text('ACCESS PORTAL', style: GoogleFonts.outfit(fontSize: 16, fontWeight: FontWeight.bold, letterSpacing: 1.5)),
+                                              const SizedBox(width: 8),
+                                              const Icon(Icons.arrow_forward_rounded, size: 20),
+                                            ],
+                                          ),
+                                  ),
+                                ),
+                              ],
+                            ),
                           ),
                         ),
                       ),
-                    ).animate().fadeIn().slideY(begin: 0.08),
+                    ).animate().fadeIn().slideY(begin: 0.08, curve: Curves.easeOutCirc),
 
-                    const SizedBox(height: 32),
+                    const SizedBox(height: 40),
 
                     Text(
                       '© 2026 Quaid Academy Pro Management',
-                      style: GoogleFonts.poppins(
-                        fontSize: 11,
-                        color: isDark
-                            ? AppTheme.darkTextSecondary
-                            : AppTheme.lightTextSecondary,
+                      style: GoogleFonts.outfit(
+                        fontSize: 12,
+                        color: isDark ? Colors.grey.shade600 : Colors.grey.shade500,
+                        fontWeight: FontWeight.w500,
                       ),
                     ),
                     const SizedBox(height: 20),
