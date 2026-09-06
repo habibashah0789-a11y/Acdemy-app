@@ -82,7 +82,7 @@ class TeacherManagementScreen extends StatelessWidget {
                 TeacherAvatar(
                   teacher: teacher,
                   size: 52,
-                  backgroundColor: subjectColor.withValues(alpha: 0.15),
+                  backgroundColor: subjectColor.withOpacity(0.15),
                 ),
                 const SizedBox(width: 14),
 
@@ -124,8 +124,8 @@ class TeacherManagementScreen extends StatelessWidget {
                       const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                   decoration: BoxDecoration(
                     color: teacher.isActive
-                        ? Colors.green.withValues(alpha: 0.1)
-                        : Colors.red.withValues(alpha: 0.1),
+                        ? Colors.green.withOpacity(0.1)
+                        : Colors.red.withOpacity(0.1),
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: Text(
@@ -152,7 +152,7 @@ class TeacherManagementScreen extends StatelessWidget {
                           padding: const EdgeInsets.symmetric(
                               horizontal: 8, vertical: 3),
                           decoration: BoxDecoration(
-                            color: subjectColor.withValues(alpha: 0.08),
+                            color: subjectColor.withOpacity(0.08),
                             borderRadius: BorderRadius.circular(6),
                           ),
                           child: Text(

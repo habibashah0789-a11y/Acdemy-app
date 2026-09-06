@@ -27,6 +27,7 @@ class _AddEditTeacherScreenState extends State<AddEditTeacherScreen> {
   final _emailCtrl = TextEditingController();
 
   Uint8List? _imageBytes;
+  bool _removeExistingPhoto = false;
 
   String _selectedSection = 'FSc';
   String _selectedSubject = 'Biology';
@@ -119,7 +120,7 @@ class _AddEditTeacherScreenState extends State<AddEditTeacherScreen> {
                   _pickImage(ImageSource.gallery);
                 },
               ),
-              if (_imageBytes != null || (widget.isEditing && widget.teacher!.profilePicUrl.isNotEmpty))
+              if (_imageBytes != null || (widget.isEditing && widget.teacher!.profilePicUrl.isNotEmpty && !_removeExistingPhoto))
                 ListTile(
                   leading: CircleAvatar(
                     backgroundColor: Colors.red.shade50,
@@ -131,7 +132,7 @@ class _AddEditTeacherScreenState extends State<AddEditTeacherScreen> {
                     setState(() {
                       _imageBytes = null;
                       if (widget.isEditing) {
-                        widget.teacher!.profilePicUrl = ''; // Mark as removed in memory temporarily
+                        _removeExistingPhoto = true;
                       }
                     });
                   },
@@ -214,7 +215,7 @@ class _AddEditTeacherScreenState extends State<AddEditTeacherScreen> {
         } else {
           finalPicUrl = 'data:image/jpeg;base64,${base64Encode(_imageBytes!)}';
         }
-      } else if (widget.isEditing) {
+      } else if (widget.isEditing && !_removeExistingPhoto) {
         finalPicUrl = widget.teacher?.profilePicUrl ?? '';
       }
 
@@ -308,14 +309,14 @@ class _AddEditTeacherScreenState extends State<AddEditTeacherScreen> {
                             height: 104,
                             decoration: BoxDecoration(
                               shape: BoxShape.circle,
-                              color: AppTheme.primaryBlue.withValues(alpha: 0.1),
+                              color: AppTheme.primaryBlue.withOpacity(0.1),
                               border: Border.all(
                                 color: AppTheme.primaryBlue,
                                 width: 2.5,
                               ),
                               boxShadow: [
                                 BoxShadow(
-                                  color: AppTheme.primaryBlue.withValues(alpha: 0.15),
+                                  color: AppTheme.primaryBlue.withOpacity(0.15),
                                   blurRadius: 10,
                                   offset: const Offset(0, 4),
                                 ),
@@ -324,7 +325,7 @@ class _AddEditTeacherScreenState extends State<AddEditTeacherScreen> {
                             child: ClipOval(
                               child: _imageBytes != null
                                   ? Image.memory(_imageBytes!, fit: BoxFit.cover)
-                                  : (widget.isEditing && widget.teacher!.profilePicUrl.isNotEmpty
+                                  : (widget.isEditing && widget.teacher!.profilePicUrl.isNotEmpty && !_removeExistingPhoto
                                       ? TeacherAvatar(
                                           teacher: widget.teacher!,
                                           size: 104,
@@ -334,7 +335,7 @@ class _AddEditTeacherScreenState extends State<AddEditTeacherScreen> {
                                             Icons.person,
                                             size: 50,
                                             color: AppTheme.primaryBlue
-                                                .withValues(alpha: 0.7),
+                                                .withOpacity(0.7),
                                           ),
                                         )),
                             ),
@@ -368,7 +369,7 @@ class _AddEditTeacherScreenState extends State<AddEditTeacherScreen> {
                       icon: const Icon(Icons.add_a_photo_outlined, size: 16),
                       label: Text(
                         _imageBytes != null ||
-                                (widget.isEditing && widget.teacher!.profilePicUrl.isNotEmpty)
+                                (widget.isEditing && widget.teacher!.profilePicUrl.isNotEmpty && !_removeExistingPhoto)
                             ? 'Change Profile Picture'
                             : 'Upload Profile Picture',
                         style: GoogleFonts.poppins(
@@ -489,7 +490,7 @@ class _AddEditTeacherScreenState extends State<AddEditTeacherScreen> {
                         }
                       });
                     },
-                    selectedColor: AppTheme.primaryBlue.withValues(alpha: 0.15),
+                    selectedColor: AppTheme.primaryBlue.withOpacity(0.15),
                     checkmarkColor: AppTheme.primaryBlue,
                     labelStyle: TextStyle(
                       color: selected
