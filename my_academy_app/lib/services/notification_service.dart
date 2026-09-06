@@ -1035,7 +1035,23 @@ status = PENDING
             return matchesClass && matchesSubject;
           }
           
-          // General broadcasts
+          // General broadcasts / Admin announcements
+          if (student != null) {
+            final classType = student.classType.trim().toLowerCase();
+            final grade = student.grade.trim().toLowerCase();
+            final nClass = n.className.trim().toLowerCase();
+            
+            if (nClass.isNotEmpty && nClass != 'all' && nClass != 'general') {
+              final classMatches = nClass == grade ||
+                  nClass == classType ||
+                  grade.contains(nClass) ||
+                  nClass.contains(grade) ||
+                  classType.contains(nClass) ||
+                  nClass.contains(classType);
+                  
+              if (!classMatches) return false;
+            }
+          }
           return true;
         }).toList();
 

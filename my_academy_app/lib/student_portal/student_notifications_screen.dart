@@ -635,18 +635,84 @@ class _StudentNotificationsScreenState extends State<StudentNotificationsScreen>
                               color: isDark ? Colors.white12 : Colors.grey.shade200,
                             ),
                           ),
-                          child: Row(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Icon(Icons.badge_rounded, size: 16, color: themeColor),
-                              const SizedBox(width: 8),
-                              Expanded(
-                                child: Text(
-                                  'Issued by: ${item.registeredBy.isNotEmpty ? item.registeredBy : "Administration"}',
-                                  style: TextStyle(
-                                    fontSize: 12,
-                                    color: isDark ? AppTheme.darkTextSecondary : AppTheme.lightTextSecondary,
-                                    fontStyle: FontStyle.italic,
+                              Row(
+                                children: [
+                                  Icon(Icons.badge_rounded, size: 16, color: themeColor),
+                                  const SizedBox(width: 8),
+                                  Expanded(
+                                    child: Text(
+                                      'Issued by: ${item.registeredBy.isNotEmpty ? item.registeredBy : "Administration"}',
+                                      style: TextStyle(
+                                        fontSize: 12,
+                                        color: isDark ? AppTheme.darkTextSecondary : AppTheme.lightTextSecondary,
+                                        fontStyle: FontStyle.italic,
+                                      ),
+                                    ),
                                   ),
+                                ],
+                              ),
+                              const SizedBox(height: 12),
+                              Divider(color: isDark ? Colors.white12 : Colors.grey.shade200, height: 1),
+                              const SizedBox(height: 12),
+                              Text(
+                                'Contact Administration:',
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  color: isDark ? AppTheme.darkTextSecondary : AppTheme.lightTextSecondary,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                              const SizedBox(height: 8),
+                              InkWell(
+                                onTap: () async {
+                                  final uri = Uri.parse('mailto:quaidacademy241992@gmail.com');
+                                  if (await canLaunchUrl(uri)) {
+                                    await launchUrl(uri);
+                                  }
+                                },
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Icon(Icons.email_rounded, size: 14, color: themeColor),
+                                    const SizedBox(width: 6),
+                                    Text(
+                                      'quaidacademy241992@gmail.com',
+                                      style: TextStyle(
+                                        fontSize: 12,
+                                        color: themeColor,
+                                        decoration: TextDecoration.underline,
+                                        decorationColor: themeColor,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              const SizedBox(height: 12),
+                              InkWell(
+                                onTap: () async {
+                                  final uri = Uri.parse('tel:03139509505');
+                                  if (await canLaunchUrl(uri)) {
+                                    await launchUrl(uri);
+                                  }
+                                },
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Icon(Icons.phone_rounded, size: 14, color: themeColor),
+                                    const SizedBox(width: 6),
+                                    Text(
+                                      '03139509505',
+                                      style: TextStyle(
+                                        fontSize: 12,
+                                        color: themeColor,
+                                        decoration: TextDecoration.underline,
+                                        decorationColor: themeColor,
+                                      ),
+                                    ),
+                                  ],
                                 ),
                               ),
                             ],

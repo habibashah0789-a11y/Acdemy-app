@@ -521,14 +521,12 @@ class TeacherService {
       // 1. Try Firebase Storage (Lightning sub-second upload for ~25KB payload)
       try {
         final ref = _storage.ref().child(path);
-        await ref
-            .putData(
-              bytesToUpload,
-              SettableMetadata(contentType: contentType),
-            )
-            .timeout(const Duration(seconds: 4));
+        await ref.putData(
+          bytesToUpload,
+          SettableMetadata(contentType: contentType),
+        );
 
-        final downloadUrl = await ref.getDownloadURL().timeout(const Duration(seconds: 3));
+        final downloadUrl = await ref.getDownloadURL();
         if (downloadUrl.isNotEmpty) return downloadUrl;
       } catch (e) {
         debugPrint('[TeacherService] Firebase Storage upload note: $e');
