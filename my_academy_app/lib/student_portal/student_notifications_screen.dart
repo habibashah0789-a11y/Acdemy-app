@@ -50,50 +50,7 @@ class _StudentNotificationsScreenState extends State<StudentNotificationsScreen>
   }
 
   bool _isNoticeTargetedForStudent(NotificationModel n, StudentModel? student, String studentId) {
-    // 1. Direct personal notification to student
-    if (n.studentId.isNotEmpty) {
-      return n.studentId == studentId || (student != null && n.studentId == student.studentCode);
-    }
-
-    if (student == null) return true; // Fallback if student profile not yet loaded
-
-    // 2. Class / Grade / Section Matching
-    final targetClass = n.className.trim().toLowerCase();
-    final studentGrade = student.grade.trim().toLowerCase();
-    final studentClassType = student.classType.trim().toLowerCase();
-
-    bool classMatches = true;
-    if (targetClass.isNotEmpty && targetClass != 'all' && targetClass != 'general') {
-      classMatches = targetClass == studentGrade ||
-          targetClass == studentClassType ||
-          studentGrade.contains(targetClass) ||
-          targetClass.contains(studentGrade) ||
-          studentClassType.contains(targetClass) ||
-          targetClass.contains(studentClassType);
-    }
-
-    // 3. Subject Matching
-    final targetSubject = n.subject.trim().toLowerCase();
-    final isGeneralAdmin = targetSubject.isEmpty ||
-        targetSubject == 'general' ||
-        targetSubject == 'all' ||
-        n.registeredBy.toLowerCase().contains('admin');
-
-    bool subjectMatches = true;
-    if (!isGeneralAdmin) {
-      final studentSubjects = student.subject
-          .split(',')
-          .map((s) => s.trim().toLowerCase())
-          .where((s) => s.isNotEmpty)
-          .toList();
-
-      subjectMatches = studentSubjects.any((sub) =>
-          sub == targetSubject ||
-          sub.contains(targetSubject) ||
-          targetSubject.contains(sub));
-    }
-
-    return classMatches && subjectMatches;
+    return NotificationService.isNotificationForStudent(student, studentId, n);
   }
 
   void _initRealTimeNotices() async {

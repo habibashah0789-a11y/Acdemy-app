@@ -71,7 +71,7 @@ class _TeacherNotificationsScreenState
             labelColor: Colors.white,
             unselectedLabelColor: Colors.white70,
             tabs: [
-              Tab(text: 'Academy Notices'),
+              Tab(text: 'Student & Subject Notices'),
               Tab(text: 'My Announcements'),
             ],
           ),
@@ -92,7 +92,7 @@ class _TeacherNotificationsScreenState
           stream: FirebaseFirestore.instance
               .collection('notifications')
               .orderBy('timestamp', descending: true)
-              .limit(60)
+              .limit(100)
               .snapshots(),
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
@@ -108,40 +108,11 @@ class _TeacherNotificationsScreenState
           }
 
           final docs = snapshot.data?.docs ?? [];
-          // Academy Notices filter
+          // Academy & Student Notices filter (Strict: only teacher's subject students & installments)
           final academyNotices = docs.where((doc) {
             final data = doc.data() as Map<String, dynamic>;
-            final senderId = data['senderId'] as String? ?? data['teacherId'] as String? ?? '';
-            
-            // Exclude teacher's own announcements from this tab
-            if (_currentTeacher != null && senderId == _currentTeacher!.id) {
-              return false;
-            }
-
-            final notifType = data['notificationType'] as String? ?? '';
-            
-            // Targeted teacher payout notifications
-            if (notifType == 'teacher_payout') {
-              final targetTeacherId = data['teacherId'] as String? ?? '';
-              if (_currentTeacher != null && targetTeacherId.isNotEmpty) {
-                return targetTeacherId == _currentTeacher!.id;
-              }
-            }
-
-            final targetSubject =
-                (data['targetSubject'] as String? ?? '').toLowerCase();
-            final targetSection =
-                (data['targetSection'] as String? ?? '').toLowerCase();
-            if (_currentTeacher == null ||
-                targetSubject.isEmpty ||
-                targetSubject == 'all' ||
-                targetSection == 'all') {
-              return true;
-            }
-            final mySubject = _currentTeacher!.subject.toLowerCase();
-            final mySection = _currentTeacher!.section.toLowerCase();
-            return targetSubject == mySubject &&
-                (targetSection.isEmpty || targetSection == mySection);
+            data['id'] = doc.id;
+            return NotificationService.isNotificationForTeacher(_currentTeacher, data);
           }).toList();
 
           // My Announcements filter
@@ -160,10 +131,21 @@ class _TeacherNotificationsScreenState
             return false;
           }).toList();
 
+          final subjectName = _currentTeacher?.subject ?? 'your subject';
           return TabBarView(
             children: [
-              _buildList(academyNotices, isDark, 'No Academy Notices', 'All official updates from the administration will appear here.'),
-              _buildList(myAnnouncements, isDark, 'No Announcements Yet', 'Tap the button below to publish your first announcement to your students.'),
+              _buildList(
+                academyNotices,
+                isDark,
+                'No Notices For Your Subject',
+                'Registrations and fee installments for students enrolled in $subjectName will appear here.',
+              ),
+              _buildList(
+                myAnnouncements,
+                isDark,
+                'No Announcements Yet',
+                'Tap the button below to publish your first announcement to your students.',
+              ),
             ],
           );
         },
@@ -547,12 +529,20 @@ class _TeacherNotificationsScreenState
     if (mediaType == 'audio') return AppTheme.accentIndigo;
     if (mediaType == 'image') return Colors.teal;
     switch (type) {
+      case 'student_registered':
+        return AppTheme.secondaryGreen;
+      case 'fee':
+      case 'fee_payment':
+      case 'second_installment':
+      case 'fee_installment':
+      case 'fee_payment_verified':
+        return AppTheme.accentOrange;
+      case 'teacher_payout':
+        return Colors.teal;
       case 'warning':
         return AppTheme.warningRed;
       case 'success':
         return AppTheme.secondaryGreen;
-      case 'fee':
-        return AppTheme.accentOrange;
       default:
         return AppTheme.primaryBlue;
     }
@@ -563,12 +553,20 @@ class _TeacherNotificationsScreenState
     if (mediaType == 'audio') return Icons.mic_rounded;
     if (mediaType == 'image') return Icons.image_rounded;
     switch (type) {
+      case 'student_registered':
+        return Icons.school_rounded;
+      case 'fee':
+      case 'fee_payment':
+      case 'second_installment':
+      case 'fee_installment':
+      case 'fee_payment_verified':
+        return Icons.payments_rounded;
+      case 'teacher_payout':
+        return Icons.account_balance_wallet_rounded;
       case 'warning':
         return Icons.warning_rounded;
       case 'success':
         return Icons.check_circle_rounded;
-      case 'fee':
-        return Icons.payments_rounded;
       default:
         return Icons.campaign_rounded;
     }
