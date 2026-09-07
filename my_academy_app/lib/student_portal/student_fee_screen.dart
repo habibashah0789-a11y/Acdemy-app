@@ -4,16 +4,10 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:intl/intl.dart';
 import 'package:hive/hive.dart';
-import '../models/payment_config_model.dart';
-import '../models/payment_transaction_model.dart';
 import '../models/student_model.dart';
-import '../services/payment_service.dart';
 import '../theme/app_theme.dart';
 import '../widgets/custom_card.dart';
-import '../widgets/empty_state_widget.dart';
-import '../widgets/shimmer_loading_widget.dart';
 import 'student_auth_service.dart';
 
 class StudentFeeScreen extends StatefulWidget {
