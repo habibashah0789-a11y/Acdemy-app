@@ -93,11 +93,6 @@ class _StudentNotificationsScreenState extends State<StudentNotificationsScreen>
           targetSubject.contains(sub));
     }
 
-    // For teacher announcements, match if class OR subject matches
-    if (n.isTeacherAnnouncement) {
-      return classMatches || subjectMatches;
-    }
-
     return classMatches && subjectMatches;
   }
 

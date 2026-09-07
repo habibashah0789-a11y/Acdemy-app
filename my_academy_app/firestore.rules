@@ -15,15 +15,33 @@ service cloud.firestore {
     }
 
     function isTeacher() {
-      return isSignedIn() &&
-             exists(/databases/$(database)/documents/roles/$(request.auth.uid)) &&
-             get(/databases/$(database)/documents/roles/$(request.auth.uid)).data.role == 'teacher';
+      return isSignedIn() && (
+        (exists(/databases/$(database)/documents/roles/$(request.auth.uid)) &&
+         get(/databases/$(database)/documents/roles/$(request.auth.uid)).data.role == 'teacher') ||
+        exists(/databases/$(database)/documents/teachers/$(request.auth.uid))
+      );
     }
 
     function isStudent() {
       return isSignedIn() &&
              exists(/databases/$(database)/documents/roles/$(request.auth.uid)) &&
              get(/databases/$(database)/documents/roles/$(request.auth.uid)).data.role == 'student';
+    }
+
+    // Helper to verify a teacher is creating an announcement ONLY for their authorized subject
+    function isTeacherForSubject() {
+      return isTeacher() &&
+             exists(/databases/$(database)/documents/teachers/$(request.auth.uid)) &&
+             (
+               request.resource.data.teacherSubject == get(/databases/$(database)/documents/teachers/$(request.auth.uid)).data.subject ||
+               request.resource.data.targetSubject == get(/databases/$(database)/documents/teachers/$(request.auth.uid)).data.subject ||
+               request.resource.data.subject == get(/databases/$(database)/documents/teachers/$(request.auth.uid)).data.subject
+             ) &&
+             (
+               request.resource.data.senderId == request.auth.uid ||
+               request.resource.data.teacherId == request.auth.uid ||
+               request.resource.data.registeredBy != null
+             );
     }
 
     // ── Roles ───────────────────────────────────────────────────────
@@ -47,10 +65,10 @@ service cloud.firestore {
     // ── Students ────────────────────────────────────────────────────
     match /students/{studentId} {
       allow read: if true;
-      allow write: if isAdmin();
+      allow write: if isAdmin() || isTeacher();
       match /{subcollection=**} {
         allow read: if true;
-        allow write: if isAdmin();
+        allow write: if isAdmin() || isTeacher();
       }
     }
 
@@ -62,24 +80,26 @@ service cloud.firestore {
     // ── Notifications, Announcements & Notices ──────────────────────
     match /notifications/{notifId} {
       allow read: if true;
-      allow write: if isSignedIn();
+      allow create: if isAdmin() || isTeacherForSubject();
+      allow update, delete: if isAdmin() || (isTeacher() && resource.data.senderId == request.auth.uid);
     }
 
     match /announcements/{announcementId} {
       allow read: if true;
-      allow write: if isAdmin() || isTeacher();
+      allow create: if isAdmin() || isTeacherForSubject();
+      allow update, delete: if isAdmin() || (isTeacher() && resource.data.senderId == request.auth.uid);
     }
 
     match /notices/{noticeId} {
-      allow read, write: if true;
+      allow read: if true;
+      allow create: if isAdmin() || isTeacherForSubject();
+      allow update, delete: if isAdmin();
     }
 
     match /teacher_announcements/{announcementId} {
-      allow read, write: if true;
-    }
-
-    match /teacher_notices/{noticeId} {
-      allow read, write: if true;
+      allow read: if true;
+      allow create: if isAdmin() || isTeacherForSubject();
+      allow update, delete: if isAdmin() || (isTeacher() && resource.data.senderId == request.auth.uid);
     }
 
     // ── Devices (FCM Push Tokens) ────────────────────────────────────
@@ -135,9 +155,10 @@ service cloud.firestore {
       allow read, write: if true;
     }
 
-    // ── Fallback (Global catch-all for all documents) ────────────────
+    // ── Fallback ─────────────────────────────────────────────────────
     match /{document=**} {
-      allow read, write: if true;
+      allow read: if true;
+      allow write: if isAdmin() || isTeacher();
     }
   }
 }

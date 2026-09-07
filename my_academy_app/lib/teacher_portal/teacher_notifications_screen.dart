@@ -640,10 +640,17 @@ class __CreateAnnouncementModalState extends State<_CreateAnnouncementModal> {
   final _titleController = TextEditingController();
   final _messageController = TextEditingController();
 
+  late String _selectedTargetClass;
   Uint8List? _fileBytes;
   String? _fileName;
   String _mediaType = 'none'; // 'none' | 'image' | 'pdf' | 'audio'
   bool _isUploading = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _selectedTargetClass = 'All';
+  }
 
   @override
   void dispose() {
@@ -736,13 +743,13 @@ class __CreateAnnouncementModalState extends State<_CreateAnnouncementModal> {
         _uploadStatusText = 'Publishing Announcement...';
       });
 
-      // Publish announcement doc to Firestore
       await TeacherService.createTeacherAnnouncement(
         teacher: widget.teacher,
         title: _titleController.text.trim(),
         message: _messageController.text.trim(),
         mediaUrl: uploadedUrl,
         mediaType: _mediaType,
+        targetClass: _selectedTargetClass,
       );
 
       if (!mounted) {
@@ -844,6 +851,36 @@ class __CreateAnnouncementModalState extends State<_CreateAnnouncementModal> {
                 ],
               ),
               const SizedBox(height: 20),
+
+              // Target Class Dropdown
+              DropdownButtonFormField<String>(
+                value: _selectedTargetClass,
+                decoration: InputDecoration(
+                  labelText: 'Target Class / Audience',
+                  prefixIcon: const Icon(Icons.class_rounded),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+                items: [
+                  DropdownMenuItem(
+                    value: 'All',
+                    child: Text('All ${widget.teacher.section} Students (${widget.teacher.subject})'),
+                  ),
+                  ...widget.teacher.assignedClasses.map(
+                    (cls) => DropdownMenuItem(
+                      value: cls,
+                      child: Text('$cls Class (${widget.teacher.subject})'),
+                    ),
+                  ),
+                ],
+                onChanged: (val) {
+                  if (val != null) {
+                    setState(() => _selectedTargetClass = val);
+                  }
+                },
+              ),
+              const SizedBox(height: 16),
 
               // Title Field
               TextFormField(

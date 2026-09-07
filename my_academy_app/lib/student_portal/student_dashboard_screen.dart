@@ -149,11 +149,6 @@ class _StudentDashboardScreenState extends State<StudentDashboardScreen> {
           targetSubject.contains(sub));
     }
 
-    // For teacher announcements, match if class OR subject matches
-    if (n.isTeacherAnnouncement) {
-      return classMatches || subjectMatches;
-    }
-
     return classMatches && subjectMatches;
   }
 
