@@ -10,6 +10,7 @@ import 'student_auth_service.dart';
 import 'dart:ui';
 import 'student_qr_scanner_screen.dart';
 import '../services/notification_service.dart';
+import 'student_main_wrapper.dart';
 
 
 class StudentLoginScreen extends StatefulWidget {
