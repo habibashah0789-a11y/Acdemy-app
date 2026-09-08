@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:typed_data';
 import 'dart:io' as io;
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;

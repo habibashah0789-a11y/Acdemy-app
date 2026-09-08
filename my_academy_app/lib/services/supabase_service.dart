@@ -130,7 +130,7 @@ class SupabaseService {
       final response = await client
           .from('fee_transactions')
           .select('amount, payment_date, class_type')
-          .order('payment_date', descending: true);
+          .order('payment_date', ascending: false);
       return List<Map<String, dynamic>>.from(response);
     } catch (e) {
       debugPrint('[SUPABASE SERVICE] getMonthlyRevenueReport note: $e');
@@ -181,7 +181,7 @@ class SupabaseService {
           .from('students')
           .select('id, student_code, first_name, last_name, phone, class_type, grade, fee_remaining')
           .gt('fee_remaining', 0)
-          .order('fee_remaining', descending: true);
+          .order('fee_remaining', ascending: false);
       return List<Map<String, dynamic>>.from(response);
     } catch (e) {
       debugPrint('[SUPABASE SERVICE] getDefaultersReport note: $e');
