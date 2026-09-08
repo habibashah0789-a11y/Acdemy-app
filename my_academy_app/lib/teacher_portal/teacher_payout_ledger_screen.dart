@@ -387,18 +387,18 @@ class _TeacherPayoutLedgerScreenState
                         ),
                         Container(
                           padding: const EdgeInsets.symmetric(
-                              horizontal: 6, vertical: 2),
+                              horizontal: 8, vertical: 3),
                           decoration: BoxDecoration(
-                            color: Colors.grey.shade100,
+                            color: emeraldColor.withValues(alpha: 0.1),
                             borderRadius: BorderRadius.circular(6),
                           ),
                           child: Text(
-                            payout.txnRef,
+                            'CREDITED',
                             style: TextStyle(
                               fontSize: 10,
-                              fontFamily: 'monospace',
-                              fontWeight: FontWeight.w600,
-                              color: Colors.indigo.shade900,
+                              fontWeight: FontWeight.bold,
+                              color: emeraldColor,
+                              letterSpacing: 0.5,
                             ),
                           ),
                         ),
@@ -487,9 +487,8 @@ class _TeacherPayoutLedgerScreenState
                   ),
                   child: Column(
                     children: [
-                      _buildReceiptRow('Transaction Ref', payout.txnRef, isMonospace: true),
+                      _buildReceiptRow('Recipient', payout.teacherName, isBold: true),
                       const Divider(height: 16),
-                      _buildReceiptRow('Recipient', payout.teacherName),
                       _buildReceiptRow('Subject & Section',
                           '${payout.teacherSubject} (${payout.teacherSection})'),
                       _buildReceiptRow('Payment Reason', payout.reason),
@@ -528,7 +527,7 @@ class _TeacherPayoutLedgerScreenState
   }
 
   Widget _buildReceiptRow(String label, String value,
-      {bool isMonospace = false, bool isBadge = false}) {
+      {bool isMonospace = false, bool isBadge = false, bool isBold = false}) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 4),
       child: Row(
@@ -559,7 +558,7 @@ class _TeacherPayoutLedgerScreenState
               value,
               style: TextStyle(
                 fontSize: 12,
-                fontWeight: FontWeight.w600,
+                fontWeight: isBold ? FontWeight.bold : FontWeight.w600,
                 color: Colors.black87,
                 fontFamily: isMonospace ? 'monospace' : null,
               ),

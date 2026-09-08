@@ -352,7 +352,9 @@ class _StudentNotificationsScreenState extends State<StudentNotificationsScreen>
                                             children: [
                                               Expanded(
                                                 child: item.isTeacherAnnouncement
-                                                    ? Row(
+                                                    ? Wrap(
+                                                        spacing: 6,
+                                                        runSpacing: 4,
                                                         children: [
                                                           Container(
                                                             padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
@@ -479,55 +481,91 @@ class _StudentNotificationsScreenState extends State<StudentNotificationsScreen>
                       ),
                       const SizedBox(height: 6),
                       // Time + Type badge
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                            decoration: BoxDecoration(
-                              color: themeColor.withValues(alpha: 0.12),
-                              borderRadius: BorderRadius.circular(20),
-                            ),
-                            child: Text(
-                              item.isTeacherAnnouncement
-                                  ? 'TEACHER ANNOUNCEMENT'
-                                  : item.notificationType.replaceAll('_', ' ').toUpperCase(),
-                              style: TextStyle(
-                                color: themeColor,
-                                fontSize: 10,
-                                fontWeight: FontWeight.bold,
-                                letterSpacing: 0.5,
-                              ),
-                            ),
-                          ),
-                          const SizedBox(width: 8),
-                          if (item.isTeacherAnnouncement && item.teacherSubjectDisplay.isNotEmpty) ...[
+                      Center(
+                        child: Wrap(
+                          alignment: WrapAlignment.center,
+                          crossAxisAlignment: WrapCrossAlignment.center,
+                          spacing: 8,
+                          runSpacing: 6,
+                          children: [
                             Container(
                               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                               decoration: BoxDecoration(
-                                color: AppTheme.secondaryGreen.withValues(alpha: 0.12),
+                                color: themeColor.withValues(alpha: 0.12),
                                 borderRadius: BorderRadius.circular(20),
                               ),
                               child: Text(
-                                item.teacherSubjectDisplay.toUpperCase(),
-                                style: const TextStyle(
-                                  color: AppTheme.secondaryGreen,
+                                item.isTeacherAnnouncement
+                                    ? 'TEACHER ANNOUNCEMENT'
+                                    : item.notificationType.replaceAll('_', ' ').toUpperCase(),
+                                style: TextStyle(
+                                  color: themeColor,
                                   fontSize: 10,
                                   fontWeight: FontWeight.bold,
                                   letterSpacing: 0.5,
                                 ),
                               ),
                             ),
-                            const SizedBox(width: 8),
-                          ],
-                          Text(
-                            DateFormat('MMM dd, yyyy • hh:mm a').format(item.timestamp),
-                            style: TextStyle(
-                              fontSize: 11,
-                              color: isDark ? AppTheme.darkTextSecondary : AppTheme.lightTextSecondary,
+                            if (item.isTeacherAnnouncement && item.teacherSubjectDisplay.isNotEmpty)
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                                decoration: BoxDecoration(
+                                  color: AppTheme.secondaryGreen.withValues(alpha: 0.12),
+                                  borderRadius: BorderRadius.circular(20),
+                                ),
+                                child: Text(
+                                  item.teacherSubjectDisplay.toUpperCase(),
+                                  style: const TextStyle(
+                                    color: AppTheme.secondaryGreen,
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.bold,
+                                    letterSpacing: 0.5,
+                                  ),
+                                ),
+                              ),
+                            if (item.isTeacherAnnouncement && item.teacherClassDisplay.isNotEmpty)
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                                decoration: BoxDecoration(
+                                  color: Colors.purple.withValues(alpha: 0.12),
+                                  borderRadius: BorderRadius.circular(20),
+                                ),
+                                child: Text(
+                                  'CLASS: ${item.teacherClassDisplay.toUpperCase()}',
+                                  style: const TextStyle(
+                                    color: Colors.purple,
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.bold,
+                                    letterSpacing: 0.5,
+                                  ),
+                                ),
+                              ),
+                            if (item.isTeacherAnnouncement && item.targetHourDisplay.isNotEmpty && item.targetHourDisplay.toLowerCase() != 'all')
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                                decoration: BoxDecoration(
+                                  color: Colors.teal.withValues(alpha: 0.12),
+                                  borderRadius: BorderRadius.circular(20),
+                                ),
+                                child: Text(
+                                  'BATCH: ${item.targetHourDisplay.toUpperCase()}',
+                                  style: const TextStyle(
+                                    color: Colors.teal,
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.bold,
+                                    letterSpacing: 0.5,
+                                  ),
+                                ),
+                              ),
+                            Text(
+                              DateFormat('MMM dd, yyyy • hh:mm a').format(item.timestamp),
+                              style: TextStyle(
+                                fontSize: 11,
+                                color: isDark ? AppTheme.darkTextSecondary : AppTheme.lightTextSecondary,
+                              ),
                             ),
-                          ),
-                        ],
+                          ],
+                        ),
                       ),
                       const SizedBox(height: 24),
                       // Divider
@@ -591,24 +629,60 @@ class _StudentNotificationsScreenState extends State<StudentNotificationsScreen>
                                         color: isDark ? Colors.white : AppTheme.primaryDarkBlue,
                                       ),
                                     ),
-                                    if (item.teacherSubjectDisplay.isNotEmpty) ...[
-                                      const SizedBox(height: 4),
-                                      Container(
-                                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                                        decoration: BoxDecoration(
-                                          color: AppTheme.primaryBlue.withValues(alpha: 0.15),
-                                          borderRadius: BorderRadius.circular(6),
-                                        ),
-                                        child: Text(
-                                          'Subject: ${item.teacherSubjectDisplay}',
-                                          style: GoogleFonts.poppins(
-                                            fontSize: 11,
-                                            fontWeight: FontWeight.w600,
-                                            color: AppTheme.primaryBlue,
+                                    const SizedBox(height: 6),
+                                    Wrap(
+                                      spacing: 6,
+                                      runSpacing: 4,
+                                      children: [
+                                        if (item.teacherSubjectDisplay.isNotEmpty)
+                                          Container(
+                                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                                            decoration: BoxDecoration(
+                                              color: AppTheme.primaryBlue.withValues(alpha: 0.15),
+                                              borderRadius: BorderRadius.circular(6),
+                                            ),
+                                            child: Text(
+                                              'Subject: ${item.teacherSubjectDisplay}',
+                                              style: GoogleFonts.poppins(
+                                                fontSize: 11,
+                                                fontWeight: FontWeight.w600,
+                                                color: AppTheme.primaryBlue,
+                                              ),
+                                            ),
                                           ),
-                                        ),
-                                      ),
-                                    ],
+                                        Container(
+                                           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                                           decoration: BoxDecoration(
+                                             color: Colors.purple.withValues(alpha: 0.15),
+                                             borderRadius: BorderRadius.circular(6),
+                                           ),
+                                           child: Text(
+                                             'Class: ${item.teacherClassDisplay.isNotEmpty ? item.teacherClassDisplay : (item.className.isNotEmpty && item.className.toLowerCase() != "general" ? item.className : "All Registered")}',
+                                             style: GoogleFonts.poppins(
+                                               fontSize: 11,
+                                               fontWeight: FontWeight.w600,
+                                               color: Colors.purple,
+                                             ),
+                                           ),
+                                         ),
+                                         if (item.targetHourDisplay.isNotEmpty && item.targetHourDisplay.toLowerCase() != 'all')
+                                           Container(
+                                             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                                             decoration: BoxDecoration(
+                                               color: Colors.teal.withValues(alpha: 0.15),
+                                               borderRadius: BorderRadius.circular(6),
+                                             ),
+                                             child: Text(
+                                               'Batch: ${item.targetHourDisplay}',
+                                               style: GoogleFonts.poppins(
+                                                 fontSize: 11,
+                                                 fontWeight: FontWeight.w600,
+                                                 color: Colors.teal,
+                                               ),
+                                             ),
+                                           ),
+                                      ],
+                                    ),
                                   ],
                                 ),
                               ),

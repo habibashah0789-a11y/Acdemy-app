@@ -1002,6 +1002,15 @@ status = PENDING
     try {
       await _firestore.collection(_collection).doc(notificationId).delete();
     } catch (_) {}
+    try {
+      await _firestore.collection('announcements').doc(notificationId).delete();
+    } catch (_) {}
+    try {
+      await _firestore.collection('notices').doc(notificationId).delete();
+    } catch (_) {}
+    try {
+      await _firestore.collection('teacher_announcements').doc(notificationId).delete();
+    } catch (_) {}
     await _notificationBox.delete(notificationId);
     _controller.add(_sortedNotifications([..._fromHive()]));
   }
@@ -1025,11 +1034,21 @@ status = PENDING
   static Future<void> subscribeToStudentTopics(StudentModel student) async {
     try {
       final safeClass = student.classType.toLowerCase().replaceAll(RegExp(r'[^a-z0-9]'), '_');
-      final subjects = student.subject.split(',').map((e) => e.trim().toLowerCase().replaceAll(RegExp(r'[^a-z0-9]'), '_')).toList();
+      final subjects = student.subject
+          .split(',')
+          .map((e) => e.trim())
+          .where((s) => s.isNotEmpty)
+          .toList();
       
       for (var sub in subjects) {
-        if (sub.isNotEmpty) {
-          await _messaging.subscribeToTopic('class_${safeClass}_subject_$sub');
+        final safeSub = sub.toLowerCase().replaceAll(RegExp(r'[^a-z0-9]'), '_');
+        await _messaging.subscribeToTopic('class_${safeClass}_subject_$safeSub');
+
+        // Also subscribe to specific hour topic if student has schedule for this subject
+        final subHour = student.getScheduleForSubject(sub).trim();
+        if (subHour.isNotEmpty) {
+          final safeHour = subHour.toLowerCase().replaceAll(RegExp(r'[^a-z0-9]'), '_');
+          await _messaging.subscribeToTopic('class_${safeClass}_subject_${safeSub}_hour_$safeHour');
         }
       }
     } catch (e) {
@@ -1039,7 +1058,8 @@ status = PENDING
 
   /// Evaluates whether a notification belongs to a specific student's portal.
   /// Strict rule: Students ONLY receive teacher notifications/announcements
-  /// for teachers whose subjects they are actually enrolled in.
+  /// for teachers whose subjects they are actually enrolled in, AND if an hour/time
+  /// slot is specified, the student must be registered at that exact hour.
   static bool isNotificationForStudent(StudentModel? student, String studentId, dynamic notifItem) {
     Map<String, dynamic> data;
     if (notifItem is NotificationModel) {
@@ -1056,6 +1076,7 @@ status = PENDING
         'targetSection': notifItem.className,
         'className': notifItem.className,
         'class': notifItem.className,
+        'targetHour': notifItem.targetHour,
       };
     } else if (notifItem is Map) {
       data = Map<String, dynamic>.from(notifItem);
@@ -1130,12 +1151,39 @@ status = PENDING
         .where((s) => s.isNotEmpty && s != 'all' && s != 'general')
         .toList();
 
+    // Hour / Time slot matching
+    final notifHour = (data['targetHour'] ??
+            data['targetTime'] ??
+            data['scheduleSlot'] ??
+            data['targetSchedule'] ??
+            '')
+        .toString()
+        .trim()
+        .toLowerCase();
+
+    bool hourMatches = true;
+    if (notifHour.isNotEmpty && notifHour != 'all' && notifHour != 'all hours') {
+      final matchedTeacherSub = notifSubjects.isNotEmpty ? notifSubjects.first : '';
+      final studentSubSchedule = student.getScheduleForSubject(matchedTeacherSub).trim().toLowerCase();
+      final fullStudentSchedule = student.schedule.trim().toLowerCase();
+
+      if (studentSubSchedule.isNotEmpty) {
+        hourMatches = studentSubSchedule == notifHour ||
+            studentSubSchedule.contains(notifHour) ||
+            notifHour.contains(studentSubSchedule);
+      } else if (fullStudentSchedule.isNotEmpty) {
+        hourMatches = fullStudentSchedule.contains(notifHour);
+      } else {
+        hourMatches = false;
+      }
+    }
+
     if (isTeacherNotice) {
-      // For teacher announcements: Student MUST be enrolled in that teacher's subject!
+      // For teacher announcements: Student MUST be enrolled in that teacher's subject & specific hour (if targeted)
       if (notifSubjects.isEmpty) return false;
       final subjectMatches = studentSubjects.any((sSub) =>
           notifSubjects.any((nSub) => nSub == sSub || nSub.contains(sSub) || sSub.contains(nSub)));
-      return classMatches && subjectMatches;
+      return classMatches && subjectMatches && hourMatches;
     }
 
     // For general admin announcements without subject:

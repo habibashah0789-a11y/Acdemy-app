@@ -17,6 +17,7 @@ class NotificationModel {
   final String teacherName;
   final String teacherSubject;
   final String teacherId;
+  final String targetHour;
 
   NotificationModel({
     required this.id,
@@ -35,6 +36,7 @@ class NotificationModel {
     this.teacherName = '',
     this.teacherSubject = '',
     this.teacherId = '',
+    this.targetHour = '',
   });
 
   String get studentClass => className;
@@ -70,12 +72,55 @@ class NotificationModel {
     return '';
   }
 
+  String get teacherClassDisplay {
+    if (className.isNotEmpty &&
+        className.toLowerCase() != 'all' &&
+        className.toLowerCase() != 'general') {
+      return className;
+    }
+    return '';
+  }
+
+  String get targetHourDisplay {
+    if (targetHour.isNotEmpty &&
+        targetHour.toLowerCase() != 'all' &&
+        targetHour.toLowerCase() != 'all hours') {
+      return targetHour;
+    }
+    return '';
+  }
+
+  String get teacherIdentityDisplay {
+    final tName = teacherDisplayName;
+    final tSub = teacherSubjectDisplay;
+    final tCls = teacherClassDisplay;
+    final tHr = targetHourDisplay;
+    final parts = <String>[];
+    if (tName.isNotEmpty) parts.add(tName);
+    if (tSub.isNotEmpty) parts.add('$tSub Teacher');
+    if (tCls.isNotEmpty) parts.add('Class: $tCls');
+    if (tHr.isNotEmpty) parts.add('Batch: $tHr');
+    if (parts.isNotEmpty) {
+      return parts.join(' • ');
+    }
+    return authorDisplay;
+  }
+
   String get authorDisplay {
     final tName = teacherDisplayName;
     final tSub = teacherSubjectDisplay;
-    if (tName.isNotEmpty && tSub.isNotEmpty) {
-      return '$tName ($tSub Teacher)';
-    } else if (tName.isNotEmpty) {
+    final tCls = teacherClassDisplay;
+    final tHr = targetHourDisplay;
+
+    if (tName.isNotEmpty) {
+      final details = <String>[];
+      if (tSub.isNotEmpty) details.add('$tSub Teacher');
+      if (tCls.isNotEmpty) details.add(tCls);
+      if (tHr.isNotEmpty) details.add(tHr);
+
+      if (details.isNotEmpty) {
+        return '$tName (${details.join(' • ')})';
+      }
       return '$tName (Teacher)';
     } else if (registeredBy.isNotEmpty) {
       return registeredBy;
@@ -101,6 +146,7 @@ class NotificationModel {
       'teacherName': teacherName,
       'teacherSubject': teacherSubject,
       'teacherId': teacherId,
+      'targetHour': targetHour,
     };
   }
 
@@ -121,12 +167,14 @@ class NotificationModel {
       'mediaType': mediaType,
       'teacherName': teacherName,
       'teacherSubject': teacherSubject,
+      'teacherId': teacherId,
+      'targetHour': targetHour,
     };
   }
 
   factory NotificationModel.fromMap(Map<String, dynamic> map, String? docId) {
     DateTime parsedTimestamp;
-    final rawTimestamp = map['timestamp'];
+    final rawTimestamp = map['timestamp'] ?? map['createdAt'];
     if (rawTimestamp is Timestamp) {
       parsedTimestamp = rawTimestamp.toDate();
     } else if (rawTimestamp is String) {
@@ -139,7 +187,9 @@ class NotificationModel {
 
     final rawRegisteredBy = map['registeredBy']?.toString() ?? '';
     final rawTeacherName = map['teacherName']?.toString() ??
-        (map['notificationType'] == 'teacher_announcement' || map['type'] == 'teacher_announcement' ? rawRegisteredBy : '');
+        (map['notificationType'] == 'teacher_announcement' || map['type'] == 'teacher_announcement'
+            ? (rawRegisteredBy.contains('(') ? rawRegisteredBy.split('(').first.trim() : rawRegisteredBy)
+            : '');
     final rawTeacherSubject = map['teacherSubject']?.toString() ??
         map['subject']?.toString() ??
         map['targetSubject']?.toString() ??
@@ -156,6 +206,12 @@ class NotificationModel {
     final parsedSubject = map['subject']?.toString() ??
         map['targetSubject']?.toString() ??
         map['teacherSubject']?.toString() ??
+        '';
+
+    final parsedTargetHour = map['targetHour']?.toString() ??
+        map['targetTime']?.toString() ??
+        map['scheduleSlot']?.toString() ??
+        map['targetSchedule']?.toString() ??
         '';
 
     return NotificationModel(
@@ -175,6 +231,7 @@ class NotificationModel {
       teacherName: rawTeacherName,
       teacherSubject: rawTeacherSubject,
       teacherId: parsedTeacherId,
+      targetHour: parsedTargetHour,
     );
   }
 

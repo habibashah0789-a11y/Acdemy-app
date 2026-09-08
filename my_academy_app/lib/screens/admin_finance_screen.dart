@@ -135,7 +135,7 @@ class _AdminFinanceScreenState extends State<AdminFinanceScreen> {
               TextField(
                 controller: _searchController,
                 decoration: InputDecoration(
-                  hintText: 'Search payouts by teacher, subject, ref...',
+                  hintText: 'Search payouts by teacher, subject, reason...',
                   prefixIcon: const Icon(Icons.search_rounded),
                   suffixIcon: _searchQuery.isNotEmpty
                       ? IconButton(
@@ -186,13 +186,31 @@ class _AdminFinanceScreenState extends State<AdminFinanceScreen> {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text('${p.teacherSubject} (${p.teacherSection}) • Note: ${p.reason}', style: const TextStyle(fontSize: 11)),
-                            Text('Ref: ${p.txnRef} • Date: $dateStr', style: const TextStyle(fontSize: 10, color: Colors.grey)),
+                            Text('Date: $dateStr', style: const TextStyle(fontSize: 10, color: Colors.grey)),
                           ],
                         ),
-                        trailing: IconButton(
-                          icon: const Icon(Icons.delete_outline_rounded, color: Colors.redAccent, size: 20),
-                          tooltip: 'Delete Payout Record',
-                          onPressed: () => _confirmDeletePayout(context, p),
+                        trailing: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: AppTheme.secondaryGreen.withValues(alpha: 0.12),
+                            borderRadius: BorderRadius.circular(6),
+                          ),
+                          child: const Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(Icons.check_circle_rounded, color: AppTheme.secondaryGreen, size: 14),
+                              SizedBox(width: 4),
+                              Text(
+                                'PAID',
+                                style: TextStyle(
+                                  color: AppTheme.secondaryGreen,
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.bold,
+                                  letterSpacing: 0.5,
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
                       ),
                     );
@@ -201,54 +219,5 @@ class _AdminFinanceScreenState extends State<AdminFinanceScreen> {
         ),
       ],
     );
-  }
-
-  Future<void> _confirmDeletePayout(BuildContext context, TeacherPayoutModel payout) async {
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Delete Payout Record?'),
-        content: Text(
-          'Are you sure you want to permanently delete this payout of Rs ${NumberFormat('#,##0').format(payout.amount)} for ${payout.teacherName}?\n\n'
-          'Ref: ${payout.txnRef}\n'
-          'This will remove the transaction record and its notice.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(false),
-            child: const Text('Cancel'),
-          ),
-          ElevatedButton.icon(
-            onPressed: () => Navigator.of(ctx).pop(true),
-            icon: const Icon(Icons.delete_forever_rounded, color: Colors.white, size: 16),
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.red, foregroundColor: Colors.white),
-            label: const Text('Delete'),
-          ),
-        ],
-      ),
-    );
-
-    if (confirmed == true) {
-      try {
-        await TeacherPayoutService.deletePayout(payout.id);
-        if (context.mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('Payout record ${payout.txnRef} deleted successfully.'),
-              backgroundColor: Colors.red.shade700,
-            ),
-          );
-        }
-      } catch (e) {
-        if (context.mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('Failed to delete payout: $e'),
-              backgroundColor: Colors.red,
-            ),
-          );
-        }
-      }
-    }
   }
 }

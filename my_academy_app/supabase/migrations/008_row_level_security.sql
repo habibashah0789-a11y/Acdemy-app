@@ -164,18 +164,20 @@ VALUES
     ('student-avatars', 'student-avatars', true),
     ('teacher-avatars', 'teacher-avatars', true),
     ('academy-assets', 'academy-assets', true),
-    ('documents', 'documents', true)
+    ('documents', 'documents', true),
+    ('announcements', 'announcements', true),
+    ('notices', 'notices', true)
 ON CONFLICT (id) DO UPDATE SET public = true;
 
 -- Storage bucket access policies
 DROP POLICY IF EXISTS "Public Access Student Avatars" ON storage.objects;
 CREATE POLICY "Public Access Student Avatars" ON storage.objects
-    FOR SELECT USING (bucket_id IN ('student-avatars', 'teacher-avatars', 'academy-assets', 'documents'));
+    FOR SELECT USING (bucket_id IN ('student-avatars', 'teacher-avatars', 'academy-assets', 'documents', 'announcements', 'notices'));
 
 DROP POLICY IF EXISTS "Allow Upload to Storage Buckets" ON storage.objects;
 CREATE POLICY "Allow Upload to Storage Buckets" ON storage.objects
-    FOR INSERT WITH CHECK (bucket_id IN ('student-avatars', 'teacher-avatars', 'academy-assets', 'documents'));
+    FOR INSERT WITH CHECK (bucket_id IN ('student-avatars', 'teacher-avatars', 'academy-assets', 'documents', 'announcements', 'notices'));
 
 DROP POLICY IF EXISTS "Allow Update Storage Buckets" ON storage.objects;
 CREATE POLICY "Allow Update Storage Buckets" ON storage.objects
-    FOR UPDATE USING (bucket_id IN ('student-avatars', 'teacher-avatars', 'academy-assets', 'documents'));
+    FOR UPDATE USING (bucket_id IN ('student-avatars', 'teacher-avatars', 'academy-assets', 'documents', 'announcements', 'notices'));

@@ -79,27 +79,19 @@ service cloud.firestore {
 
     // ── Notifications, Announcements & Notices ──────────────────────
     match /notifications/{notifId} {
-      allow read: if true;
-      allow create: if isAdmin() || isTeacherForSubject();
-      allow update, delete: if isAdmin() || (isTeacher() && resource.data.senderId == request.auth.uid);
+      allow read, write, create, update, delete: if true;
     }
 
     match /announcements/{announcementId} {
-      allow read: if true;
-      allow create: if isAdmin() || isTeacherForSubject();
-      allow update, delete: if isAdmin() || (isTeacher() && resource.data.senderId == request.auth.uid);
+      allow read, write, create, update, delete: if true;
     }
 
     match /notices/{noticeId} {
-      allow read: if true;
-      allow create: if isAdmin() || isTeacherForSubject();
-      allow update, delete: if isAdmin();
+      allow read, write, create, update, delete: if true;
     }
 
     match /teacher_announcements/{announcementId} {
-      allow read: if true;
-      allow create: if isAdmin() || isTeacherForSubject();
-      allow update, delete: if isAdmin() || (isTeacher() && resource.data.senderId == request.auth.uid);
+      allow read, write, create, update, delete: if true;
     }
 
     // ── Devices (FCM Push Tokens) ────────────────────────────────────

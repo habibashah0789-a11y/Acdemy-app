@@ -87,7 +87,6 @@ class TeacherPayoutService {
       'title': '💵 Payment Received: Rs $amountFormatted',
       'message':
           'Payment of Rs $amountFormatted credited by ${payout.adminName}.\n'
-          'Ref: ${payout.txnRef}\n'
           'Reason: ${payout.reason}\n'
           'Date: $dateFormatted',
       'studentName': payout.teacherName, // Reuse field for recipient display
@@ -112,7 +111,7 @@ class TeacherPayoutService {
         targetUserId: payout.teacherId,
         targetTopic: 'teacher_${payout.teacherId}',
         title: '💵 Payment Received: Rs $amountFormatted',
-        body: 'Ref: ${payout.txnRef} - ${payout.reason}',
+        body: payout.reason.isNotEmpty ? payout.reason : 'Payment of Rs $amountFormatted credited',
         payload: {
           'type': 'teacher_payout',
           'payoutId': payout.id,

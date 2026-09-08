@@ -108,48 +108,7 @@ class _StudentDashboardScreenState extends State<StudentDashboardScreen> {
       });
 
   bool _isNoticeTargeted(NotificationModel n, StudentModel student) {
-    // 1. Direct personal notification to student
-    if (n.studentId.isNotEmpty) {
-      return n.studentId == student.id || n.studentId == student.studentCode;
-    }
-
-    // 2. Class / Grade / Section Matching
-    final targetClass = n.className.trim().toLowerCase();
-    final studentGrade = student.grade.trim().toLowerCase();
-    final studentClassType = student.classType.trim().toLowerCase();
-
-    bool classMatches = true;
-    if (targetClass.isNotEmpty && targetClass != 'all' && targetClass != 'general') {
-      classMatches = targetClass == studentGrade ||
-          targetClass == studentClassType ||
-          studentGrade.contains(targetClass) ||
-          targetClass.contains(studentGrade) ||
-          studentClassType.contains(targetClass) ||
-          targetClass.contains(studentClassType);
-    }
-
-    // 3. Subject Matching
-    final targetSubject = n.subject.trim().toLowerCase();
-    final isGeneralAdmin = targetSubject.isEmpty ||
-        targetSubject == 'general' ||
-        targetSubject == 'all' ||
-        n.registeredBy.toLowerCase().contains('admin');
-
-    bool subjectMatches = true;
-    if (!isGeneralAdmin) {
-      final studentSubjects = student.subject
-          .split(',')
-          .map((s) => s.trim().toLowerCase())
-          .where((s) => s.isNotEmpty)
-          .toList();
-
-      subjectMatches = studentSubjects.any((sub) =>
-          sub == targetSubject ||
-          sub.contains(targetSubject) ||
-          targetSubject.contains(sub));
-    }
-
-    return classMatches && subjectMatches;
+    return NotificationService.isNotificationForStudent(student, student.id, n);
   }
 
       final studentSubjects = student.subject
@@ -1090,56 +1049,92 @@ class _StudentDashboardScreenState extends State<StudentDashboardScreen> {
                           color: isDark ? Colors.white : AppTheme.primaryDarkBlue,
                         ),
                       ),
-                      const SizedBox(height: 6),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                            decoration: BoxDecoration(
-                              color: themeColor.withValues(alpha: 0.12),
-                              borderRadius: BorderRadius.circular(20),
-                            ),
-                            child: Text(
-                              item.isTeacherAnnouncement
-                                  ? 'TEACHER ANNOUNCEMENT'
-                                  : item.notificationType.replaceAll('_', ' ').toUpperCase(),
-                              style: TextStyle(
-                                color: themeColor,
-                                fontSize: 10,
-                                fontWeight: FontWeight.bold,
-                                letterSpacing: 0.5,
-                              ),
-                            ),
-                          ),
-                          const SizedBox(width: 8),
-                          if (item.isTeacherAnnouncement && item.teacherSubjectDisplay.isNotEmpty) ...[
+                      const SizedBox(height: 12),
+                      Center(
+                        child: Wrap(
+                          alignment: WrapAlignment.center,
+                          crossAxisAlignment: WrapCrossAlignment.center,
+                          spacing: 8,
+                          runSpacing: 6,
+                          children: [
                             Container(
                               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                               decoration: BoxDecoration(
-                                color: AppTheme.secondaryGreen.withValues(alpha: 0.12),
+                                color: themeColor.withValues(alpha: 0.12),
                                 borderRadius: BorderRadius.circular(20),
                               ),
                               child: Text(
-                                item.teacherSubjectDisplay.toUpperCase(),
-                                style: const TextStyle(
-                                  color: AppTheme.secondaryGreen,
+                                item.isTeacherAnnouncement
+                                    ? 'TEACHER ANNOUNCEMENT'
+                                    : item.notificationType.replaceAll('_', ' ').toUpperCase(),
+                                style: TextStyle(
+                                  color: themeColor,
                                   fontSize: 10,
                                   fontWeight: FontWeight.bold,
                                   letterSpacing: 0.5,
                                 ),
                               ),
                             ),
-                            const SizedBox(width: 8),
-                          ],
-                          Text(
-                            DateFormat('MMM dd, yyyy • hh:mm a').format(item.timestamp),
-                            style: TextStyle(
-                              fontSize: 11,
-                              color: isDark ? AppTheme.darkTextSecondary : AppTheme.lightTextSecondary,
+                            if (item.isTeacherAnnouncement && item.teacherSubjectDisplay.isNotEmpty)
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                                decoration: BoxDecoration(
+                                  color: AppTheme.secondaryGreen.withValues(alpha: 0.12),
+                                  borderRadius: BorderRadius.circular(20),
+                                ),
+                                child: Text(
+                                  item.teacherSubjectDisplay.toUpperCase(),
+                                  style: const TextStyle(
+                                    color: AppTheme.secondaryGreen,
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.bold,
+                                    letterSpacing: 0.5,
+                                  ),
+                                ),
+                              ),
+                            if (item.isTeacherAnnouncement && item.teacherClassDisplay.isNotEmpty)
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                                decoration: BoxDecoration(
+                                  color: Colors.purple.withValues(alpha: 0.12),
+                                  borderRadius: BorderRadius.circular(20),
+                                ),
+                                child: Text(
+                                  'CLASS: ${item.teacherClassDisplay.toUpperCase()}',
+                                  style: const TextStyle(
+                                    color: Colors.purple,
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.bold,
+                                    letterSpacing: 0.5,
+                                  ),
+                                ),
+                              ),
+                            if (item.isTeacherAnnouncement && item.targetHourDisplay.isNotEmpty && item.targetHourDisplay.toLowerCase() != 'all')
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                                decoration: BoxDecoration(
+                                  color: Colors.teal.withValues(alpha: 0.12),
+                                  borderRadius: BorderRadius.circular(20),
+                                ),
+                                child: Text(
+                                  'BATCH: ${item.targetHourDisplay.toUpperCase()}',
+                                  style: const TextStyle(
+                                    color: Colors.teal,
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.bold,
+                                    letterSpacing: 0.5,
+                                  ),
+                                ),
+                              ),
+                            Text(
+                              DateFormat('MMM dd, yyyy • hh:mm a').format(item.timestamp),
+                              style: TextStyle(
+                                fontSize: 11,
+                                color: isDark ? AppTheme.darkTextSecondary : AppTheme.lightTextSecondary,
+                              ),
                             ),
-                          ),
-                        ],
+                          ],
+                        ),
                       ),
                       const SizedBox(height: 24),
                       Divider(color: isDark ? Colors.white12 : Colors.grey.shade200),
@@ -1196,24 +1191,60 @@ class _StudentDashboardScreenState extends State<StudentDashboardScreen> {
                                         color: isDark ? Colors.white : AppTheme.primaryDarkBlue,
                                       ),
                                     ),
-                                    if (item.teacherSubjectDisplay.isNotEmpty) ...[
-                                      const SizedBox(height: 4),
-                                      Container(
-                                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                                        decoration: BoxDecoration(
-                                          color: AppTheme.primaryBlue.withValues(alpha: 0.15),
-                                          borderRadius: BorderRadius.circular(6),
-                                        ),
-                                        child: Text(
-                                          'Subject: ${item.teacherSubjectDisplay}',
-                                          style: GoogleFonts.poppins(
-                                            fontSize: 11,
-                                            fontWeight: FontWeight.w600,
-                                            color: AppTheme.primaryBlue,
+                                    const SizedBox(height: 6),
+                                    Wrap(
+                                      spacing: 6,
+                                      runSpacing: 4,
+                                      children: [
+                                        if (item.teacherSubjectDisplay.isNotEmpty)
+                                          Container(
+                                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                                            decoration: BoxDecoration(
+                                              color: AppTheme.primaryBlue.withValues(alpha: 0.15),
+                                              borderRadius: BorderRadius.circular(6),
+                                            ),
+                                            child: Text(
+                                              'Subject: ${item.teacherSubjectDisplay}',
+                                              style: GoogleFonts.poppins(
+                                                fontSize: 11,
+                                                fontWeight: FontWeight.w600,
+                                                color: AppTheme.primaryBlue,
+                                              ),
+                                            ),
+                                          ),
+                                        Container(
+                                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                                          decoration: BoxDecoration(
+                                            color: Colors.purple.withValues(alpha: 0.15),
+                                            borderRadius: BorderRadius.circular(6),
+                                          ),
+                                          child: Text(
+                                            'Class: ${item.teacherClassDisplay.isNotEmpty ? item.teacherClassDisplay : (item.className.isNotEmpty && item.className.toLowerCase() != "general" ? item.className : "All Registered")}',
+                                            style: GoogleFonts.poppins(
+                                              fontSize: 11,
+                                              fontWeight: FontWeight.w600,
+                                              color: Colors.purple,
+                                            ),
                                           ),
                                         ),
-                                      ),
-                                    ],
+                                        if (item.targetHourDisplay.isNotEmpty && item.targetHourDisplay.toLowerCase() != 'all')
+                                          Container(
+                                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                                            decoration: BoxDecoration(
+                                              color: Colors.teal.withValues(alpha: 0.15),
+                                              borderRadius: BorderRadius.circular(6),
+                                            ),
+                                            child: Text(
+                                              'Batch: ${item.targetHourDisplay}',
+                                              style: GoogleFonts.poppins(
+                                                fontSize: 11,
+                                                fontWeight: FontWeight.w600,
+                                                color: Colors.teal,
+                                              ),
+                                            ),
+                                          ),
+                                      ],
+                                    ),
                                   ],
                                 ),
                               ),

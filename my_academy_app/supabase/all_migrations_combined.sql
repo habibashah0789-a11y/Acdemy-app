@@ -362,7 +362,9 @@ VALUES
     ('student-avatars', 'student-avatars', true),
     ('teacher-avatars', 'teacher-avatars', true),
     ('academy-assets', 'academy-assets', true),
-    ('documents', 'documents', true)
+    ('documents', 'documents', true),
+    ('announcements', 'announcements', true),
+    ('notices', 'notices', true)
 ON CONFLICT (id) DO UPDATE SET public = true;
 
 -- =====================================================================

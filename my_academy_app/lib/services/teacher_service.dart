@@ -777,17 +777,30 @@ class TeacherService {
     required String title,
     required String message,
     String mediaUrl = '',
-    String mediaType = 'none', // 'none' | 'image' | 'pdf' | 'audio'
+    String mediaType = 'none', // 'none' | 'image'
     String targetClass = 'All',
+    String targetHour = 'All',
   }) async {
     final notifDocRef = _firestore.collection('notifications').doc();
 
     final formattedTeacherName = teacher.name.trim();
     final formattedTeacherSubject = teacher.subject.trim();
-    final displayClass = targetClass == 'All' ? teacher.section : targetClass;
+    final displayClass = (targetClass.isNotEmpty && targetClass != 'All')
+        ? targetClass
+        : (teacher.section.isNotEmpty && teacher.section != 'All'
+            ? teacher.section
+            : 'All Classes');
+
+    final hasSpecificHour = targetHour.isNotEmpty &&
+        targetHour != 'All' &&
+        targetHour != 'All Hours';
+    final displayClassInfo = hasSpecificHour
+        ? '$displayClass • $targetHour Batch'
+        : displayClass;
+
     final authorLabel = formattedTeacherSubject.isNotEmpty
-        ? '$formattedTeacherName ($displayClass $formattedTeacherSubject Teacher)'
-        : '$formattedTeacherName ($displayClass Teacher)';
+        ? '$formattedTeacherName ($formattedTeacherSubject Teacher • $displayClassInfo)'
+        : '$formattedTeacherName (Teacher • $displayClassInfo)';
 
     final data = {
       'id': notifDocRef.id,
@@ -798,6 +811,8 @@ class TeacherService {
       'teacherName': formattedTeacherName,
       'teacherSubject': formattedTeacherSubject,
       'teacherSection': teacher.section,
+      'teacherId': teacher.id,
+      'teacherCode': teacher.teacherId,
       'senderId': teacher.id,
       'subject': formattedTeacherSubject,
       'targetSubject': formattedTeacherSubject,
@@ -805,6 +820,10 @@ class TeacherService {
       'class': displayClass,
       'className': displayClass,
       'targetClass': displayClass,
+      'targetHour': targetHour,
+      'targetTime': targetHour,
+      'scheduleSlot': targetHour,
+      'targetSchedule': targetHour,
       'timestamp': FieldValue.serverTimestamp(),
       'createdAt': FieldValue.serverTimestamp(),
       'type': 'teacher_announcement',
@@ -816,7 +835,7 @@ class TeacherService {
       'attachmentType': mediaType,
     };
 
-    // Save to notifications, announcements, and notices collections for complete compatibility
+    // Save directly to notifications, announcements, notices, and teacher_announcements collections
     await _firestore.collection('notifications').doc(notifDocRef.id).set(data);
     try {
       await _firestore.collection('announcements').doc(notifDocRef.id).set(data);
@@ -824,8 +843,11 @@ class TeacherService {
     try {
       await _firestore.collection('notices').doc(notifDocRef.id).set(data);
     } catch (_) {}
+    try {
+      await _firestore.collection('teacher_announcements').doc(notifDocRef.id).set(data);
+    } catch (_) {}
 
-    // Trigger push notification to student devices mapped to this teacher's class and subject
+    // Trigger push notification to student devices mapped to this teacher's class, subject, and hour
     try {
       final safeClass = displayClass
           .toLowerCase()
@@ -833,7 +855,12 @@ class TeacherService {
       final safeSubject = formattedTeacherSubject
           .toLowerCase()
           .replaceAll(RegExp(r'[^a-z0-9]'), '_');
-      final topic = 'class_${safeClass}_subject_$safeSubject';
+
+      String topic = 'class_${safeClass}_subject_$safeSubject';
+      if (hasSpecificHour) {
+        final safeHour = targetHour.toLowerCase().replaceAll(RegExp(r'[^a-z0-9]'), '_');
+        topic = 'class_${safeClass}_subject_${safeSubject}_hour_$safeHour';
+      }
 
       await NotificationService.triggerPushNotification(
         targetTopic: topic,
@@ -845,6 +872,8 @@ class TeacherService {
           'teacherName': formattedTeacherName,
           'teacherSubject': formattedTeacherSubject,
           'subject': formattedTeacherSubject,
+          'targetClass': displayClass,
+          'targetHour': targetHour,
         },
       );
     } catch (e) {

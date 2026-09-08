@@ -107,31 +107,53 @@ class _TeacherNotificationsScreenState
             );
           }
 
+          final activeTeacher = _currentTeacher ?? widget.teacher;
           final docs = snapshot.data?.docs ?? [];
+          
           // Academy & Student Notices filter (Strict: only teacher's subject students & installments)
           final academyNotices = docs.where((doc) {
             final data = doc.data() as Map<String, dynamic>;
             data['id'] = doc.id;
-            return NotificationService.isNotificationForTeacher(_currentTeacher, data);
+            return NotificationService.isNotificationForTeacher(activeTeacher, data);
           }).toList();
 
-          // My Announcements filter
+          // My Announcements filter: all announcements published by this teacher
           final myAnnouncements = docs.where((doc) {
             final data = doc.data() as Map<String, dynamic>;
-            final senderId = data['senderId'] as String? ?? data['teacherId'] as String? ?? '';
-            final registeredBy = data['registeredBy'] as String? ?? '';
+            final senderId = (data['senderId'] ?? data['teacherId'] ?? '').toString().trim();
+            final teacherName = (data['teacherName'] ?? '').toString().trim().toLowerCase();
+            final registeredBy = (data['registeredBy'] ?? '').toString().trim().toLowerCase();
+            final notifType = (data['type'] ?? data['notificationType'] ?? '').toString();
 
-            if (_currentTeacher != null) {
-              if (senderId.isNotEmpty) {
-                return senderId == _currentTeacher!.id;
-              } else if (registeredBy.isNotEmpty && _currentTeacher!.name.isNotEmpty) {
-                return registeredBy.toLowerCase().contains(_currentTeacher!.name.toLowerCase());
+            if (activeTeacher != null) {
+              final myId = activeTeacher.id.trim();
+              final myCustomId = activeTeacher.teacherId.trim();
+              final myName = activeTeacher.name.trim().toLowerCase();
+              final myEmail = activeTeacher.email.trim().toLowerCase();
+
+              if (senderId.isNotEmpty &&
+                  (senderId == myId ||
+                   senderId == myCustomId ||
+                   (myEmail.isNotEmpty && senderId.toLowerCase() == myEmail))) {
+                return true;
+              }
+              if (notifType == 'teacher_announcement' &&
+                  teacherName.isNotEmpty &&
+                  myName.isNotEmpty &&
+                  (teacherName == myName || teacherName.contains(myName) || myName.contains(teacherName))) {
+                return true;
+              }
+              if (notifType == 'teacher_announcement' &&
+                  registeredBy.isNotEmpty &&
+                  myName.isNotEmpty &&
+                  registeredBy.contains(myName)) {
+                return true;
               }
             }
             return false;
           }).toList();
 
-          final subjectName = _currentTeacher?.subject ?? 'your subject';
+          final subjectName = activeTeacher?.subject ?? 'your subject';
           return TabBarView(
             children: [
               _buildList(
@@ -139,12 +161,15 @@ class _TeacherNotificationsScreenState
                 isDark,
                 'No Notices For Your Subject',
                 'Registrations and fee installments for students enrolled in $subjectName will appear here.',
+                activeTeacher: activeTeacher,
               ),
               _buildList(
                 myAnnouncements,
                 isDark,
                 'No Announcements Yet',
-                'Tap the button below to publish your first announcement to your students.',
+                'Tap the "New Announcement" button below to publish your first announcement to your students.',
+                activeTeacher: activeTeacher,
+                isMyAnnouncementsTab: true,
               ),
             ],
           );
@@ -154,7 +179,14 @@ class _TeacherNotificationsScreenState
     );
   }
 
-  Widget _buildList(List<QueryDocumentSnapshot> docs, bool isDark, String emptyTitle, String emptySubtitle) {
+  Widget _buildList(
+    List<QueryDocumentSnapshot> docs,
+    bool isDark,
+    String emptyTitle,
+    String emptySubtitle, {
+    TeacherModel? activeTeacher,
+    bool isMyAnnouncementsTab = false,
+  }) {
     if (docs.isEmpty) {
       return _buildEmpty(emptyTitle, emptySubtitle);
     }
@@ -165,12 +197,18 @@ class _TeacherNotificationsScreenState
         final doc = docs[i];
         final data = doc.data() as Map<String, dynamic>;
         data['id'] = doc.id;
-        return _buildNotifCard(data, i, isDark);
+        return _buildNotifCard(data, i, isDark, activeTeacher: activeTeacher, isMyAnnouncementsTab: isMyAnnouncementsTab);
       },
     );
   }
 
-  Widget _buildNotifCard(Map<String, dynamic> data, int idx, bool isDark) {
+  Widget _buildNotifCard(
+    Map<String, dynamic> data,
+    int idx,
+    bool isDark, {
+    TeacherModel? activeTeacher,
+    bool isMyAnnouncementsTab = false,
+  }) {
     final title = data['title'] as String? ?? 'Notification';
     final body =
         data['body'] as String? ?? data['message'] as String? ?? '';
@@ -180,6 +218,18 @@ class _TeacherNotificationsScreenState
             data['targetSubject'] as String? ??
             data['subject'] as String? ??
             '')
+        .trim();
+    final targetClass = (data['className'] as String? ??
+            data['targetClass'] as String? ??
+            data['class'] as String? ??
+            '')
+        .trim();
+    final targetHour = (data['targetHour'] ??
+            data['targetTime'] ??
+            data['scheduleSlot'] ??
+            data['targetSchedule'] ??
+            '')
+        .toString()
         .trim();
     final authorDisplay = (teacherSubject.isNotEmpty &&
             !rawRegisteredBy.toLowerCase().contains('admin') &&
@@ -203,6 +253,19 @@ class _TeacherNotificationsScreenState
     final id = data['id'] as String? ?? '';
     final isRead = NotificationService.isNoticeRead(id);
 
+    final isMyNotice = isMyAnnouncementsTab ||
+        (activeTeacher != null &&
+            ((data['senderId'] == activeTeacher.id ||
+                data['senderId'] == activeTeacher.teacherId ||
+                data['teacherId'] == activeTeacher.id) ||
+             ((type == 'teacher_announcement' || data['notificationType'] == 'teacher_announcement') &&
+              ((data['teacherName'] ?? '').toString().trim().toLowerCase() ==
+                  activeTeacher.name.trim().toLowerCase() ||
+               (data['registeredBy'] ?? '')
+                   .toString()
+                   .toLowerCase()
+                   .contains(activeTeacher.name.trim().toLowerCase())))));
+
     final color = _colorForType(type, mediaType);
     final icon = _iconForType(type, mediaType);
 
@@ -216,7 +279,7 @@ class _TeacherNotificationsScreenState
           if (id.isNotEmpty && !isRead) {
             NotificationService.markNoticeAsRead(id);
           }
-          _showNoticeDetail(data, isDark);
+          _showNoticeDetail(data, isDark, isMyNotice: isMyNotice);
         },
         child: Padding(
           padding: const EdgeInsets.all(16),
@@ -247,14 +310,65 @@ class _TeacherNotificationsScreenState
                             fontWeight: isRead ? FontWeight.w500 : FontWeight.bold,
                           ),
                         ),
-                        Text(
-                          'By: $authorDisplay',
-                          style: TextStyle(
-                            fontSize: 11,
-                            color: AppTheme.lightTextSecondary,
-                            fontStyle: FontStyle.italic,
+                        if (isMyNotice) ...[
+                          const SizedBox(height: 2),
+                          Wrap(
+                            spacing: 6,
+                            runSpacing: 4,
+                            crossAxisAlignment: WrapCrossAlignment.center,
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                decoration: BoxDecoration(
+                                  color: AppTheme.primaryBlue.withValues(alpha: 0.12),
+                                  borderRadius: BorderRadius.circular(4),
+                                ),
+                                child: Text(
+                                  'My Announcement',
+                                  style: GoogleFonts.poppins(
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.w600,
+                                    color: AppTheme.primaryBlue,
+                                  ),
+                                ),
+                              ),
+                              if (targetClass.isNotEmpty)
+                                Text(
+                                  '• Class: $targetClass',
+                                  style: TextStyle(
+                                    fontSize: 11,
+                                    color: AppTheme.lightTextSecondary,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                              if (targetHour.isNotEmpty && targetHour != 'All' && targetHour != 'All Hours')
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
+                                  decoration: BoxDecoration(
+                                    color: Colors.teal.withValues(alpha: 0.12),
+                                    borderRadius: BorderRadius.circular(4),
+                                  ),
+                                  child: Text(
+                                    'Batch: $targetHour',
+                                    style: const TextStyle(
+                                      fontSize: 10,
+                                      fontWeight: FontWeight.bold,
+                                      color: Colors.teal,
+                                    ),
+                                  ),
+                                ),
+                            ],
                           ),
-                        ),
+                        ] else ...[
+                          Text(
+                            'By: $authorDisplay',
+                            style: TextStyle(
+                              fontSize: 11,
+                              color: AppTheme.lightTextSecondary,
+                              fontStyle: FontStyle.italic,
+                            ),
+                          ),
+                        ],
                       ],
                     ),
                   ),
@@ -294,13 +408,31 @@ class _TeacherNotificationsScreenState
     ).animate().fadeIn().slideY(begin: 0.04);
   }
 
-  void _showNoticeDetail(Map<String, dynamic> data, bool isDark) {
+  void _showNoticeDetail(Map<String, dynamic> data, bool isDark, {bool isMyNotice = false}) {
     final title = data['title'] as String? ?? 'Notification';
     final body = data['body'] as String? ?? data['message'] as String? ?? '';
     final rawRegisteredBy = data['registeredBy'] as String? ?? 'Admin';
+    final teacherSubject = (data['teacherSubject'] as String? ??
+            data['targetSubject'] as String? ??
+            data['subject'] as String? ??
+            '')
+        .trim();
+    final targetClass = (data['className'] as String? ??
+            data['targetClass'] as String? ??
+            data['class'] as String? ??
+            '')
+        .trim();
+    final targetHour = (data['targetHour'] ??
+            data['targetTime'] ??
+            data['scheduleSlot'] ??
+            data['targetSchedule'] ??
+            '')
+        .toString()
+        .trim();
     final mediaUrl = data['mediaUrl'] as String? ?? data['attachmentUrl'] as String? ?? '';
     final mediaType = data['mediaType'] as String? ?? data['attachmentType'] as String? ?? 'none';
     final type = data['type'] as String? ?? 'info';
+    final id = data['id'] as String? ?? '';
     final color = _colorForType(type, mediaType);
     final icon = _iconForType(type, mediaType);
     
@@ -359,6 +491,77 @@ class _TeacherNotificationsScreenState
                       ],
                     ),
                     const SizedBox(height: 16),
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 6,
+                      children: [
+                        if (isMyNotice)
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                            decoration: BoxDecoration(
+                              color: AppTheme.primaryBlue.withValues(alpha: 0.12),
+                              borderRadius: BorderRadius.circular(6),
+                            ),
+                            child: Text(
+                              'My Announcement',
+                              style: GoogleFonts.poppins(
+                                fontSize: 11,
+                                fontWeight: FontWeight.w600,
+                                color: AppTheme.primaryBlue,
+                              ),
+                            ),
+                          ),
+                        if (teacherSubject.isNotEmpty)
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                            decoration: BoxDecoration(
+                              color: AppTheme.secondaryGreen.withValues(alpha: 0.12),
+                              borderRadius: BorderRadius.circular(6),
+                            ),
+                            child: Text(
+                              'Subject: $teacherSubject',
+                              style: GoogleFonts.poppins(
+                                fontSize: 11,
+                                fontWeight: FontWeight.w600,
+                                color: AppTheme.secondaryGreen,
+                              ),
+                            ),
+                          ),
+                        if (targetClass.isNotEmpty)
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                            decoration: BoxDecoration(
+                              color: Colors.purple.withValues(alpha: 0.12),
+                              borderRadius: BorderRadius.circular(6),
+                            ),
+                            child: Text(
+                              'Class: $targetClass',
+                              style: GoogleFonts.poppins(
+                                fontSize: 11,
+                                fontWeight: FontWeight.w600,
+                                color: Colors.purple,
+                              ),
+                            ),
+                          ),
+                        if (targetHour.isNotEmpty && targetHour != 'All' && targetHour != 'All Hours')
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                            decoration: BoxDecoration(
+                              color: Colors.teal.withValues(alpha: 0.12),
+                              borderRadius: BorderRadius.circular(6),
+                            ),
+                            child: Text(
+                              'Batch: $targetHour',
+                              style: GoogleFonts.poppins(
+                                fontSize: 11,
+                                fontWeight: FontWeight.w600,
+                                color: Colors.teal,
+                              ),
+                            ),
+                          ),
+                      ],
+                    ),
+                    const SizedBox(height: 10),
                     Text(
                       'Published by: $rawRegisteredBy',
                       style: TextStyle(
@@ -394,6 +597,29 @@ class _TeacherNotificationsScreenState
                         ),
                       ),
                     ],
+                    if (isMyNotice && id.isNotEmpty) ...[
+                      const SizedBox(height: 32),
+                      SizedBox(
+                        width: double.infinity,
+                        child: OutlinedButton.icon(
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor: AppTheme.warningRed,
+                            side: const BorderSide(color: AppTheme.warningRed),
+                            padding: const EdgeInsets.symmetric(vertical: 12),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                          ),
+                          onPressed: () async {
+                            Navigator.pop(ctx);
+                            await _confirmDeleteAnnouncement(id);
+                          },
+                          icon: const Icon(Icons.delete_outline_rounded, color: AppTheme.warningRed),
+                          label: Text(
+                            'Delete This Announcement',
+                            style: GoogleFonts.poppins(fontWeight: FontWeight.w600),
+                          ),
+                        ),
+                      ),
+                    ],
                     const SizedBox(height: 40),
                   ],
                 ),
@@ -403,6 +629,48 @@ class _TeacherNotificationsScreenState
         ),
       ),
     );
+  }
+
+  Future<void> _confirmDeleteAnnouncement(String notifId) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text('Delete Announcement?', style: GoogleFonts.poppins(fontWeight: FontWeight.bold)),
+        content: Text(
+          'This will permanently delete this announcement for you and all enrolled students.',
+          style: GoogleFonts.poppins(fontSize: 13),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppTheme.warningRed,
+              foregroundColor: Colors.white,
+            ),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true) {
+      await NotificationService.deleteNotification(notifId);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            backgroundColor: AppTheme.secondaryGreen,
+            content: Text(
+              'Announcement deleted successfully.',
+              style: GoogleFonts.poppins(),
+            ),
+          ),
+        );
+      }
+    }
   }
 
   Widget _buildAttachmentPreview(
@@ -624,6 +892,12 @@ class _TeacherNotificationsScreenState
   }
 }
 
+const List<String> kTeacherScheduleSlots = [
+  '7:00 AM', '8:00 AM', '9:00 AM', '10:00 AM', '11:00 AM',
+  '12:00 PM', '1:00 PM', '2:00 PM', '3:00 PM', '4:00 PM',
+  '5:00 PM', '6:00 PM', '7:00 PM', '8:00 PM', '9:00 PM', '10:00 PM',
+];
+
 class _CreateAnnouncementModal extends StatefulWidget {
   final TeacherModel teacher;
   const _CreateAnnouncementModal({required this.teacher});
@@ -639,6 +913,7 @@ class __CreateAnnouncementModalState extends State<_CreateAnnouncementModal> {
   final _messageController = TextEditingController();
 
   late String _selectedTargetClass;
+  late String _selectedTargetHour;
   Uint8List? _fileBytes;
   String? _fileName;
   String _mediaType = 'none'; // 'none' | 'image' | 'pdf' | 'audio'
@@ -648,6 +923,7 @@ class __CreateAnnouncementModalState extends State<_CreateAnnouncementModal> {
   void initState() {
     super.initState();
     _selectedTargetClass = 'All';
+    _selectedTargetHour = 'All';
   }
 
   @override
@@ -657,24 +933,11 @@ class __CreateAnnouncementModalState extends State<_CreateAnnouncementModal> {
     super.dispose();
   }
 
-  Future<void> _pickAttachment(String type) async {
+  Future<void> _pickPicture() async {
     final messenger = ScaffoldMessenger.of(context);
     try {
-      FileType fileType = FileType.any;
-      List<String>? allowedExtensions;
-
-      if (type == 'image') {
-        fileType = FileType.image;
-      } else if (type == 'pdf') {
-        fileType = FileType.custom;
-        allowedExtensions = ['pdf'];
-      } else if (type == 'audio') {
-        fileType = FileType.audio;
-      }
-
       final result = await FilePicker.pickFiles(
-        type: fileType,
-        allowedExtensions: fileType == FileType.custom ? allowedExtensions : null,
+        type: FileType.image,
         withData: true,
       );
 
@@ -688,14 +951,14 @@ class __CreateAnnouncementModalState extends State<_CreateAnnouncementModal> {
           setState(() {
             _fileBytes = bytes;
             _fileName = file.name;
-            _mediaType = type;
+            _mediaType = 'image';
           });
         }
       }
     } catch (e) {
       if (!mounted) return;
       messenger.showSnackBar(
-        SnackBar(content: Text('Failed to select file: $e')),
+        SnackBar(content: Text('Failed to select photo: $e')),
       );
     }
   }
@@ -712,20 +975,18 @@ class __CreateAnnouncementModalState extends State<_CreateAnnouncementModal> {
       _isUploading = true;
       _uploadStatusText = _mediaType == 'image'
           ? 'Compressing & uploading photo...'
-          : _mediaType != 'none'
-              ? 'Uploading attachment...'
-              : 'Publishing Announcement...';
+          : 'Publishing Announcement...';
     });
 
     try {
       String uploadedUrl = '';
 
       // Upload file to Firebase Storage if selected
-      if (_fileBytes != null && _fileName != null && _mediaType != 'none') {
+      if (_fileBytes != null && _fileName != null && _mediaType == 'image') {
         final url = await TeacherService.uploadAnnouncementAttachment(
           fileBytes: _fileBytes!,
           fileName: _fileName!,
-          mediaType: _mediaType,
+          mediaType: 'image',
         );
 
         if (!mounted) return;
@@ -733,7 +994,7 @@ class __CreateAnnouncementModalState extends State<_CreateAnnouncementModal> {
         if (url != null) {
           uploadedUrl = url;
         } else {
-          debugPrint('[TeacherNotificationsScreen] Attachment upload warning: could not retrieve URL, publishing text announcement.');
+          debugPrint('[TeacherNotificationsScreen] Photo upload warning: could not retrieve URL, publishing text announcement.');
         }
       }
 
@@ -748,6 +1009,7 @@ class __CreateAnnouncementModalState extends State<_CreateAnnouncementModal> {
         mediaUrl: uploadedUrl,
         mediaType: _mediaType,
         targetClass: _selectedTargetClass,
+        targetHour: _selectedTargetHour,
       );
 
       if (!mounted) {
@@ -837,7 +1099,7 @@ class __CreateAnnouncementModalState extends State<_CreateAnnouncementModal> {
                           ),
                         ),
                         Text(
-                          'Broadcast to ${widget.teacher.subject} (${widget.teacher.section})',
+                          'Broadcast written announcement to ${widget.teacher.subject} (${widget.teacher.section})',
                           style: TextStyle(
                             fontSize: 12,
                             color: AppTheme.lightTextSecondary,
@@ -880,6 +1142,39 @@ class __CreateAnnouncementModalState extends State<_CreateAnnouncementModal> {
               ),
               const SizedBox(height: 16),
 
+              // Target Hour / Batch Dropdown
+              DropdownButtonFormField<String>(
+                value: _selectedTargetHour,
+                decoration: InputDecoration(
+                  labelText: 'Target Hour / Schedule Slot',
+                  prefixIcon: const Icon(Icons.access_time_filled_rounded),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  helperText: _selectedTargetHour == 'All'
+                      ? 'Delivered to all students in the selected class'
+                      : 'Delivered ONLY to students registered at $_selectedTargetHour',
+                ),
+                items: [
+                  const DropdownMenuItem(
+                    value: 'All',
+                    child: Text('All Time Slots / Hours (All Registered Batches)'),
+                  ),
+                  ...kTeacherScheduleSlots.map(
+                    (slot) => DropdownMenuItem(
+                      value: slot,
+                      child: Text('Batch / Slot: $slot'),
+                    ),
+                  ),
+                ],
+                onChanged: (val) {
+                  if (val != null) {
+                    setState(() => _selectedTargetHour = val);
+                  }
+                },
+              ),
+              const SizedBox(height: 16),
+
               // Title Field
               TextFormField(
                 controller: _titleController,
@@ -915,66 +1210,35 @@ class __CreateAnnouncementModalState extends State<_CreateAnnouncementModal> {
               ),
               const SizedBox(height: 20),
 
-              // Attachment Selection Buttons
+              // Picture Attachment Button (PDF and Voice Note removed)
               Text(
-                'Add Media Attachment (Optional):',
+                'Add Picture / Photo (Optional):',
                 style: GoogleFonts.poppins(
                   fontSize: 13,
                   fontWeight: FontWeight.w600,
                 ),
               ),
               const SizedBox(height: 10),
-              Row(
-                children: [
-                  Expanded(
-                    child: OutlinedButton.icon(
-                      onPressed: () => _pickAttachment('image'),
-                      icon: const Icon(Icons.image_rounded, size: 18),
-                      label: const Text('Picture', style: TextStyle(fontSize: 12)),
-                      style: OutlinedButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(vertical: 12),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                      ),
+              SizedBox(
+                width: double.infinity,
+                child: OutlinedButton.icon(
+                  onPressed: _pickPicture,
+                  icon: const Icon(Icons.add_photo_alternate_rounded, size: 20, color: AppTheme.primaryBlue),
+                  label: Text(
+                    _fileName == null ? 'Attach Picture / Photo' : 'Change Picture',
+                    style: GoogleFonts.poppins(fontSize: 13, fontWeight: FontWeight.w500),
+                  ),
+                  style: OutlinedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
                     ),
                   ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: OutlinedButton.icon(
-                      onPressed: () => _pickAttachment('pdf'),
-                      icon: const Icon(Icons.picture_as_pdf_rounded,
-                          size: 18, color: Colors.red),
-                      label: const Text('PDF', style: TextStyle(fontSize: 12)),
-                      style: OutlinedButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(vertical: 12),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: OutlinedButton.icon(
-                      onPressed: () => _pickAttachment('audio'),
-                      icon: const Icon(Icons.mic_rounded,
-                          size: 18, color: AppTheme.accentIndigo),
-                      label: const Text('Voice Note',
-                          style: TextStyle(fontSize: 12)),
-                      style: OutlinedButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(vertical: 12),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
+                ),
               ),
 
-              // Selected Attachment Preview Card
-              if (_fileName != null && _mediaType != 'none') ...[
+              // Selected Picture Preview Card
+              if (_fileName != null && _mediaType == 'image') ...[
                 const SizedBox(height: 14),
                 Container(
                   padding:
@@ -988,12 +1252,8 @@ class __CreateAnnouncementModalState extends State<_CreateAnnouncementModal> {
                   ),
                   child: Row(
                     children: [
-                      Icon(
-                        _mediaType == 'image'
-                            ? Icons.image_rounded
-                            : _mediaType == 'pdf'
-                                ? Icons.picture_as_pdf_rounded
-                                : Icons.mic_rounded,
+                      const Icon(
+                        Icons.image_rounded,
                         color: AppTheme.primaryBlue,
                       ),
                       const SizedBox(width: 10),
@@ -1011,7 +1271,7 @@ class __CreateAnnouncementModalState extends State<_CreateAnnouncementModal> {
                               ),
                             ),
                             Text(
-                              'Type: ${_mediaType.toUpperCase()}',
+                              'Photo Attached',
                               style: TextStyle(
                                 fontSize: 10,
                                 color: AppTheme.lightTextSecondary,

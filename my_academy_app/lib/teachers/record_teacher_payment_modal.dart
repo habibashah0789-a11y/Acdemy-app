@@ -186,10 +186,7 @@ class _RecordTeacherPaymentModalState extends State<RecordTeacherPaymentModal> {
                   ),
                   child: Column(
                     children: [
-                      _buildVerifyRow(
-                          'Transaction Ref', txnRef, isBold: true),
-                      const Divider(height: 16),
-                      _buildVerifyRow('Target Teacher', _selectedTeacher!.name),
+                      _buildVerifyRow('Target Teacher', _selectedTeacher!.name, isBold: true),
                       _buildVerifyRow('Subject & Section',
                           '${_selectedTeacher!.subject} (${_selectedTeacher!.section})'),
                       _buildVerifyRow('Payment Note', _reasonController.text.trim()),

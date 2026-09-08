@@ -215,24 +215,11 @@ class __AdminCreateAnnouncementModalState
     super.dispose();
   }
 
-  Future<void> _pickAttachment(String type) async {
+  Future<void> _pickPicture() async {
     final messenger = ScaffoldMessenger.of(context);
     try {
-      FileType fileType = FileType.any;
-      List<String>? allowedExtensions;
-
-      if (type == 'image') {
-        fileType = FileType.image;
-      } else if (type == 'pdf') {
-        fileType = FileType.custom;
-        allowedExtensions = ['pdf'];
-      } else if (type == 'audio') {
-        fileType = FileType.audio;
-      }
-
       final result = await FilePicker.pickFiles(
-        type: fileType,
-        allowedExtensions: fileType == FileType.custom ? allowedExtensions : null,
+        type: FileType.image,
         withData: true,
       );
 
@@ -246,14 +233,14 @@ class __AdminCreateAnnouncementModalState
           setState(() {
             _fileBytes = bytes;
             _fileName = file.name;
-            _mediaType = type;
+            _mediaType = 'image';
           });
         }
       }
     } catch (e) {
       if (!mounted) return;
       messenger.showSnackBar(
-        SnackBar(content: Text('Failed to select file: $e')),
+        SnackBar(content: Text('Failed to select photo: $e')),
       );
     }
   }
@@ -268,19 +255,17 @@ class __AdminCreateAnnouncementModalState
       _isUploading = true;
       _uploadStatusText = _mediaType == 'image'
           ? 'Compressing & uploading photo...'
-          : _mediaType != 'none'
-              ? 'Uploading attachment...'
-              : 'Publishing Announcement...';
+          : 'Publishing Announcement...';
     });
 
     try {
       String uploadedUrl = '';
 
-      if (_fileBytes != null && _fileName != null && _mediaType != 'none') {
+      if (_fileBytes != null && _fileName != null && _mediaType == 'image') {
         final url = await TeacherService.uploadAnnouncementAttachment(
           fileBytes: _fileBytes!,
           fileName: _fileName!,
-          mediaType: _mediaType,
+          mediaType: 'image',
         );
 
         if (!mounted) return;
@@ -288,7 +273,7 @@ class __AdminCreateAnnouncementModalState
         if (url != null) {
           uploadedUrl = url;
         } else {
-          debugPrint('[NotificationsScreen] Attachment upload note: could not retrieve URL, publishing text announcement.');
+          debugPrint('[NotificationsScreen] Photo upload note: could not retrieve URL, publishing text announcement.');
         }
       }
 
@@ -420,7 +405,7 @@ class __AdminCreateAnnouncementModalState
                           ),
                         ),
                         Text(
-                          'Broadcast official notice with optional media',
+                          'Broadcast written announcement with optional picture',
                           style: TextStyle(
                             fontSize: 12,
                             color: AppTheme.lightTextSecondary,
@@ -503,66 +488,35 @@ class __AdminCreateAnnouncementModalState
               ),
               const SizedBox(height: 20),
 
-              // Attachment Selection Buttons
+              // Picture Attachment Button (PDF and Voice Note removed)
               Text(
-                'Add Media Attachment (Optional):',
+                'Add Picture / Photo (Optional):',
                 style: GoogleFonts.poppins(
                   fontSize: 13,
                   fontWeight: FontWeight.w600,
                 ),
               ),
               const SizedBox(height: 10),
-              Row(
-                children: [
-                  Expanded(
-                    child: OutlinedButton.icon(
-                      onPressed: () => _pickAttachment('image'),
-                      icon: const Icon(Icons.image_rounded, size: 18),
-                      label: const Text('Picture', style: TextStyle(fontSize: 12)),
-                      style: OutlinedButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(vertical: 12),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                      ),
+              SizedBox(
+                width: double.infinity,
+                child: OutlinedButton.icon(
+                  onPressed: _pickPicture,
+                  icon: const Icon(Icons.add_photo_alternate_rounded, size: 20, color: AppTheme.primaryBlue),
+                  label: Text(
+                    _fileName == null ? 'Attach Picture / Photo' : 'Change Picture',
+                    style: GoogleFonts.poppins(fontSize: 13, fontWeight: FontWeight.w500),
+                  ),
+                  style: OutlinedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
                     ),
                   ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: OutlinedButton.icon(
-                      onPressed: () => _pickAttachment('pdf'),
-                      icon: const Icon(Icons.picture_as_pdf_rounded,
-                          size: 18, color: Colors.red),
-                      label: const Text('PDF', style: TextStyle(fontSize: 12)),
-                      style: OutlinedButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(vertical: 12),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: OutlinedButton.icon(
-                      onPressed: () => _pickAttachment('audio'),
-                      icon: const Icon(Icons.mic_rounded,
-                          size: 18, color: AppTheme.accentIndigo),
-                      label: const Text('Voice Note',
-                          style: TextStyle(fontSize: 12)),
-                      style: OutlinedButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(vertical: 12),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
+                ),
               ),
 
-              // Selected Attachment Preview Card
-              if (_fileName != null && _mediaType != 'none') ...[
+              // Selected Picture Preview Card
+              if (_fileName != null && _mediaType == 'image') ...[
                 const SizedBox(height: 14),
                 Container(
                   padding:
@@ -576,12 +530,8 @@ class __AdminCreateAnnouncementModalState
                   ),
                   child: Row(
                     children: [
-                      Icon(
-                        _mediaType == 'image'
-                            ? Icons.image_rounded
-                            : _mediaType == 'pdf'
-                                ? Icons.picture_as_pdf_rounded
-                                : Icons.mic_rounded,
+                      const Icon(
+                        Icons.image_rounded,
                         color: AppTheme.primaryBlue,
                       ),
                       const SizedBox(width: 10),
@@ -599,7 +549,7 @@ class __AdminCreateAnnouncementModalState
                               ),
                             ),
                             Text(
-                              'Type: ${_mediaType.toUpperCase()}',
+                              'Photo Attached',
                               style: TextStyle(
                                 fontSize: 10,
                                 color: AppTheme.lightTextSecondary,
