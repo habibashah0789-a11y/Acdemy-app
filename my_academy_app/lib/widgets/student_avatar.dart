@@ -102,9 +102,9 @@ class _StudentAvatarState extends State<StudentAvatar> {
   }
 
   void _initLocalCheck() {
-    final url = widget.student.profilePicUrl;
-    // Fast path: if url is empty, HTTP, base64 data URI, or on Web, no disk I/O is needed.
-    if (url.isEmpty || url.startsWith('http') || url.startsWith('data:image') || url.length > 100 || kIsWeb) {
+    final url = widget.student.profilePicUrl.trim();
+    // If base64 or on Web, no local disk check needed
+    if (url.startsWith('data:image') || (!url.startsWith('http') && url.length > 100) || kIsWeb) {
       _localPath = null;
       _checkedLocal = true;
       return;
@@ -121,16 +121,48 @@ class _StudentAvatarState extends State<StudentAvatar> {
   }
 
   Future<void> _checkLocalFile() async {
-    final path = await ImageUtils.getLocalProfilePath(widget.student.id);
-    final exists = await io.File(path).exists();
-    final resolved = exists ? path : null;
-    _localPathCache[widget.student.id] = resolved;
+    if (kIsWeb) {
+      if (mounted) setState(() => _checkedLocal = true);
+      return;
+    }
+    try {
+      final path = await ImageUtils.getLocalProfilePath(widget.student.id);
+      String? resolved;
+      if (io.File(path).existsSync()) {
+        resolved = path;
+      } else {
+        // Also check legacy .jpg
+        final legacyPath = path.replaceAll('.png', '.jpg');
+        if (io.File(legacyPath).existsSync()) {
+          resolved = legacyPath;
+        }
+      }
+      _localPathCache[widget.student.id] = resolved;
 
-    if (mounted) {
-      setState(() {
-        _localPath = resolved;
-        _checkedLocal = true;
-      });
+      if (mounted) {
+        setState(() {
+          _localPath = resolved;
+          _checkedLocal = true;
+        });
+      }
+    } catch (_) {
+      if (mounted) {
+        setState(() => _checkedLocal = true);
+      }
+    }
+  }
+
+  static Uint8List? _tryDecodeBase64(String str) {
+    try {
+      String clean = str.contains(',') ? str.split(',').last : str;
+      clean = clean.replaceAll('\n', '').replaceAll('\r', '').replaceAll(' ', '').trim();
+      while (clean.length % 4 != 0) {
+        clean += '=';
+      }
+      final decoded = base64Decode(clean);
+      return decoded.isNotEmpty ? decoded : null;
+    } catch (e) {
+      return null;
     }
   }
 
@@ -147,6 +179,8 @@ class _StudentAvatarState extends State<StudentAvatar> {
     final int cacheDimension = (widget.size * 2).toInt().clamp(64, 512);
     Widget imageWidget;
 
+    final url = widget.student.profilePicUrl.trim();
+
     if (_localPath != null) {
       imageWidget = Image.file(
         io.File(_localPath!),
@@ -155,43 +189,33 @@ class _StudentAvatarState extends State<StudentAvatar> {
         cacheHeight: cacheDimension,
         errorBuilder: (context, error, stackTrace) => _buildFallback(),
       );
-    } else if (widget.student.profilePicUrl.isNotEmpty) {
-      final url = widget.student.profilePicUrl;
-      if (url.startsWith('http')) {
+    } else if (url.isNotEmpty) {
+      if (url.startsWith('http://') || url.startsWith('https://')) {
         imageWidget = CachedNetworkImage(
           imageUrl: url,
           fit: widget.fit,
           memCacheWidth: cacheDimension,
           memCacheHeight: cacheDimension,
-          placeholder: (context, url) => Container(
-            color: AppTheme.primaryBlue.withValues(alpha: 0.08),
-            child: Center(
-              child: Text(
-                widget.student.initials,
-                style: TextStyle(
-                  fontWeight: FontWeight.bold,
-                  fontSize: widget.size * 0.4,
-                  color: AppTheme.primaryBlue.withValues(alpha: 0.5),
-                ),
-              ),
-            ),
-          ),
+          placeholder: (context, url) => _buildFallback(),
           errorWidget: (context, url, error) => _buildFallback(),
         );
-      } else if (url.startsWith('data:image') || url.length > 100) {
-        try {
-          final base64Str = url.contains(',') ? url.split(',').last : url;
-          final bytes = base64Decode(base64Str.replaceAll('\n', '').replaceAll('\r', '').trim());
+      } else if (url.startsWith('data:image') || (!url.contains('/') && !url.contains('\\') && url.length > 50)) {
+        final bytes = _tryDecodeBase64(url);
+        if (bytes != null) {
           imageWidget = Image.memory(
             bytes,
             fit: widget.fit,
-            cacheWidth: cacheDimension,
-            cacheHeight: cacheDimension,
             errorBuilder: (_, __, ___) => _buildFallback(),
           );
-        } catch (_) {
+        } else {
           imageWidget = _buildFallback();
         }
+      } else if (url.startsWith('blob:')) {
+        imageWidget = Image.network(
+          url,
+          fit: widget.fit,
+          errorBuilder: (_, __, ___) => _buildFallback(),
+        );
       } else if (!kIsWeb && io.File(url).existsSync()) {
         imageWidget = Image.file(
           io.File(url),

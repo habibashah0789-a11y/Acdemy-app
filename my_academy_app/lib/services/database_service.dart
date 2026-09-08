@@ -159,7 +159,7 @@ class DatabaseService {
   static Future<String?> uploadImage(Uint8List imageBytes, String folder) async {
     if (FirebaseAuth.instance.currentUser == null) return null;
     try {
-      // Compress & downsample image into lightweight ~20KB JPEG for sub-second upload
+      // Compress & downsample image into clean lightweight PNG for reliable upload
       final compressedBytes = await ImageUtils.compressAndResizeImage(
         imageBytes,
         targetWidth: 360,
@@ -167,11 +167,11 @@ class DatabaseService {
         quality: 75,
       );
 
-      String fileName = '${DateTime.now().millisecondsSinceEpoch}.jpg';
+      String fileName = '${DateTime.now().millisecondsSinceEpoch}.png';
       Reference ref = _storage.ref().child('$folder/$fileName');
-      await ref.putData(compressedBytes, SettableMetadata(contentType: 'image/jpeg'))
-          .timeout(const Duration(seconds: 4));
-      return await ref.getDownloadURL().timeout(const Duration(seconds: 3));
+      await ref.putData(compressedBytes, SettableMetadata(contentType: 'image/png'))
+          .timeout(const Duration(seconds: 8));
+      return await ref.getDownloadURL().timeout(const Duration(seconds: 5));
     } catch (e) {
       debugPrint('Error in uploadImage: $e');
       return null;

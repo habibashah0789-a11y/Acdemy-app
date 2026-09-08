@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:io' as io;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
@@ -332,7 +333,7 @@ class _EditStudentScreenState extends State<EditStudentScreen> {
           targetHeight: 360,
           quality: 75,
         );
-        picUrl = 'data:image/jpeg;base64,${base64Encode(compressed)}';
+        picUrl = 'data:image/png;base64,${base64Encode(compressed)}';
         if (!kIsWeb) {
           try {
             await ImageUtils.saveImageLocally(widget.student.id, compressed);
@@ -351,14 +352,14 @@ class _EditStudentScreenState extends State<EditStudentScreen> {
               await DatabaseService.deleteImage(oldUrlToDelete);
             }
             
-            final fileName = 'students/profile_${studentIdToUpdate}_${DateTime.now().millisecondsSinceEpoch}.jpg';
+            final fileName = 'students/profile_${studentIdToUpdate}_${DateTime.now().millisecondsSinceEpoch}.png';
             final storageRef = FirebaseStorage.instance.ref().child(fileName);
             
             await storageRef
-                .putData(imageBytesToUpload, SettableMetadata(contentType: 'image/jpeg'))
-                .timeout(const Duration(seconds: 4));
+                .putData(imageBytesToUpload, SettableMetadata(contentType: 'image/png'))
+                .timeout(const Duration(seconds: 8));
             
-            final url = await storageRef.getDownloadURL().timeout(const Duration(seconds: 3));
+            final url = await storageRef.getDownloadURL().timeout(const Duration(seconds: 5));
             debugPrint('Background image uploaded to Firebase Storage: $url');
             
             final currentStudent = DatabaseService.studentBox.get(studentIdToUpdate);
@@ -500,10 +501,20 @@ class _EditStudentScreenState extends State<EditStudentScreen> {
                           radius: 60,
                           backgroundColor: AppTheme.primaryBlue.withValues(alpha: 0.1),
                           child: _imageBytes != null
-                              ? ClipOval(child: Image.memory(_imageBytes!, width: 120, height: 120, fit: BoxFit.cover))
-                              : _existingUrl.isNotEmpty
-                                  ? ClipOval(child: CachedNetworkImage(imageUrl: _existingUrl, width: 120, height: 120, fit: BoxFit.cover, placeholder: (_, __) => const Icon(Icons.person, size: 60)))
-                                  : const Icon(Icons.person_rounded, size: 60, color: AppTheme.primaryBlue),
+                              ? ClipOval(
+                                  child: Image.memory(
+                                    _imageBytes!,
+                                    width: 120,
+                                    height: 120,
+                                    fit: BoxFit.cover,
+                                    errorBuilder: (_, __, ___) => const Icon(
+                                      Icons.person_rounded,
+                                      size: 60,
+                                      color: AppTheme.primaryBlue,
+                                    ),
+                                  ),
+                                )
+                              : ClipOval(child: _buildExistingPhotoWidget(_existingUrl)),
                         ),
                         Positioned(
                           bottom: 0,
@@ -627,6 +638,52 @@ class _EditStudentScreenState extends State<EditStudentScreen> {
         hintText: '0',
       ),
     );
+  }
+
+  Widget _buildExistingPhotoWidget(String url) {
+    if (url.isEmpty) {
+      return const Icon(Icons.person_rounded, size: 60, color: AppTheme.primaryBlue);
+    }
+    final cleanUrl = url.trim();
+    if (cleanUrl.startsWith('http://') || cleanUrl.startsWith('https://')) {
+      return CachedNetworkImage(
+        imageUrl: cleanUrl,
+        width: 120,
+        height: 120,
+        fit: BoxFit.cover,
+        placeholder: (_, __) => const Icon(Icons.person, size: 60, color: AppTheme.primaryBlue),
+        errorWidget: (_, __, ___) => const Icon(Icons.person_rounded, size: 60, color: AppTheme.primaryBlue),
+      );
+    }
+    if (cleanUrl.startsWith('data:image') || (!cleanUrl.contains('/') && !cleanUrl.contains('\\') && cleanUrl.length > 50)) {
+      try {
+        String clean = cleanUrl.contains(',') ? cleanUrl.split(',').last : cleanUrl;
+        clean = clean.replaceAll('\n', '').replaceAll('\r', '').replaceAll(' ', '').trim();
+        while (clean.length % 4 != 0) {
+          clean += '=';
+        }
+        final bytes = base64Decode(clean);
+        return Image.memory(
+          bytes,
+          width: 120,
+          height: 120,
+          fit: BoxFit.cover,
+          errorBuilder: (_, __, ___) => const Icon(Icons.person_rounded, size: 60, color: AppTheme.primaryBlue),
+        );
+      } catch (_) {
+        return const Icon(Icons.person_rounded, size: 60, color: AppTheme.primaryBlue);
+      }
+    }
+    if (!kIsWeb && io.File(cleanUrl).existsSync()) {
+      return Image.file(
+        io.File(cleanUrl),
+        width: 120,
+        height: 120,
+        fit: BoxFit.cover,
+        errorBuilder: (_, __, ___) => const Icon(Icons.person_rounded, size: 60, color: AppTheme.primaryBlue),
+      );
+    }
+    return const Icon(Icons.person_rounded, size: 60, color: AppTheme.primaryBlue);
   }
 }
 

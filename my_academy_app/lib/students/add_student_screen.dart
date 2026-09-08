@@ -515,7 +515,7 @@ class _AddStudentScreenState extends State<AddStudentScreen> {
       String picUrl = '';
       
       if (_imageBytes != null) {
-        picUrl = 'data:image/jpeg;base64,${base64Encode(_imageBytes!)}';
+        picUrl = 'data:image/png;base64,${base64Encode(_imageBytes!)}';
         if (!kIsWeb) {
           try {
             await ImageUtils.saveImageLocally(studentId, _imageBytes!);
@@ -526,12 +526,12 @@ class _AddStudentScreenState extends State<AddStudentScreen> {
         
         unawaited(() async {
           try {
-            final fileName = 'students/profile_${studentId}_${DateTime.now().millisecondsSinceEpoch}.jpg';
+            final fileName = 'students/profile_${studentId}_${DateTime.now().millisecondsSinceEpoch}.png';
             final storageRef = FirebaseStorage.instance.ref().child(fileName);
             await storageRef
-                .putData(_imageBytes!, SettableMetadata(contentType: 'image/jpeg'))
-                .timeout(const Duration(seconds: 4));
-            final url = await storageRef.getDownloadURL().timeout(const Duration(seconds: 3));
+                .putData(_imageBytes!, SettableMetadata(contentType: 'image/png'))
+                .timeout(const Duration(seconds: 8));
+            final url = await storageRef.getDownloadURL().timeout(const Duration(seconds: 5));
             final currentStudent = DatabaseService.studentBox.get(studentId);
             if (currentStudent != null) {
               final updated = currentStudent.copyWith(profilePicUrl: url);
@@ -844,8 +844,18 @@ class _AddStudentScreenState extends State<AddStudentScreen> {
                           backgroundColor: AppTheme.primaryBlue.withValues(alpha: 0.1),
                           child: _imageBytes != null
                               ? ClipOval(
-                                  child: Image.memory(_imageBytes!,
-                                      width: 120, height: 120, fit: BoxFit.cover))
+                                  child: Image.memory(
+                                    _imageBytes!,
+                                    width: 120,
+                                    height: 120,
+                                    fit: BoxFit.cover,
+                                    errorBuilder: (_, __, ___) => const Icon(
+                                      Icons.person_rounded,
+                                      size: 60,
+                                      color: AppTheme.primaryBlue,
+                                    ),
+                                  ),
+                                )
                               : const Icon(Icons.person_rounded, size: 60, color: AppTheme.primaryBlue),
                         ),
                         Positioned(

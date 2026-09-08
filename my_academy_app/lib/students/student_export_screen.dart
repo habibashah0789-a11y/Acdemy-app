@@ -97,13 +97,18 @@ class _StudentExportScreenState extends State<StudentExportScreen> {
         errorWidget: (_, __, ___) => const Icon(Icons.person, color: AppTheme.primaryBlue),
       );
     }
-    if (url.startsWith('data:image') || (!url.contains('/') && !url.contains('\\') && url.length > 100)) {
+    if (url.startsWith('data:image') || (!url.contains('/') && !url.contains('\\') && url.length > 50)) {
       try {
-        final base64Str = url.contains(',') ? url.split(',').last : url;
-        final bytes = base64Decode(base64Str.trim());
+        String clean = url.contains(',') ? url.split(',').last : url;
+        clean = clean.replaceAll('\n', '').replaceAll('\r', '').replaceAll(' ', '').trim();
+        while (clean.length % 4 != 0) {
+          clean += '=';
+        }
+        final bytes = base64Decode(clean);
         return Image.memory(
           bytes,
           fit: BoxFit.cover,
+          errorBuilder: (_, __, ___) => const Icon(Icons.person, color: AppTheme.primaryBlue),
         );
       } catch (e) {
         // fallback

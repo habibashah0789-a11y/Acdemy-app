@@ -288,8 +288,12 @@ class TeacherManagementScreen extends StatelessWidget {
       builder: (ctx) => AlertDialog(
         title: const Text('Delete Teacher?'),
         content: Text(
-          'Are you sure you want to permanently delete "${teacher.name}"?\n\n'
-          'This will remove their profile and login access. This action cannot be undone.',
+          'Are you sure you want to permanently delete "${teacher.name}" (${teacher.subject} - ${teacher.section})?\n\n'
+          'This will permanently delete:\n'
+          '• Teacher profile and login access\n'
+          '• All teacher payouts & finance records for ${teacher.name}\n'
+          '• All announcements and notifications created for this teacher\n\n'
+          'Other teachers and general academy records will remain completely unaffected.',
         ),
         actions: [
           TextButton.icon(
@@ -316,10 +320,11 @@ class TeacherManagementScreen extends StatelessWidget {
     final secondConfirm = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Last Warning'),
+        title: const Text('Final Warning - Permanent Cleanup'),
         content: Text(
-          'This will permanently delete "${teacher.name}" and cannot be undone.\n\n'
-          'Press "Permanently Delete" to confirm.',
+          'This action will permanently delete "${teacher.name}" along with all their finance, payout, and notice records.\n\n'
+          'This action cannot be undone.\n\n'
+          'Press "Permanently Delete" to proceed.',
         ),
         actions: [
           TextButton.icon(
@@ -342,11 +347,11 @@ class TeacherManagementScreen extends StatelessWidget {
     if (secondConfirm != true) return;
 
     try {
-      await TeacherService.deleteTeacher(teacher.id);
+      await TeacherService.deleteTeacher(teacher.id, teacher: teacher);
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('"${teacher.name}" has been deleted.'),
+            content: Text('"${teacher.name}" and all associated finance/payout records deleted.'),
             behavior: SnackBarBehavior.floating,
             backgroundColor: Colors.red.shade700,
           ),

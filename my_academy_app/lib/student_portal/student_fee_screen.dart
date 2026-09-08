@@ -8,6 +8,8 @@ import 'package:hive/hive.dart';
 import '../models/student_model.dart';
 import '../theme/app_theme.dart';
 import '../widgets/custom_card.dart';
+import '../widgets/empty_state_widget.dart';
+import '../widgets/shimmer_loading_widget.dart';
 import 'student_auth_service.dart';
 
 class StudentFeeScreen extends StatefulWidget {
@@ -143,24 +145,21 @@ class _StudentFeeScreenState extends State<StudentFeeScreen> {
                     SizedBox(
                       width: double.infinity,
                       child: ElevatedButton(
-                        onPressed: () => Navigator.pop(ctx),
                         style: ElevatedButton.styleFrom(
                           backgroundColor: AppTheme.secondaryGreen,
                           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                          padding: const EdgeInsets.symmetric(vertical: 12),
                         ),
-                        child: const Text('Awesome!', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16)),
+                        onPressed: () => Navigator.pop(ctx),
+                        child: const Text('Great, Thanks!', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
                       ),
-                    )
+                    ),
                   ],
                 ),
               ),
             );
           }
         }
-      } catch (e) {
-        // Ignore hive errors
-      }
+      } catch (_) {}
     }
   }
 
@@ -180,9 +179,9 @@ class _StudentFeeScreenState extends State<StudentFeeScreen> {
           ? ListView(
               padding: const EdgeInsets.all(20),
               children: const [
-                ShimmerLoadingWidget(width: double.infinity, height: 160, borderRadius: 20),
+                SizedBox(height: 160, child: ShimmerLoadingWidget(width: 500, height: 160)),
                 SizedBox(height: 20),
-                ShimmerLoadingWidget(width: double.infinity, height: 120, borderRadius: 16),
+                SizedBox(height: 120, child: ShimmerLoadingWidget(width: 500, height: 120)),
               ],
             )
           : (_errorMessage != null || _student == null)

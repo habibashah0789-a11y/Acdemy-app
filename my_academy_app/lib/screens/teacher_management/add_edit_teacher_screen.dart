@@ -213,7 +213,7 @@ class _AddEditTeacherScreenState extends State<AddEditTeacherScreen> {
         if (uploadedUrl != null && uploadedUrl.isNotEmpty) {
           finalPicUrl = uploadedUrl;
         } else {
-          finalPicUrl = 'data:image/jpeg;base64,${base64Encode(_imageBytes!)}';
+          finalPicUrl = 'data:image/png;base64,${base64Encode(_imageBytes!)}';
         }
       } else if (widget.isEditing && !_removeExistingPhoto) {
         finalPicUrl = widget.teacher?.profilePicUrl ?? '';

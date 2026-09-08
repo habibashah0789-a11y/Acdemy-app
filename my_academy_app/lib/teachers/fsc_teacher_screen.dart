@@ -4,6 +4,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:provider/provider.dart';
 import '../models/student_model.dart';
+import '../widgets/student_avatar.dart';
 import '../services/database_service.dart';
 import '../services/sync_service.dart';
 import '../students/add_student_screen.dart';
@@ -422,24 +423,10 @@ class _FscClassRoomScreenState extends State<FscClassRoomScreen> {
           context,
           MaterialPageRoute(builder: (_) => StudentDetailScreen(student: s)),
         ).then((_) => setState(() {})),
-        leading: CircleAvatar(
-          backgroundColor: AppTheme.primaryBlue.withValues(alpha: 0.1),
-          child: s.profilePicUrl.isNotEmpty
-              ? ClipOval(
-                  child: CachedNetworkImage(
-                    imageUrl: s.profilePicUrl,
-                    width: 40,
-                    height: 40,
-                    fit: BoxFit.cover,
-                  ),
-                )
-              : Text(
-                  s.name.isNotEmpty ? s.name[0].toUpperCase() : 'S',
-                  style: const TextStyle(
-                    fontWeight: FontWeight.bold,
-                    color: AppTheme.primaryBlue,
-                  ),
-                ),
+        leading: StudentAvatar(
+          student: s,
+          size: 40,
+          isCircle: true,
         ),
         title: Text(s.name, style: const TextStyle(fontWeight: FontWeight.bold)),
         subtitle: Text(

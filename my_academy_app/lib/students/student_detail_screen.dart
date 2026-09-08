@@ -351,20 +351,35 @@ class _StudentDetailScreenState extends State<StudentDetailScreen> {
         ),
       );
     }
-    if (url.startsWith('data:image') || (!url.contains('/') && !url.contains('\\') && url.length > 100)) {
+    if (url.startsWith('data:image') || (!url.contains('/') && !url.contains('\\') && url.length > 50)) {
       try {
-        final base64Str = url.contains(',') ? url.split(',').last : url;
-        final bytes = base64Decode(base64Str.trim());
+        String clean = url.contains(',') ? url.split(',').last : url;
+        clean = clean.replaceAll('\n', '').replaceAll('\r', '').replaceAll(' ', '').trim();
+        while (clean.length % 4 != 0) {
+          clean += '=';
+        }
+        final bytes = base64Decode(clean);
         return Image.memory(
           bytes,
           fit: BoxFit.contain,
+          errorBuilder: (_, __, ___) => Container(
+            color: Colors.black12,
+            child: const Icon(Icons.person, size: 100, color: Colors.grey),
+          ),
         );
       } catch (e) {
         // fallback
       }
     }
     if (url.startsWith('blob:')) {
-      return Image.network(url, fit: BoxFit.contain);
+      return Image.network(
+        url,
+        fit: BoxFit.contain,
+        errorBuilder: (_, __, ___) => Container(
+          color: Colors.black12,
+          child: const Icon(Icons.person, size: 100, color: Colors.grey),
+        ),
+      );
     }
     if (!kIsWeb) {
       try {
@@ -409,7 +424,14 @@ class _StudentDetailScreenState extends State<StudentDetailScreen> {
                   ),
                   color: Colors.black,
                   child: _pendingImageBytes != null
-                      ? Image.memory(_pendingImageBytes!, fit: BoxFit.contain)
+                      ? Image.memory(
+                          _pendingImageBytes!,
+                          fit: BoxFit.contain,
+                          errorBuilder: (_, __, ___) => Container(
+                            color: Colors.black12,
+                            child: const Icon(Icons.person, size: 100, color: Colors.grey),
+                          ),
+                        )
                       : _buildLargeAvatarImage(student.profilePicUrl),
                 ),
               ),
@@ -449,7 +471,7 @@ class _StudentDetailScreenState extends State<StudentDetailScreen> {
                 title: const Text('Camera'),
                 onTap: () {
                   Navigator.pop(ctx);
-                  _pick(ImageSource.camera);
+                  _pickImage(ImageSource.camera);
                 },
               ),
               ListTile(
@@ -460,7 +482,7 @@ class _StudentDetailScreenState extends State<StudentDetailScreen> {
                 title: const Text('Gallery'),
                 onTap: () {
                   Navigator.pop(ctx);
-                  _pick(ImageSource.gallery);
+                  _pickImage(ImageSource.gallery);
                 },
               ),
             ],
@@ -470,11 +492,18 @@ class _StudentDetailScreenState extends State<StudentDetailScreen> {
     );
   }
 
-  Future<void> _pick(ImageSource src) async {
+  Future<void> _pickImage(ImageSource source) async {
     try {
-      final f = await ImagePicker().pickImage(source: src, imageQuality: 70);
-      if (f != null) {
-        final bytes = await f.readAsBytes();
+      final picker = ImagePicker();
+      final pickedFile = await picker.pickImage(
+        source: source,
+        maxWidth: 800,
+        maxHeight: 800,
+        imageQuality: 75,
+      );
+
+      if (pickedFile != null) {
+        final bytes = await pickedFile.readAsBytes();
         if (mounted) {
           final cropped = await showDialog<Uint8List>(
             context: context,
@@ -482,7 +511,6 @@ class _StudentDetailScreenState extends State<StudentDetailScreen> {
             builder: (_) => CropImageDialog(imageBytes: bytes),
           );
           if (cropped != null) {
-            setState(() => _pendingImageBytes = cropped);
             await _uploadPhoto(cropped);
           }
         }
@@ -499,7 +527,7 @@ class _StudentDetailScreenState extends State<StudentDetailScreen> {
   Future<void> _uploadPhoto(Uint8List bytes) async {
     setState(() => _isUploadingPhoto = true);
     try {
-      // Fast compression to ~18KB JPEG for instant (< 0.1s) local update & sub-second storage upload
+      // Fast compression to lightweight PNG for instant (< 0.1s) local update & sub-second storage upload
       final compressedBytes = await ImageUtils.compressAndResizeImage(
         bytes,
         targetWidth: 360,
@@ -507,7 +535,7 @@ class _StudentDetailScreenState extends State<StudentDetailScreen> {
         quality: 75,
       );
 
-      final instantBase64Url = 'data:image/jpeg;base64,${base64Encode(compressedBytes)}';
+      final instantBase64Url = 'data:image/png;base64,${base64Encode(compressedBytes)}';
 
       // 1. Save locally on device for immediate local access
       if (!kIsWeb) {
@@ -547,12 +575,12 @@ class _StudentDetailScreenState extends State<StudentDetailScreen> {
           }
 
           final fileName =
-              'students/profile_${studentIdToUpdate}_${DateTime.now().millisecondsSinceEpoch}.jpg';
+              'students/profile_${studentIdToUpdate}_${DateTime.now().millisecondsSinceEpoch}.png';
           final storageRef = FirebaseStorage.instance.ref().child(fileName);
           await storageRef
-              .putData(compressedBytes, SettableMetadata(contentType: 'image/jpeg'))
-              .timeout(const Duration(seconds: 4));
-          final remoteUrl = await storageRef.getDownloadURL().timeout(const Duration(seconds: 3));
+              .putData(compressedBytes, SettableMetadata(contentType: 'image/png'))
+              .timeout(const Duration(seconds: 8));
+          final remoteUrl = await storageRef.getDownloadURL().timeout(const Duration(seconds: 5));
 
           final currentStudent = DatabaseService.studentBox.get(studentIdToUpdate);
           if (currentStudent != null) {

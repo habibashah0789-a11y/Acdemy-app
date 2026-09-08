@@ -38,6 +38,7 @@ import 'package:firebase_messaging/firebase_messaging.dart';
 import 'firebase_options.dart';
 
 import 'config/supabase_config.dart';
+import 'core/hybrid_backend.dart';
 
 Future<void> main() async {
   WidgetsBinding widgetsBinding = WidgetsFlutterBinding.ensureInitialized();
@@ -48,6 +49,7 @@ Future<void> main() async {
   );
 
   await SupabaseConfig.init();
+  unawaited(HybridBackend.printDiagnostics());
 
   FirebaseMessaging.onBackgroundMessage(firebaseMessagingBackgroundHandler);
 

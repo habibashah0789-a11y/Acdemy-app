@@ -157,11 +157,21 @@ class _ClassSchedulesScreenState extends State<ClassSchedulesScreen> {
         ),
       );
     }
-    if (url.startsWith('data:image') || (!url.contains('/') && !url.contains('\\') && url.length > 100)) {
+    if (url.startsWith('data:image') || (!url.contains('/') && !url.contains('\\') && url.length > 50)) {
       try {
-        final base64Str = url.contains(',') ? url.split(',').last : url;
-        final bytes = base64Decode(base64Str.trim());
-        return Image.memory(bytes, fit: BoxFit.cover);
+        String clean = url.contains(',') ? url.split(',').last : url;
+        clean = clean.replaceAll('\n', '').replaceAll('\r', '').replaceAll(' ', '').trim();
+        while (clean.length % 4 != 0) {
+          clean += '=';
+        }
+        final bytes = base64Decode(clean);
+        return Image.memory(
+          bytes,
+          fit: BoxFit.cover,
+          errorBuilder: (_, __, ___) => const Center(
+            child: Icon(Icons.person_rounded, color: AppTheme.primaryBlue, size: 24),
+          ),
+        );
       } catch (_) {}
     }
     if (url.startsWith('blob:')) {

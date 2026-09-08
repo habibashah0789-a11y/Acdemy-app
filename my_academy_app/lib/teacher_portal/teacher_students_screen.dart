@@ -4,6 +4,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import '../models/teacher_model.dart';
 import '../models/student_model.dart';
+import '../widgets/student_avatar.dart';
 import '../services/teacher_service.dart';
 import '../theme/app_theme.dart';
 import 'teacher_student_detail_screen.dart';
@@ -558,20 +559,10 @@ class _TeacherStudentsScreenState extends State<TeacherStudentsScreen>
             ),
           ),
         ),
-        leading: CircleAvatar(
-          radius: 22,
-          backgroundColor: _subjectColor.withValues(alpha: 0.1),
-          child: student.profilePicUrl.isNotEmpty
-              ? ClipOval(
-                  child: CachedNetworkImage(
-                    imageUrl: student.profilePicUrl,
-                    width: 44,
-                    height: 44,
-                    fit: BoxFit.cover,
-                    errorWidget: (_, __, ___) => _buildInitials(student),
-                  ),
-                )
-              : _buildInitials(student),
+        leading: StudentAvatar(
+          student: student,
+          size: 44,
+          isCircle: true,
         ),
         title: Text(
           student.name,

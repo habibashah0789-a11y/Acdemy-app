@@ -5,6 +5,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:intl/intl.dart';
 import '../models/student_model.dart';
 import '../models/teacher_model.dart';
+import '../widgets/student_avatar.dart';
 import '../theme/app_theme.dart';
 
 class TeacherStudentDetailScreen extends StatelessWidget {
@@ -149,20 +150,10 @@ class TeacherStudentDetailScreen extends StatelessWidget {
       child: Row(
         children: [
           // Avatar
-          CircleAvatar(
-            radius: 36,
-            backgroundColor: Colors.white.withValues(alpha: 0.2),
-            child: student.profilePicUrl.isNotEmpty
-                ? ClipOval(
-                    child: CachedNetworkImage(
-                      imageUrl: student.profilePicUrl,
-                      width: 72,
-                      height: 72,
-                      fit: BoxFit.cover,
-                      errorWidget: (_, __, ___) => _buildInitialsWidget(),
-                    ),
-                  )
-                : _buildInitialsWidget(),
+          StudentAvatar(
+            student: student,
+            size: 72,
+            isCircle: true,
           ),
           const SizedBox(width: 16),
           Expanded(

@@ -8,6 +8,7 @@ import 'daily_records_screen.dart';
 import '../../theme/app_theme.dart';
 import '../../students/student_detail_screen.dart';
 import '../../models/student_model.dart';
+import '../../widgets/student_avatar.dart';
 import '../../widgets/shimmer_loading_widget.dart';
 
 class DailyRecordDetailScreen extends StatefulWidget {
@@ -614,41 +615,10 @@ class _DailyRecordDetailScreenState extends State<DailyRecordDetailScreen>
               // Avatar
               Hero(
                 tag: 'daily_detail_${student.id}_$index',
-                child: Container(
-                  width: 48,
-                  height: 48,
-                  decoration: BoxDecoration(
-                    color: AppTheme.primaryBlue.withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(14),
-                  ),
-                  child: ClipRRect(
-                    borderRadius: BorderRadius.circular(14),
-                    child: student.profilePicUrl.isNotEmpty
-                        ? CachedNetworkImage(
-                            imageUrl: student.profilePicUrl,
-                            fit: BoxFit.cover,
-                            placeholder: (_, __) => const ShimmerLoadingWidget(
-                              width: 48,
-                              height: 48,
-                              borderRadius: 14,
-                            ),
-                            errorWidget: (_, __, ___) => const Icon(
-                                Icons.person_rounded,
-                                color: AppTheme.primaryBlue),
-                          )
-                        : Center(
-                            child: Text(
-                              student.initials.isNotEmpty
-                                  ? student.initials
-                                  : 'S',
-                              style: GoogleFonts.poppins(
-                                fontWeight: FontWeight.bold,
-                                fontSize: 18,
-                                color: AppTheme.primaryBlue,
-                              ),
-                            ),
-                          ),
-                  ),
+                child: StudentAvatar(
+                  student: student,
+                  size: 48,
+                  isCircle: false,
                 ),
               ),
               const SizedBox(width: 12),

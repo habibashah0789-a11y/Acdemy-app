@@ -7,6 +7,7 @@ import '../models/teacher_model.dart';
 import '../models/student_model.dart';
 import '../services/notification_service.dart';
 import '../services/supabase_service.dart';
+import '../services/teacher_payout_service.dart';
 import '../utils/image_utils.dart';
 import '../services/audit_log_service.dart';
 
@@ -413,23 +414,180 @@ class TeacherService {
     } catch (_) {}
   }
 
-  // ── ADMIN: Delete teacher (removes Firestore doc + role doc) ──
-  static Future<void> deleteTeacher(String teacherId) async {
-    final batch = _firestore.batch();
-    batch.delete(_firestore.collection('teachers').doc(teacherId));
-    batch.delete(_firestore.collection('roles').doc(teacherId));
-    await batch.commit();
-
+  // ── ADMIN: Delete teacher and all associated payouts, finance, notices, and devices ──
+  static Future<void> deleteTeacher(String teacherId, {TeacherModel? teacher}) async {
     try {
-      await AuditLogService.logAction(
-        actorId: 'ADMIN',
-        actorName: 'Administrator',
-        actorRole: 'ADMIN',
-        action: 'TEACHER_RECORD_DELETED',
-        transactionId: teacherId,
-        details: 'Deleted teacher record and revoked access role for ($teacherId).',
+      TeacherModel? targetTeacher = teacher;
+      if (targetTeacher == null) {
+        try {
+          final doc = await _firestore.collection('teachers').doc(teacherId).get();
+          if (doc.exists && doc.data() != null) {
+            targetTeacher = TeacherModel.fromFirestore(doc);
+          }
+        } catch (_) {}
+      }
+
+      if (targetTeacher == null) {
+        try {
+          final q = await _firestore
+              .collection('teachers')
+              .where('teacherId', isEqualTo: teacherId)
+              .limit(1)
+              .get();
+          if (q.docs.isNotEmpty) {
+            targetTeacher = TeacherModel.fromFirestore(q.docs.first);
+          }
+        } catch (_) {}
+      }
+
+      final docId = targetTeacher?.id.trim() ?? teacherId.trim();
+      final customId = targetTeacher?.teacherId.trim() ?? '';
+      final email = targetTeacher?.email.trim().toLowerCase() ?? '';
+      final name = targetTeacher?.name.trim() ?? '';
+      final subject = targetTeacher?.subject.trim() ?? '';
+      final section = targetTeacher?.section.trim() ?? '';
+      final picUrl = targetTeacher?.profilePicUrl ?? '';
+
+      // 1. Delete all teacher payouts & payout notifications for this specific teacher
+      final deletedPayoutsCount = await TeacherPayoutService.deletePayoutsForTeacher(
+        teacherDocId: docId,
+        customTeacherId: customId,
+        teacherEmail: email,
+        teacherName: name,
+        teacherSubject: subject,
+        teacherSection: section,
       );
-    } catch (_) {}
+
+      // 2. Delete all notifications & announcements authored by or targeted to this teacher
+      try {
+        final notifSnap = await _firestore.collection('notifications').get();
+        final notifBatch = _firestore.batch();
+        int notifCount = 0;
+
+        for (final doc in notifSnap.docs) {
+          final data = doc.data();
+          final sId = (data['senderId'] ?? '').toString().trim();
+          final tId = (data['teacherId'] ?? '').toString().trim();
+          final notifType = (data['notificationType'] ?? data['type'] ?? '').toString();
+          final tName = (data['teacherName'] ?? '').toString().trim().toLowerCase();
+          final tSub = (data['teacherSubject'] ?? data['subject'] ?? '').toString().trim().toLowerCase();
+
+          bool shouldDelete = false;
+
+          // Match by IDs/email
+          if (docId.isNotEmpty && (sId == docId || tId == docId)) shouldDelete = true;
+          if (customId.isNotEmpty && (sId == customId || tId == customId)) shouldDelete = true;
+          if (email.isNotEmpty && (sId.toLowerCase() == email || tId.toLowerCase() == email)) shouldDelete = true;
+
+          // Match by teacher announcement metadata
+          if (!shouldDelete && notifType == 'teacher_announcement') {
+            if (name.isNotEmpty && subject.isNotEmpty) {
+              if (tName == name.toLowerCase() && tSub == subject.toLowerCase()) {
+                shouldDelete = true;
+              }
+            }
+          }
+
+          if (shouldDelete) {
+            notifBatch.delete(doc.reference);
+            notifCount++;
+          }
+        }
+
+        if (notifCount > 0) {
+          await notifBatch.commit();
+        }
+      } catch (e) {
+        debugPrint('[TeacherService] Error deleting teacher notifications: $e');
+      }
+
+      // Also clean announcements and notices collections
+      try {
+        for (final col in ['announcements', 'notices']) {
+          final snap = await _firestore.collection(col).get();
+          final b = _firestore.batch();
+          int c = 0;
+          for (final doc in snap.docs) {
+            final data = doc.data();
+            final sId = (data['senderId'] ?? '').toString().trim();
+            final tId = (data['teacherId'] ?? '').toString().trim();
+            if ((docId.isNotEmpty && (sId == docId || tId == docId)) ||
+                (customId.isNotEmpty && (sId == customId || tId == customId)) ||
+                (email.isNotEmpty && (sId.toLowerCase() == email || tId.toLowerCase() == email))) {
+              b.delete(doc.reference);
+              c++;
+            }
+          }
+          if (c > 0) await b.commit();
+        }
+      } catch (_) {}
+
+      // 3. Delete registered FCM devices for this teacher
+      try {
+        final devicesSnap = await _firestore.collection('devices').get();
+        final devBatch = _firestore.batch();
+        int devCount = 0;
+        for (final doc in devicesSnap.docs) {
+          final uId = (doc.data()['userId'] ?? '').toString().trim();
+          if ((docId.isNotEmpty && uId == docId) ||
+              (customId.isNotEmpty && uId == customId) ||
+              (email.isNotEmpty && uId.toLowerCase() == email)) {
+            devBatch.delete(doc.reference);
+            devCount++;
+          }
+        }
+        if (devCount > 0) {
+          await devBatch.commit();
+        }
+      } catch (e) {
+        debugPrint('[TeacherService] Error deleting teacher devices: $e');
+      }
+
+      // 4. Delete Firestore Teacher Doc & Role Doc
+      final mainBatch = _firestore.batch();
+      if (docId.isNotEmpty) {
+        mainBatch.delete(_firestore.collection('teachers').doc(docId));
+        mainBatch.delete(_firestore.collection('roles').doc(docId));
+      }
+      if (customId.isNotEmpty && customId != docId) {
+        mainBatch.delete(_firestore.collection('teachers').doc(customId));
+        mainBatch.delete(_firestore.collection('roles').doc(customId));
+      }
+      await mainBatch.commit();
+
+      // 5. Delete profile picture from Storage if present
+      if (picUrl.isNotEmpty && picUrl.contains('firebase')) {
+        try {
+          await _storage.refFromURL(picUrl).delete();
+        } catch (_) {}
+      }
+
+      // 6. Clear in-memory cache
+      if (_cachedCurrentTeacher != null) {
+        if (_cachedCurrentTeacher!.id == docId ||
+            (customId.isNotEmpty && _cachedCurrentTeacher!.teacherId == customId) ||
+            (email.isNotEmpty && _cachedCurrentTeacher!.email.toLowerCase() == email)) {
+          _cachedCurrentTeacher = null;
+        }
+      }
+
+      // 7. Audit log
+      try {
+        await AuditLogService.logAction(
+          actorId: 'ADMIN',
+          actorName: 'Administrator',
+          actorRole: 'ADMIN',
+          action: 'TEACHER_RECORD_DELETED',
+          transactionId: docId,
+          details: 'Deleted teacher ${name.isNotEmpty ? name : docId}'
+              '${subject.isNotEmpty ? " ($subject - $section)" : ""}. '
+              'Purged $deletedPayoutsCount payout/finance records and all associated notices and devices.',
+        );
+      } catch (_) {}
+    } catch (e) {
+      debugPrint('[TeacherService] deleteTeacher error: $e');
+      rethrow;
+    }
   }
 
   // ── ADMIN: Generate next available teacher ID ──
@@ -472,11 +630,11 @@ class TeacherService {
       );
       final ref = _storage
           .ref()
-          .child('teacher_profiles/${teacherId}_${DateTime.now().millisecondsSinceEpoch}.jpg');
+          .child('teacher_profiles/${teacherId}_${DateTime.now().millisecondsSinceEpoch}.png');
       await ref
-          .putData(compressed, SettableMetadata(contentType: 'image/jpeg'))
-          .timeout(const Duration(seconds: 4));
-      return await ref.getDownloadURL().timeout(const Duration(seconds: 3));
+          .putData(compressed, SettableMetadata(contentType: 'image/png'))
+          .timeout(const Duration(seconds: 8));
+      return await ref.getDownloadURL().timeout(const Duration(seconds: 5));
     } catch (e) {
       debugPrint('[TeacherService] uploadTeacherProfileImage error: $e');
       return null;

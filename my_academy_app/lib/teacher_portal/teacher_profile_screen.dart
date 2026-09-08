@@ -486,7 +486,7 @@ class TeacherProfileScreen extends StatelessWidget {
 
         final picUrl = (uploadedUrl != null && uploadedUrl.isNotEmpty)
             ? uploadedUrl
-            : 'data:image/jpeg;base64,${base64Encode(compressed)}';
+            : 'data:image/png;base64,${base64Encode(compressed)}';
 
         final updatedTeacher = currentTeacher.copyWith(profilePicUrl: picUrl);
         await TeacherService.updateTeacher(updatedTeacher);

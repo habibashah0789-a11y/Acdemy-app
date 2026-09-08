@@ -5,6 +5,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:intl/intl.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import '../models/recycled_student.dart';
+import '../widgets/student_avatar.dart';
 import '../services/database_service.dart';
 import '../theme/app_theme.dart';
 import '../widgets/shimmer_loading_widget.dart';
@@ -261,45 +262,10 @@ class _RecycleBinScreenState extends State<RecycleBinScreen> {
           child: Row(
             children: [
               // Avatar
-              Container(
-                width: 54,
-                height: 54,
-                decoration: BoxDecoration(
-                  color: Colors.red.withValues(alpha: 0.08),
-                  borderRadius: BorderRadius.circular(16),
-                ),
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(16),
-                  child: student.profilePicUrl.isNotEmpty
-                      ? CachedNetworkImage(
-                          imageUrl: student.profilePicUrl,
-                          fit: BoxFit.cover,
-                          placeholder: (_, __) => const ShimmerLoadingWidget(
-                            width: 54,
-                            height: 54,
-                            borderRadius: 16,
-                          ),
-                          errorWidget: (_, __, ___) => Center(
-                            child: Icon(
-                              Icons.person_rounded,
-                              color: Colors.red.shade300,
-                              size: 28,
-                            ),
-                          ),
-                        )
-                      : Center(
-                          child: Text(
-                            student.initials.isNotEmpty
-                                ? student.initials
-                                : 'S',
-                            style: TextStyle(
-                              fontWeight: FontWeight.bold,
-                              fontSize: 20,
-                              color: Colors.red.shade400,
-                            ),
-                          ),
-                        ),
-                ),
+              StudentAvatar(
+                student: student,
+                size: 54,
+                isCircle: false,
               ),
               const SizedBox(width: 12),
               // Info

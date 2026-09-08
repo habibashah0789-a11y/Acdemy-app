@@ -219,6 +219,11 @@ class _AdminFinanceScreenState extends State<AdminFinanceScreen>
                             Text('Ref: ${p.txnRef} • Date: $dateStr', style: const TextStyle(fontSize: 10, color: Colors.grey)),
                           ],
                         ),
+                        trailing: IconButton(
+                          icon: const Icon(Icons.delete_outline_rounded, color: Colors.redAccent, size: 20),
+                          tooltip: 'Delete Payout Record',
+                          onPressed: () => _confirmDeletePayout(context, p),
+                        ),
                       ),
                     );
                   },
@@ -226,6 +231,55 @@ class _AdminFinanceScreenState extends State<AdminFinanceScreen>
         ),
       ],
     );
+  }
+
+  Future<void> _confirmDeletePayout(BuildContext context, TeacherPayoutModel payout) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Delete Payout Record?'),
+        content: Text(
+          'Are you sure you want to permanently delete this payout of Rs ${NumberFormat('#,##0').format(payout.amount)} for ${payout.teacherName}?\n\n'
+          'Ref: ${payout.txnRef}\n'
+          'This will remove the transaction record and its notice.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton.icon(
+            onPressed: () => Navigator.of(ctx).pop(true),
+            icon: const Icon(Icons.delete_forever_rounded, color: Colors.white, size: 16),
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.red, foregroundColor: Colors.white),
+            label: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true) {
+      try {
+        await TeacherPayoutService.deletePayout(payout.id);
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Payout record ${payout.txnRef} deleted successfully.'),
+              backgroundColor: Colors.red.shade700,
+            ),
+          );
+        }
+      } catch (e) {
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Failed to delete payout: $e'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+      }
+    }
   }
 
   // ── Tab 2: Audit Log ──
