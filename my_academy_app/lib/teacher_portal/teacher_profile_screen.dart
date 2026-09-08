@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:typed_data';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -7,6 +8,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:image_picker/image_picker.dart';
 import '../models/teacher_model.dart';
 import '../services/teacher_service.dart';
+import '../services/notification_service.dart';
 import '../theme/app_theme.dart';
 import '../screens/role_selection_screen.dart';
 import '../widgets/about_developers_widget.dart';
@@ -538,6 +540,11 @@ class TeacherProfileScreen extends StatelessWidget {
     );
 
     if (confirmed == true) {
+      NotificationService.cancelTeacherSubscription();
+      final currentUid = FirebaseAuth.instance.currentUser?.uid;
+      if (currentUid != null) {
+        unawaited(NotificationService.unregisterFcmToken(userId: currentUid));
+      }
       if (context.mounted) {
         Navigator.of(context).pushAndRemoveUntil(
           MaterialPageRoute(builder: (_) => const RoleSelectionScreen()),

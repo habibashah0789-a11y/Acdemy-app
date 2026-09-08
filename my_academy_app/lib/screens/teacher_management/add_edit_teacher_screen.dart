@@ -3,6 +3,7 @@ import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:image_picker/image_picker.dart';
 import '../../models/teacher_model.dart';
 import '../../services/teacher_service.dart';
@@ -25,6 +26,8 @@ class _AddEditTeacherScreenState extends State<AddEditTeacherScreen> {
   final _formKey = GlobalKey<FormState>();
   final _nameCtrl = TextEditingController();
   final _emailCtrl = TextEditingController();
+  final _passwordCtrl = TextEditingController();
+  bool _obscurePassword = true;
 
   Uint8List? _imageBytes;
   bool _removeExistingPhoto = false;
@@ -75,6 +78,7 @@ class _AddEditTeacherScreenState extends State<AddEditTeacherScreen> {
   void dispose() {
     _nameCtrl.dispose();
     _emailCtrl.dispose();
+    _passwordCtrl.dispose();
     super.dispose();
   }
 
@@ -201,24 +205,6 @@ class _AddEditTeacherScreenState extends State<AddEditTeacherScreen> {
     setState(() => _isLoading = true);
 
     try {
-      final teacherUid = widget.isEditing ? widget.teacher!.id : FirebaseFirestore.instance.collection('teachers').doc().id;
-      String finalPicUrl = '';
-
-      if (_imageBytes != null) {
-        final uploadedUrl = await TeacherService.uploadTeacherProfileImage(
-          _imageBytes!,
-          teacherUid,
-        );
-
-        if (uploadedUrl != null && uploadedUrl.isNotEmpty) {
-          finalPicUrl = uploadedUrl;
-        } else {
-          finalPicUrl = 'data:image/png;base64,${base64Encode(_imageBytes!)}';
-        }
-      } else if (widget.isEditing && !_removeExistingPhoto) {
-        finalPicUrl = widget.teacher?.profilePicUrl ?? '';
-      }
-
       final generatedTeacherId = widget.isEditing 
           ? widget.teacher!.teacherId 
           : await TeacherService.generateTeacherId(
@@ -226,43 +212,125 @@ class _AddEditTeacherScreenState extends State<AddEditTeacherScreen> {
               subject: _selectedSubject,
             );
 
-      final teacher = TeacherModel(
-        id: teacherUid,
-        name: _nameCtrl.text.trim(),
-        email: _emailCtrl.text.trim(),
-        teacherId: generatedTeacherId,
-        subject: _selectedSubject,
-        section: _selectedSection,
-        assignedClasses: List.from(_selectedClasses),
-        profilePicUrl: finalPicUrl,
-        isActive: _isActive,
-        createdAt: widget.isEditing
-            ? widget.teacher!.createdAt
-            : DateTime.now(),
-      );
+      String finalPicUrl = '';
 
       if (widget.isEditing) {
+        final teacherUid = widget.teacher!.id;
+        if (_imageBytes != null) {
+          final uploadedUrl = await TeacherService.uploadTeacherProfileImage(
+            _imageBytes!,
+            teacherUid,
+          );
+
+          if (uploadedUrl != null && uploadedUrl.isNotEmpty) {
+            finalPicUrl = uploadedUrl;
+          } else {
+            finalPicUrl = 'data:image/png;base64,${base64Encode(_imageBytes!)}';
+          }
+        } else if (!_removeExistingPhoto) {
+          finalPicUrl = widget.teacher?.profilePicUrl ?? '';
+        }
+
+        final teacher = TeacherModel(
+          id: teacherUid,
+          name: _nameCtrl.text.trim(),
+          email: _emailCtrl.text.trim(),
+          teacherId: generatedTeacherId,
+          subject: _selectedSubject,
+          section: _selectedSection,
+          assignedClasses: List.from(_selectedClasses),
+          profilePicUrl: finalPicUrl,
+          isActive: _isActive,
+          createdAt: widget.teacher!.createdAt,
+        );
+
         await TeacherService.updateTeacher(teacher);
+
+        if (mounted) {
+          setState(() => _isLoading = false);
+          Navigator.of(context).pop();
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                '${_nameCtrl.text.trim()}\'s teacher profile updated successfully.',
+              ),
+              backgroundColor: Colors.green,
+              behavior: SnackBarBehavior.floating,
+              duration: const Duration(seconds: 4),
+            ),
+          );
+        }
       } else {
-        await TeacherService.createTeacherRecord(
-          uid: teacherUid,
+        // ── Register New Teacher with Auth + Firestore (Password set by Admin) ──
+        if (_imageBytes != null) {
+          finalPicUrl = 'data:image/png;base64,${base64Encode(_imageBytes!)}';
+        }
+
+        final teacher = TeacherModel(
+          id: '', // Generated during Auth registration
+          name: _nameCtrl.text.trim(),
+          email: _emailCtrl.text.trim(),
+          teacherId: generatedTeacherId,
+          subject: _selectedSubject,
+          section: _selectedSection,
+          assignedClasses: List.from(_selectedClasses),
+          profilePicUrl: finalPicUrl,
+          isActive: _isActive,
+          createdAt: DateTime.now(),
+        );
+
+        final newTeacherUid = await TeacherService.registerTeacherWithAuth(
+          email: _emailCtrl.text.trim(),
+          password: _passwordCtrl.text.trim(),
           teacher: teacher,
         );
-      }
 
+        // Upload profile photo to storage if provided
+        if (_imageBytes != null) {
+          unawaited(() async {
+            try {
+              final uploadedUrl = await TeacherService.uploadTeacherProfileImage(
+                _imageBytes!,
+                newTeacherUid,
+              );
+              if (uploadedUrl != null && uploadedUrl.isNotEmpty) {
+                await TeacherService.updateTeacher(teacher.copyWith(id: newTeacherUid, profilePicUrl: uploadedUrl));
+              }
+            } catch (_) {}
+          }());
+        }
+
+        if (mounted) {
+          setState(() => _isLoading = false);
+          Navigator.of(context).pop();
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                '${_nameCtrl.text.trim()} has been registered! They can log in to Teacher Portal using email: ${_emailCtrl.text.trim()} and the password you set.',
+              ),
+              backgroundColor: Colors.green,
+              behavior: SnackBarBehavior.floating,
+              duration: const Duration(seconds: 5),
+            ),
+          );
+        }
+      }
+    } on FirebaseAuthException catch (fe) {
+      setState(() => _isLoading = false);
+      String msg = 'Registration failed: ${fe.message}';
+      if (fe.code == 'email-already-in-use') {
+        msg = 'This email is already registered in the system.';
+      } else if (fe.code == 'weak-password') {
+        msg = 'The password is too weak. Please use at least 6 characters.';
+      } else if (fe.code == 'invalid-email') {
+        msg = 'The email address is invalid.';
+      }
       if (mounted) {
-        setState(() => _isLoading = false);
-        Navigator.of(context).pop();
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(
-              widget.isEditing
-                  ? '${_nameCtrl.text.trim()}\'s profile & picture updated successfully.'
-                  : '${_nameCtrl.text.trim()} has been registered as a teacher with profile photo. They can now log in with their email and password.',
-            ),
-            backgroundColor: Colors.green,
+            content: Text(msg),
+            backgroundColor: Colors.red,
             behavior: SnackBarBehavior.floating,
-            duration: const Duration(seconds: 4),
           ),
         );
       }
@@ -271,7 +339,7 @@ class _AddEditTeacherScreenState extends State<AddEditTeacherScreen> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Failed: $e'),
+            content: Text('Failed: ${e.toString().replaceFirst("Exception: ", "")}'),
             backgroundColor: Colors.red,
             behavior: SnackBarBehavior.floating,
           ),
@@ -416,6 +484,37 @@ class _AddEditTeacherScreenState extends State<AddEditTeacherScreen> {
                     : null,
               ),
               const SizedBox(height: 14),
+
+              if (!widget.isEditing) ...[
+                TextFormField(
+                  controller: _passwordCtrl,
+                  obscureText: _obscurePassword,
+                  decoration: InputDecoration(
+                    labelText: 'Teacher Login Password *',
+                    hintText: 'Minimum 6 characters (e.g. Pass123)',
+                    prefixIcon: const Icon(Icons.lock_outline_rounded,
+                        color: AppTheme.primaryBlue),
+                    suffixIcon: IconButton(
+                      icon: Icon(
+                        _obscurePassword ? Icons.visibility_off_outlined : Icons.visibility_outlined,
+                        color: Colors.grey,
+                      ),
+                      onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
+                    ),
+                    helperText: 'Teacher will log into the Teacher Portal with this password',
+                  ),
+                  validator: (v) {
+                    if (v == null || v.trim().isEmpty) {
+                      return 'Password is required for teacher portal login';
+                    }
+                    if (v.trim().length < 6) {
+                      return 'Password must be at least 6 characters';
+                    }
+                    return null;
+                  },
+                ),
+                const SizedBox(height: 14),
+              ],
 
 
               const SizedBox(height: 8),

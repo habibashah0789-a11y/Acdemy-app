@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 import '../models/teacher_payout_model.dart';
-import '../services/audit_log_service.dart';
 import '../services/teacher_payout_service.dart';
 import '../teachers/record_teacher_payment_modal.dart';
 import '../theme/app_theme.dart';
@@ -15,21 +14,12 @@ class AdminFinanceScreen extends StatefulWidget {
   State<AdminFinanceScreen> createState() => _AdminFinanceScreenState();
 }
 
-class _AdminFinanceScreenState extends State<AdminFinanceScreen>
-    with SingleTickerProviderStateMixin {
-  late TabController _tabController;
+class _AdminFinanceScreenState extends State<AdminFinanceScreen> {
   final TextEditingController _searchController = TextEditingController();
   String _searchQuery = '';
 
   @override
-  void initState() {
-    super.initState();
-    _tabController = TabController(length: 2, vsync: this);
-  }
-
-  @override
   void dispose() {
-    _tabController.dispose();
     _searchController.dispose();
     super.dispose();
   }
@@ -48,17 +38,6 @@ class _AdminFinanceScreenState extends State<AdminFinanceScreen>
         backgroundColor: Colors.indigo.shade900,
         foregroundColor: Colors.white,
         elevation: 0,
-        bottom: TabBar(
-          controller: _tabController,
-          indicatorColor: AppTheme.secondaryGreen,
-          labelColor: Colors.white,
-          unselectedLabelColor: Colors.white70,
-          labelStyle: GoogleFonts.poppins(fontWeight: FontWeight.bold, fontSize: 13),
-          tabs: const [
-            Tab(icon: Icon(Icons.people_alt_rounded), text: 'Teacher Payouts'),
-            Tab(icon: Icon(Icons.security_rounded), text: 'Audit Log'),
-          ],
-        ),
       ),
       body: StreamBuilder<List<TeacherPayoutModel>>(
         stream: TeacherPayoutService.getAllPayoutsStream(),
@@ -71,16 +50,7 @@ class _AdminFinanceScreenState extends State<AdminFinanceScreen>
               _buildMetricsHeader(payouts),
 
               Expanded(
-                child: TabBarView(
-                  controller: _tabController,
-                  children: [
-                    // Tab 1: Teacher Payouts
-                    _buildTeacherPayoutsTab(payouts),
-
-                    // Tab 2: Audit Log
-                    _buildAuditLogTab(),
-                  ],
-                ),
+                child: _buildTeacherPayoutsTab(payouts),
               ),
             ],
           );
@@ -127,7 +97,7 @@ class _AdminFinanceScreenState extends State<AdminFinanceScreen>
     );
   }
 
-  // ── Tab 1: Teacher Payouts ──
+  // ── Teacher Payouts List ──
   Widget _buildTeacherPayoutsTab(List<TeacherPayoutModel> payouts) {
     final filtered = payouts.where((p) {
       if (_searchQuery.isEmpty) return true;
@@ -280,69 +250,5 @@ class _AdminFinanceScreenState extends State<AdminFinanceScreen>
         }
       }
     }
-  }
-
-  // ── Tab 2: Audit Log ──
-  Widget _buildAuditLogTab() {
-    return StreamBuilder<List<Map<String, dynamic>>>(
-      stream: AuditLogService.getAuditLogsStream(),
-      builder: (context, snapshot) {
-        final logs = snapshot.data ?? [];
-        if (logs.isEmpty) {
-          return const Center(child: Text('No audit logs recorded.'));
-        }
-        return ListView.builder(
-          padding: const EdgeInsets.all(16),
-          itemCount: logs.length,
-          itemBuilder: (context, i) {
-            final log = logs[i];
-            final action = log['action']?.toString() ?? 'ACTION';
-            final actorName = log['actorName']?.toString() ?? 'User';
-            final details = log['details']?.toString() ?? '';
-            final timestamp = log['timestamp'];
-            DateTime dt = DateTime.now();
-            if (timestamp != null) {
-              try {
-                dt = timestamp.toDate();
-              } catch (_) {}
-            }
-
-            return CustomCard(
-              margin: const EdgeInsets.only(bottom: 8),
-              padding: const EdgeInsets.all(12),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(color: Colors.indigo.shade50, borderRadius: BorderRadius.circular(8)),
-                    child: const Icon(Icons.history_toggle_off_rounded, color: Colors.indigo, size: 20),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Text(action, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: Colors.indigo)),
-                            Text(DateFormat('dd MMM, hh:mm a').format(dt), style: const TextStyle(fontSize: 10, color: Colors.grey)),
-                          ],
-                        ),
-                        const SizedBox(height: 4),
-                        Text(details, style: const TextStyle(fontSize: 12)),
-                        const SizedBox(height: 2),
-                        Text('By: $actorName', style: const TextStyle(fontSize: 10, color: Colors.grey)),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-            );
-          },
-        );
-      },
-    );
   }
 }

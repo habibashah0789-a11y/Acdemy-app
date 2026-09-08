@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/foundation.dart';
@@ -340,7 +341,42 @@ class TeacherService {
     }
   }
 
-  // ── ADMIN: Create teacher Firestore record (Firebase Auth created separately) ──
+  // ── ADMIN: Register Teacher with Firebase Auth & Firestore (Password set by Admin) ──
+  static Future<String> registerTeacherWithAuth({
+    required String email,
+    required String password,
+    required TeacherModel teacher,
+  }) async {
+    FirebaseApp? tempApp;
+    try {
+      final appName = 'TeacherAuthCreation_${DateTime.now().millisecondsSinceEpoch}';
+      tempApp = await Firebase.initializeApp(
+        name: appName,
+        options: Firebase.app().options,
+      );
+      final tempAuth = FirebaseAuth.instanceFor(app: tempApp);
+      final userCred = await tempAuth.createUserWithEmailAndPassword(
+        email: email.trim(),
+        password: password,
+      );
+
+      final uid = userCred.user!.uid;
+
+      // Create teacher record in Firestore with this Auth UID
+      final finalTeacher = teacher.copyWith(id: uid);
+      await createTeacherRecord(uid: uid, teacher: finalTeacher);
+
+      return uid;
+    } finally {
+      if (tempApp != null) {
+        try {
+          await tempApp.delete();
+        } catch (_) {}
+      }
+    }
+  }
+
+  // ── ADMIN: Create teacher Firestore record ──
   static Future<void> createTeacherRecord({
     required String uid,
     required TeacherModel teacher,

@@ -60,4 +60,122 @@ void main() {
     expect(restored.message, notification.message);
     expect(restored.isRead, notification.isRead);
   });
+
+  group('Teacher Notification Filtering Tests', () {
+    const teacherBiology = TeacherModel(
+      id: 'teacher-bio-uid',
+      name: 'Sir Ahmed',
+      email: 'ahmed@academy.com',
+      teacherId: 'T-BIO-FSC-001',
+      subject: 'Biology',
+      section: 'FSc',
+      assignedClasses: ['First Year', 'Second Year'],
+      createdAt: null as dynamic,
+    );
+
+    test('Teacher receives payout notification specifically addressed to them', () {
+      final payoutNotif = NotificationModel(
+        id: 'payout_123',
+        title: '💵 Payment Received: Rs 50000',
+        message: 'Payment credited',
+        studentName: 'Sir Ahmed',
+        className: 'FSc',
+        subject: 'Biology',
+        registeredBy: 'Admin',
+        timestamp: DateTime.now(),
+        notificationType: 'teacher_payout',
+        isRead: false,
+        teacherId: 'teacher-bio-uid',
+      );
+
+      expect(NotificationService.isNotificationForTeacher(teacherBiology, payoutNotif), isTrue);
+    });
+
+    test('Teacher DOES NOT receive payout notification addressed to another teacher', () {
+      final otherPayoutNotif = NotificationModel(
+        id: 'payout_456',
+        title: '💵 Payment Received: Rs 40000',
+        message: 'Payment credited',
+        studentName: 'Sir Bilal',
+        className: 'FSc',
+        subject: 'Physics',
+        registeredBy: 'Admin',
+        timestamp: DateTime.now(),
+        notificationType: 'teacher_payout',
+        isRead: false,
+        teacherId: 'teacher-phy-uid',
+      );
+
+      expect(NotificationService.isNotificationForTeacher(teacherBiology, otherPayoutNotif), isFalse);
+    });
+
+    test('Teacher receives student registration notification for student enrolled in their subject', () {
+      final studentBioReg = NotificationModel(
+        id: 'reg_student_1',
+        title: '🎓 New Student Registered',
+        message: 'Enrolled in Biology',
+        studentName: 'Ali Khan',
+        className: 'FSc',
+        subject: 'Biology',
+        registeredBy: 'Admin',
+        timestamp: DateTime.now(),
+        notificationType: 'student_registered',
+        isRead: false,
+      );
+
+      expect(NotificationService.isNotificationForTeacher(teacherBiology, studentBioReg), isTrue);
+    });
+
+    test('Teacher DOES NOT receive student registration notification for other subjects', () {
+      final studentMathReg = NotificationModel(
+        id: 'reg_student_2',
+        title: '🎓 New Student Registered',
+        message: 'Enrolled in Mathematics',
+        studentName: 'Usman Ali',
+        className: 'FSc',
+        subject: 'Mathematics',
+        registeredBy: 'Admin',
+        timestamp: DateTime.now(),
+        notificationType: 'student_registered',
+        isRead: false,
+      );
+
+      expect(NotificationService.isNotificationForTeacher(teacherBiology, studentMathReg), isFalse);
+    });
+
+    test('Teacher receives fee payment notification for their subject student', () {
+      final feeBioNotif = NotificationModel(
+        id: 'pay_student_1',
+        title: '💳 Fee Payment: Ali Khan',
+        message: 'Paid fee for Biology',
+        studentName: 'Ali Khan',
+        className: 'FSc',
+        subject: 'Biology',
+        registeredBy: 'Admin',
+        timestamp: DateTime.now(),
+        notificationType: 'fee_payment',
+        isRead: false,
+      );
+
+      expect(NotificationService.isNotificationForTeacher(teacherBiology, feeBioNotif), isTrue);
+    });
+
+    test('Teacher DOES NOT receive generic admin announcements or fee reminders', () {
+      final genericAdminNotif = NotificationModel(
+        id: 'announcement_1',
+        title: '📢 Academy Holiday',
+        message: 'Academy will remain closed tomorrow',
+        studentName: '',
+        className: 'All',
+        subject: 'General',
+        registeredBy: 'Admin',
+        timestamp: DateTime.now(),
+        notificationType: 'admin_announcement',
+        isRead: false,
+      );
+
+      expect(NotificationService.isNotificationForTeacher(teacherBiology, genericAdminNotif), isFalse);
+    });
+  });
 }
+

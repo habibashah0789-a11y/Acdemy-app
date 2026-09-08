@@ -1238,9 +1238,30 @@ status = PENDING
   static final ValueNotifier<int> teacherUnreadNoticesCount = ValueNotifier<int>(0);
   static List<NotificationModel> _lastTeacherFilteredNotices = [];
 
+  static Future<void> subscribeToTeacherTopics(TeacherModel teacher) async {
+    try {
+      await _messaging.unsubscribeFromTopic('students');
+      await _messaging.unsubscribeFromTopic('academy_all');
+      await _messaging.subscribeToTopic('teacher_${teacher.id}');
+      if (teacher.teacherId.isNotEmpty) {
+        await _messaging.subscribeToTopic('teacher_${teacher.teacherId}');
+      }
+      final subjects = teacher.subject
+          .split(',')
+          .map((e) => e.trim().toLowerCase().replaceAll(RegExp(r'[^a-z0-9]'), '_'))
+          .where((e) => e.isNotEmpty)
+          .toList();
+      for (var sub in subjects) {
+        await _messaging.subscribeToTopic('subject_$sub');
+      }
+    } catch (e) {
+      debugPrint('[NotificationService] Error subscribing to teacher topics: $e');
+    }
+  }
+
   /// Evaluates whether a notification belongs to a specific teacher's portal.
-  /// Strict rule: Teachers ONLY receive registrations, fee installments, payouts,
-  /// and direct notices for students enrolled in their specific subject(s).
+  /// Strict rule: Teachers ONLY receive notifications for students enrolled in their
+  /// specific subject(s) and their own payouts. All other admin notifications are excluded.
   static bool isNotificationForTeacher(TeacherModel? teacher, dynamic notifItem) {
     if (teacher == null) return false;
 
@@ -1252,11 +1273,17 @@ status = PENDING
         'type': notifItem.notificationType,
         'studentId': notifItem.studentId,
         'teacherId': notifItem.teacherId,
+        'teacherName': notifItem.teacherName,
+        'studentName': notifItem.studentName,
         'targetSubject': notifItem.teacherSubject.isNotEmpty ? notifItem.teacherSubject : notifItem.subject,
         'subject': notifItem.subject,
+        'teacherSubject': notifItem.teacherSubject,
         'targetSection': notifItem.className,
         'className': notifItem.className,
         'class': notifItem.className,
+        'registeredBy': notifItem.registeredBy,
+        'title': notifItem.title,
+        'message': notifItem.message,
       };
     } else if (notifItem is Map) {
       data = Map<String, dynamic>.from(notifItem);
@@ -1270,28 +1297,39 @@ status = PENDING
     final notifId = (data['id'] ?? '').toString();
 
     // 1. Exclude announcements sent by this teacher themselves from their incoming notices
-    if (senderId.isNotEmpty && senderId == teacher.id) {
+    if (senderId.isNotEmpty && (senderId == teacher.id || senderId == teacher.teacherId)) {
       return false;
     }
 
-    // 2. Direct Teacher Payout
-    if (notifType == 'teacher_payout') {
-      final targetTeacherId = (data['teacherId'] ?? '').toString();
-      return targetTeacherId.isNotEmpty && targetTeacherId == teacher.id;
+    // 2. Direct Teacher Payout: ONLY if this payout is specifically for THIS teacher
+    if (notifType == 'teacher_payout' || notifId.startsWith('payout_')) {
+      final targetTeacherId = (data['teacherId'] ?? '').toString().trim();
+      final targetTeacherName = (data['teacherName'] ?? data['studentName'] ?? '').toString().trim().toLowerCase();
+      final myId = teacher.id.trim();
+      final myCustomId = teacher.teacherId.trim();
+      final myName = teacher.name.trim().toLowerCase();
+      final myEmail = teacher.email.trim().toLowerCase();
+
+      final idMatches = targetTeacherId.isNotEmpty &&
+          (targetTeacherId == myId ||
+           targetTeacherId == myCustomId ||
+           (myEmail.isNotEmpty && targetTeacherId.toLowerCase() == myEmail));
+      final nameMatches = targetTeacherName.isNotEmpty &&
+          (targetTeacherName == myName ||
+           targetTeacherName.contains(myName) ||
+           myName.contains(targetTeacherName));
+
+      return idMatches || nameMatches;
     }
 
-    // 3. Exclude admin-only copies, student private reminders, and student attendance alerts
+    // 3. Exclude admin-only copies, private fee reminders, fee summaries, attendance alerts, and timetable updates
     if (studentId == 'admin_only' ||
         notifType == 'fee_reminder' ||
         notifType == 'fee_reminder_summary' ||
-        notifType.startsWith('attendance_')) {
+        notifType.startsWith('attendance_') ||
+        notifType == 'timetable_updated') {
       return false;
     }
-
-    // Extract subjects and sections from notification
-    final notifSub = (data['targetSubject'] ?? data['subject'] ?? data['teacherSubject'] ?? '').toString().trim();
-    final notifSec = (data['targetSection'] ?? data['class'] ?? data['className'] ?? '').toString().trim();
-    final notifGrade = (data['targetGrade'] ?? data['grade'] ?? '').toString().trim();
 
     // Teacher subjects
     final teacherSubjects = teacher.subject
@@ -1302,7 +1340,8 @@ status = PENDING
 
     if (teacherSubjects.isEmpty) return false;
 
-    // Notification subjects
+    // Notification target subjects
+    final notifSub = (data['targetSubject'] ?? data['subject'] ?? data['teacherSubject'] ?? '').toString().trim();
     final notifSubjects = notifSub
         .split(',')
         .map((s) => s.trim().toLowerCase())
@@ -1331,8 +1370,16 @@ status = PENDING
       } catch (_) {}
     }
 
+    // If subject does NOT match teacher's subjects, teacher must NOT receive this notification
+    if (!subjectMatches) {
+      return false;
+    }
+
     // Check Section / Class match
+    final notifSec = (data['targetSection'] ?? data['class'] ?? data['className'] ?? '').toString().trim();
+    final notifGrade = (data['targetGrade'] ?? data['grade'] ?? '').toString().trim();
     final mySection = teacher.section.trim().toLowerCase();
+
     bool sectionMatches = true;
     if (mySection.isNotEmpty && mySection != 'all') {
       final nSecLower = notifSec.toLowerCase();
@@ -1360,9 +1407,13 @@ status = PENDING
       }
     }
 
+    if (!sectionMatches) {
+      return false;
+    }
+
     // 4. Student Registrations: ONLY if student is enrolled in teacher's subject & section
     if (notifType == 'student_registered' || notifId.startsWith('reg_')) {
-      return subjectMatches && sectionMatches;
+      return true;
     }
 
     // 5. Fee Payments & Installments: ONLY if student is enrolled in teacher's subject & section
@@ -1371,19 +1422,15 @@ status = PENDING
         notifType == 'fee_payment_verified' ||
         notifType == 'fee_installment' ||
         notifId.startsWith('pay_')) {
-      return subjectMatches && sectionMatches;
+      return true;
     }
 
-    // 6. Direct Announcements specifically targeted to this teacher's subject/section
+    // 6. Targeted Announcements: ONLY if specifically tagged for this teacher's subject & section
     if (notifType == 'teacher_announcement' || notifType == 'announcement' || notifType == 'notice') {
-      final targetRole = (data['targetRole'] ?? '').toString().toLowerCase();
-      if (targetRole == 'teacher' || targetRole == 'teachers') {
-        return (notifSubjects.isEmpty || subjectMatches) && sectionMatches;
-      }
-      return subjectMatches && sectionMatches;
+      return notifSubjects.isNotEmpty;
     }
 
-    // All generic admin notifications and other subjects -> EXCLUDED
+    // All generic admin notifications, other subjects, or unrecognized types -> EXCLUDED
     return false;
   }
   
@@ -1392,6 +1439,8 @@ status = PENDING
       init();
     }
     
+    subscribeToTeacherTopics(teacher);
+
     _teacherFirestoreSubscription?.cancel();
     _teacherFirstSnapshotReceived = false;
     _teacherSeenNotificationIds.clear();

@@ -609,11 +609,45 @@ class _AddStudentScreenState extends State<AddStudentScreen> {
           _resetFormForNextStudent();
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text('Student "$nameToSave" saved! Focused on Name field for next student.'),
+              content: Row(
+                children: [
+                  const Icon(Icons.check_circle_rounded, color: Colors.white),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      'Student "$nameToSave" ($studentCode) registered successfully!',
+                      style: GoogleFonts.poppins(fontWeight: FontWeight.w600, color: Colors.white),
+                    ),
+                  ),
+                ],
+              ),
               backgroundColor: AppTheme.secondaryGreen,
+              behavior: SnackBarBehavior.floating,
+              duration: const Duration(seconds: 4),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
             ),
           );
         } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Row(
+                children: [
+                  const Icon(Icons.check_circle_rounded, color: Colors.white),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      'Student "$nameToSave" ($studentCode) registered successfully!',
+                      style: GoogleFonts.poppins(fontWeight: FontWeight.w600, color: Colors.white),
+                    ),
+                  ),
+                ],
+              ),
+              backgroundColor: AppTheme.secondaryGreen,
+              behavior: SnackBarBehavior.floating,
+              duration: const Duration(seconds: 4),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            ),
+          );
           Navigator.pop(context, true);
         }
       }
