@@ -364,6 +364,15 @@ class TeacherService {
 
     await batch.commit();
 
+    // Background Supabase Sync
+    unawaited(() async {
+      try {
+        await SupabaseService.syncTeacherToSupabase(teacher.toSupabaseMap());
+      } catch (e) {
+        debugPrint('[SUPABASE SYNC] createTeacherRecord error: $e');
+      }
+    }());
+
     try {
       await AuditLogService.logAction(
         actorId: 'ADMIN',
@@ -383,6 +392,15 @@ class TeacherService {
         .doc(teacher.id)
         .update(teacher.toUpdateMap());
 
+    // Background Supabase Sync
+    unawaited(() async {
+      try {
+        await SupabaseService.syncTeacherToSupabase(teacher.toSupabaseMap());
+      } catch (e) {
+        debugPrint('[SUPABASE SYNC] updateTeacher error: $e');
+      }
+    }());
+
     try {
       await AuditLogService.logAction(
         actorId: 'ADMIN',
@@ -401,6 +419,15 @@ class TeacherService {
       'isActive': isActive,
       'updatedAt': FieldValue.serverTimestamp(),
     });
+
+    // Background Supabase Sync
+    unawaited(() async {
+      try {
+        if (SupabaseService.isConfigured) {
+          await SupabaseService.client.from('teachers').update({'is_active': isActive, 'status': isActive ? 'active' : 'inactive'}).eq('id', teacherId);
+        }
+      } catch (_) {}
+    }());
 
     try {
       await AuditLogService.logAction(

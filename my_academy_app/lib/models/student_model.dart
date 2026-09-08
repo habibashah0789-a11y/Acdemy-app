@@ -411,6 +411,64 @@ class StudentModel extends HiveObject {
     };
   }
 
+  /// Convert to Supabase PostgreSQL table row format
+  Map<String, dynamic> toSupabaseMap() {
+    return {
+      'id': id,
+      'student_code': studentCode,
+      'first_name': firstName,
+      'last_name': lastName,
+      'father_name': fatherName,
+      'phone': phone,
+      'email': email,
+      'class_type': classType,
+      'grade': grade,
+      'subject': subject,
+      'fee_submitted': feeSubmitted,
+      'fee_remaining': feeRemaining,
+      'profile_pic_url': profilePicUrl,
+      'enrollment_status': enrollmentStatus,
+      'is_active': isActive,
+      'created_at': createdAt.toIso8601String(),
+      'updated_at': (updatedAt ?? DateTime.now()).toIso8601String(),
+    };
+  }
+
+  /// Create StudentModel from Supabase PostgreSQL row
+  factory StudentModel.fromSupabase(Map<String, dynamic> map) {
+    final rawCreatedAt = map['created_at'];
+    DateTime parsedCreated = DateTime.now();
+    if (rawCreatedAt is String) {
+      parsedCreated = DateTime.tryParse(rawCreatedAt) ?? DateTime.now();
+    }
+
+    final rawUpdatedAt = map['updated_at'];
+    DateTime? parsedUpdated;
+    if (rawUpdatedAt is String) {
+      parsedUpdated = DateTime.tryParse(rawUpdatedAt);
+    }
+
+    return StudentModel(
+      id: map['id']?.toString() ?? '',
+      storedStudentCode: map['student_code']?.toString(),
+      firstName: map['first_name']?.toString() ?? '',
+      lastName: map['last_name']?.toString() ?? '',
+      fatherName: map['father_name']?.toString() ?? '',
+      phone: map['phone']?.toString() ?? '',
+      email: map['email']?.toString() ?? '',
+      classType: map['class_type']?.toString() ?? 'FSc',
+      grade: map['grade']?.toString() ?? '',
+      subject: map['subject']?.toString() ?? '',
+      feeSubmitted: _safeDouble(map['fee_submitted']),
+      feeRemaining: _safeDouble(map['fee_remaining']),
+      profilePicUrl: map['profile_pic_url']?.toString() ?? '',
+      enrollmentStatus: map['enrollment_status']?.toString() ?? 'active',
+      isActive: map['is_active'] as bool? ?? true,
+      createdAt: parsedCreated,
+      updatedAt: parsedUpdated,
+    );
+  }
+
   // Helper for safe double parsing
   static double _safeDouble(dynamic val) {
     if (val == null) return 0.0;

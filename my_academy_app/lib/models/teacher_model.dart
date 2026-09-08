@@ -108,6 +108,45 @@ class TeacherModel {
     };
   }
 
+  /// Convert to Supabase PostgreSQL table row format
+  Map<String, dynamic> toSupabaseMap() {
+    return {
+      'id': id,
+      'teacher_id': teacherId,
+      'name': name,
+      'email': email,
+      'subject': subject,
+      'section': section,
+      'profile_pic_url': profilePicUrl,
+      'status': isActive ? 'active' : 'inactive',
+      'is_active': isActive,
+      'created_at': createdAt.toIso8601String(),
+      'updated_at': (updatedAt ?? DateTime.now()).toIso8601String(),
+    };
+  }
+
+  /// Create TeacherModel from Supabase row
+  factory TeacherModel.fromSupabase(Map<String, dynamic> map) {
+    return TeacherModel(
+      id: map['id']?.toString() ?? '',
+      name: map['name']?.toString() ?? '',
+      email: map['email']?.toString() ?? '',
+      teacherId: map['teacher_id']?.toString() ?? '',
+      subject: map['subject']?.toString() ?? '',
+      section: map['section']?.toString() ?? 'FSc',
+      assignedClasses: [],
+      profilePicUrl: map['profile_pic_url']?.toString() ?? '',
+      isActive: map['is_active'] as bool? ?? true,
+      role: 'teacher',
+      createdAt: map['created_at'] != null 
+          ? DateTime.tryParse(map['created_at'].toString()) ?? DateTime.now()
+          : DateTime.now(),
+      updatedAt: map['updated_at'] != null 
+          ? DateTime.tryParse(map['updated_at'].toString())
+          : null,
+    );
+  }
+
   Map<String, dynamic> toUpdateMap() {
     return {
       'name': name,

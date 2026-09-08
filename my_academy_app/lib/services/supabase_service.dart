@@ -3,10 +3,53 @@ import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../config/supabase_config.dart';
 
-/// Centralized service for Supabase PostgreSQL tables, SQL queries, relational analytics, and storage.
+/// Centralized service for Supabase PostgreSQL tables, SQL queries, relational analytics, storage, auth, and realtime.
 class SupabaseService {
   static SupabaseClient get client => SupabaseConfig.client;
   static bool get isConfigured => SupabaseConfig.isInitialized;
+
+  // ── Supabase Auth ──
+  static User? get currentSupabaseUser => isConfigured ? client.auth.currentUser : null;
+  static Session? get currentSession => isConfigured ? client.auth.currentSession : null;
+
+  /// Supabase auth state stream
+  static Stream<AuthState>? get authStateChanges => 
+      isConfigured ? client.auth.onAuthStateChange : null;
+
+  /// Sign in with email and password in Supabase
+  static Future<AuthResponse?> signInWithPassword({
+    required String email,
+    required String password,
+  }) async {
+    try {
+      if (!isConfigured) return null;
+      return await client.auth.signInWithPassword(email: email, password: password);
+    } catch (e) {
+      debugPrint('[SUPABASE SERVICE] signInWithPassword error: $e');
+      rethrow;
+    }
+  }
+
+  /// Sign out from Supabase
+  static Future<void> signOut() async {
+    try {
+      if (!isConfigured) return;
+      await client.auth.signOut();
+    } catch (e) {
+      debugPrint('[SUPABASE SERVICE] signOut error: $e');
+    }
+  }
+
+  // ── Supabase Realtime ──
+
+  /// Stream live row changes from a Supabase table
+  static Stream<List<Map<String, dynamic>>> streamTable({
+    required String table,
+    required List<String> primaryKey,
+  }) {
+    if (!isConfigured) return const Stream.empty();
+    return client.from(table).stream(primaryKey: primaryKey);
+  }
 
   /// Check connection status to Supabase Project
   static Future<bool> checkConnection() async {

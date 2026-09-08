@@ -10,6 +10,7 @@ import '../models/recycled_student.dart';
 import '../utils/image_utils.dart';
 import 'notification_service.dart';
 import 'audit_log_service.dart';
+import 'supabase_service.dart';
 
 class DatabaseService {
   static final FirebaseFirestore _firestore = FirebaseFirestore.instance;
@@ -42,6 +43,16 @@ class DatabaseService {
           .then((_) => NotificationService.createStudentRegistrationNotification(student: student))
           .catchError((e) => debugPrint('Firestore add student failed: $e')));
     }
+
+    // 3. Non-blocking background Supabase PostgreSQL sync
+    unawaited(() async {
+      try {
+        await SupabaseService.syncStudentToSupabase(student.toSupabaseMap());
+      } catch (e) {
+        debugPrint('[SUPABASE SYNC] addStudent error: $e');
+      }
+    }());
+
     return true;
   }
 
@@ -75,6 +86,16 @@ class DatabaseService {
         }
       }());
     }
+
+    // 3. Fast background sync to Supabase
+    unawaited(() async {
+      for (final s in students) {
+        try {
+          await SupabaseService.syncStudentToSupabase(s.toSupabaseMap());
+        } catch (_) {}
+      }
+    }());
+
     return true;
   }
 
@@ -95,6 +116,16 @@ class DatabaseService {
         debugPrint('Firestore update student failed: $e');
       }
     }
+
+    // Background Supabase Sync
+    unawaited(() async {
+      try {
+        await SupabaseService.syncStudentToSupabase(updatedStudent.toSupabaseMap());
+      } catch (e) {
+        debugPrint('[SUPABASE SYNC] updateStudent error: $e');
+      }
+    }());
+
     return true;
   }
 
@@ -111,6 +142,16 @@ class DatabaseService {
         debugPrint('Firestore delete student failed: $e');
       }
     }
+
+    // Mark inactive or delete in Supabase
+    unawaited(() async {
+      try {
+        if (SupabaseService.isConfigured) {
+          await SupabaseService.client.from('students').update({'is_active': false}).eq('id', id);
+        }
+      } catch (_) {}
+    }());
+
     return true;
   }
 
