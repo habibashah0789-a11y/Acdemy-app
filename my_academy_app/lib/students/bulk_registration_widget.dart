@@ -12,6 +12,7 @@ import '../services/notification_service.dart';
 import '../student_portal/student_auth_service.dart';
 import '../theme/app_theme.dart';
 import '../widgets/celebration_overlay.dart';
+import '../widgets/student_qr_widget.dart';
 import '../services/sound_service.dart';
 
 /// Data model for each row in the spreadsheet table.
@@ -935,6 +936,7 @@ class _BulkStudentRegistrationWidgetState extends State<BulkStudentRegistrationW
     final Map<String, int> levelOffsets = {};
 
     final List<StudentModel> studentsToSave = [];
+    final Map<String, String> studentQrTokens = {};
     final List<BulkRowData> failedRows = [];
     final List<BulkRowData> successfulRows = [];
 
@@ -950,6 +952,10 @@ class _BulkStudentRegistrationWidgetState extends State<BulkStudentRegistrationW
       );
       levelOffsets[levelCode] = offset + 1;
       final studentId = '${DateTime.now().millisecondsSinceEpoch}_$i';
+
+      // Generate a distinct, cryptographically unique QR token for this student
+      final qrToken = StudentAuthService.generateQrToken();
+      studentQrTokens[studentId] = qrToken;
 
       try {
         final totalFee = double.tryParse(r.totalFeeC.text.trim()) ?? 0;
@@ -1008,16 +1014,26 @@ class _BulkStudentRegistrationWidgetState extends State<BulkStudentRegistrationW
     }
 
     if (studentsToSave.isNotEmpty) {
+      setState(() {
+        _statusText = 'Enrolling students and provisioning unique QR codes...';
+      });
+
       // Single atomic batch save to Hive + background Cloud batch (<10ms!)
       await DatabaseService.addStudentsBulk(studentsToSave);
       SoundService.playSuccess();
+
+      // Atomically batch create unique student_auth records in Firestore
+      try {
+        await StudentAuthService.createStudentAuthRecordsBulk(
+          students: studentsToSave,
+          pregeneratedTokens: studentQrTokens,
+        );
+      } catch (authErr) {
+        debugPrint('[BulkRegistration] Error batch saving auth records: $authErr');
+      }
+
       for (final student in studentsToSave) {
         NotificationService.createStudentRegistrationNotification(student: student);
-        StudentAuthService.createStudentAuthRecord(
-          studentId: student.id,
-          studentCode: student.studentCode,
-          studentName: student.firstName,
-        );
       }
     }
 
@@ -1038,51 +1054,97 @@ class _BulkStudentRegistrationWidgetState extends State<BulkStudentRegistrationW
           context: context,
           builder: (ctx) => CelebrationOverlay(
             child: AlertDialog(
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-            title: Row(
-              children: const [
-                Icon(Icons.check_circle_rounded, color: AppTheme.secondaryGreen, size: 32),
-                SizedBox(width: 10),
-                Text('Bulk Registration Complete'),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+              title: Row(
+                children: const [
+                  Icon(Icons.check_circle_rounded, color: AppTheme.secondaryGreen, size: 32),
+                  SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      'Bulk Registration Complete',
+                      style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                    ),
+                  ),
+                ],
+              ),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Successfully registered ${successfulRows.length} student(s)!',
+                    style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
+                  ),
+                  const SizedBox(height: 10),
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: AppTheme.primaryBlue.withValues(alpha: 0.08),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: AppTheme.primaryBlue.withValues(alpha: 0.2)),
+                    ),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Icon(Icons.shield_rounded, color: AppTheme.primaryBlue, size: 20),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            'Each student has been assigned their own separate, unique QR Access Code for privacy and security. No two students have the same QR code.',
+                            style: TextStyle(fontSize: 12, color: Colors.grey.shade800),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+              actions: [
+                OutlinedButton.icon(
+                  onPressed: () {
+                    Navigator.pop(ctx);
+                    _showBulkQrPassesViewer(context, studentsToSave, studentQrTokens);
+                  },
+                  icon: const Icon(Icons.qr_code_2_rounded, size: 18),
+                  label: const Text('View All QR Passes'),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: AppTheme.primaryBlue,
+                    side: const BorderSide(color: AppTheme.primaryBlue),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                  ),
+                ),
+                ElevatedButton(
+                  onPressed: () {
+                    Navigator.pop(ctx);
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Row(
+                          children: [
+                            const Icon(Icons.check_circle_rounded, color: Colors.white),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: Text(
+                                '${successfulRows.length} student(s) registered successfully!',
+                                style: GoogleFonts.poppins(fontWeight: FontWeight.w600, color: Colors.white),
+                              ),
+                            ),
+                          ],
+                        ),
+                        backgroundColor: AppTheme.secondaryGreen,
+                        behavior: SnackBarBehavior.floating,
+                        duration: const Duration(seconds: 4),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                      ),
+                    );
+                    Navigator.pop(context, true);
+                  },
+                  style: ElevatedButton.styleFrom(backgroundColor: AppTheme.primaryBlue),
+                  child: const Text('Done'),
+                ),
               ],
             ),
-            content: Text(
-              'Successfully registered ${successfulRows.length} student(s)!\n\nAll student IDs, QR tokens, and portal credentials have been generated.',
-              style: const TextStyle(fontSize: 14),
-            ),
-            actions: [
-              ElevatedButton(
-                onPressed: () {
-                  Navigator.pop(ctx);
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Row(
-                        children: [
-                          const Icon(Icons.check_circle_rounded, color: Colors.white),
-                          const SizedBox(width: 10),
-                          Expanded(
-                            child: Text(
-                              '${successfulRows.length} student(s) registered successfully!',
-                              style: GoogleFonts.poppins(fontWeight: FontWeight.w600, color: Colors.white),
-                            ),
-                          ),
-                        ],
-                      ),
-                      backgroundColor: AppTheme.secondaryGreen,
-                      behavior: SnackBarBehavior.floating,
-                      duration: const Duration(seconds: 4),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                    ),
-                  );
-                  Navigator.pop(context, true);
-                },
-                style: ElevatedButton.styleFrom(backgroundColor: AppTheme.primaryBlue),
-                child: const Text('Done'),
-              ),
-            ],
           ),
-        ),
-      );
+        );
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -1092,6 +1154,197 @@ class _BulkStudentRegistrationWidgetState extends State<BulkStudentRegistrationW
         );
       }
     }
+  }
+
+  void _showBulkQrPassesViewer(
+    BuildContext context,
+    List<StudentModel> students,
+    Map<String, String> qrTokens,
+  ) {
+    showDialog(
+      context: context,
+      builder: (dialogCtx) {
+        String searchQuery = '';
+        return StatefulBuilder(
+          builder: (context, setViewerState) {
+            final filtered = students.where((s) {
+              if (searchQuery.isEmpty) return true;
+              final q = searchQuery.toLowerCase();
+              return s.name.toLowerCase().contains(q) ||
+                  s.studentCode.toLowerCase().contains(q);
+            }).toList();
+
+            return Dialog(
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 800, maxHeight: 680),
+                child: Padding(
+                  padding: const EdgeInsets.all(24),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Row(
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.all(10),
+                                decoration: BoxDecoration(
+                                  color: AppTheme.primaryBlue.withValues(alpha: 0.1),
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                child: const Icon(Icons.qr_code_2_rounded, color: AppTheme.primaryBlue, size: 24),
+                              ),
+                              const SizedBox(width: 12),
+                              Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    'Bulk Registered QR Passes (${students.length})',
+                                    style: GoogleFonts.poppins(fontSize: 18, fontWeight: FontWeight.bold),
+                                  ),
+                                  Text(
+                                    'Each student has an independent, scannable QR Access Code',
+                                    style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ),
+                          IconButton(
+                            onPressed: () {
+                              Navigator.pop(dialogCtx);
+                              Navigator.pop(context, true);
+                            },
+                            icon: const Icon(Icons.close_rounded),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 16),
+                      TextField(
+                        onChanged: (val) => setViewerState(() => searchQuery = val.trim()),
+                        decoration: InputDecoration(
+                          hintText: 'Search by student name or code...',
+                          prefixIcon: const Icon(Icons.search_rounded),
+                          isDense: true,
+                          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      Expanded(
+                        child: filtered.isEmpty
+                            ? const Center(child: Text('No students match your search.'))
+                            : GridView.builder(
+                                gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
+                                  maxCrossAxisExtent: 360,
+                                  mainAxisExtent: 220,
+                                  crossAxisSpacing: 16,
+                                  mainAxisSpacing: 16,
+                                ),
+                                itemCount: filtered.length,
+                                itemBuilder: (context, idx) {
+                                  final s = filtered[idx];
+                                  final token = qrTokens[s.id];
+                                  return Card(
+                                    elevation: 2,
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(16),
+                                      side: BorderSide(color: AppTheme.primaryBlue.withValues(alpha: 0.2)),
+                                    ),
+                                    child: Padding(
+                                      padding: const EdgeInsets.all(12),
+                                      child: Row(
+                                        children: [
+                                          StudentQrWidget(
+                                            student: s,
+                                            size: 100,
+                                            showLabel: false,
+                                            customQrData: token,
+                                          ),
+                                          const SizedBox(width: 12),
+                                          Expanded(
+                                            child: Column(
+                                              crossAxisAlignment: CrossAxisAlignment.start,
+                                              mainAxisAlignment: MainAxisAlignment.center,
+                                              children: [
+                                                Text(
+                                                  s.name,
+                                                  style: GoogleFonts.poppins(
+                                                    fontWeight: FontWeight.bold,
+                                                    fontSize: 14,
+                                                  ),
+                                                  maxLines: 1,
+                                                  overflow: TextOverflow.ellipsis,
+                                                ),
+                                                const SizedBox(height: 2),
+                                                Container(
+                                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                                                  decoration: BoxDecoration(
+                                                    color: AppTheme.primaryBlue.withValues(alpha: 0.1),
+                                                    borderRadius: BorderRadius.circular(6),
+                                                  ),
+                                                  child: Text(
+                                                    s.studentCode,
+                                                    style: const TextStyle(
+                                                      fontSize: 11,
+                                                      fontWeight: FontWeight.bold,
+                                                      color: AppTheme.primaryBlue,
+                                                    ),
+                                                  ),
+                                                ),
+                                                const SizedBox(height: 4),
+                                                Text(
+                                                  '${s.classType} • ${s.grade}',
+                                                  style: TextStyle(fontSize: 11, color: Colors.grey.shade600),
+                                                ),
+                                                const SizedBox(height: 10),
+                                                OutlinedButton.icon(
+                                                  onPressed: () {
+                                                    showStudentQrDialog(context, s, customQrData: token);
+                                                  },
+                                                  icon: const Icon(Icons.open_in_new_rounded, size: 14),
+                                                  label: const Text('Enlarge', style: TextStyle(fontSize: 11)),
+                                                  style: OutlinedButton.styleFrom(
+                                                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                                                    minimumSize: Size.zero,
+                                                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    );
+                                  },
+                                ),
+                      ),
+                      const SizedBox(height: 16),
+                      Align(
+                        alignment: Alignment.centerRight,
+                        child: ElevatedButton(
+                          onPressed: () {
+                            Navigator.pop(dialogCtx);
+                            Navigator.pop(context, true);
+                          },
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: AppTheme.primaryBlue,
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                          ),
+                          child: const Text('Close'),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
   }
 
   // ── UI Builders ──────────────────────────────────────────────────────────

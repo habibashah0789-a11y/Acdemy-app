@@ -282,7 +282,7 @@ class _StudentDetailScreenState extends State<StudentDetailScreen> {
       builder: (context) => AlertDialog(
         title: const Text('Regenerate Student QR Code?'),
         content: const Text(
-            'This will generate a new secure QR token. The student\'s previous QR code will immediately stop working.'),
+            'This will generate a fresh, unique QR code and reset any existing device binding.\n\nThe student\'s previous QR code will immediately stop working, and the student will be able to re-access their portal by scanning the new code.'),
         actions: [
           TextButton.icon(
             onPressed: () => Navigator.pop(context, false),
@@ -311,7 +311,7 @@ class _StudentDetailScreenState extends State<StudentDetailScreen> {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
-              content: Text('QR Code regenerated successfully.'),
+              content: Text('QR Code regenerated and device binding cleared. Student can now scan to log in.'),
               backgroundColor: Colors.green,
             ),
           );

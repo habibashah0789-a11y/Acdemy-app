@@ -89,6 +89,7 @@ class _StudentLoginScreenState extends State<StudentLoginScreen> {
       if (mounted) {
         setState(() {
           _errorMessage = e.toString().replaceFirst('Exception: ', '');
+          _scannedToken = null;
         });
       }
     } finally {

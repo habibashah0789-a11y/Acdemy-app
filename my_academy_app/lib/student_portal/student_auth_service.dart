@@ -375,26 +375,22 @@ class StudentAuthService {
       );
     }
 
-    // ── One-Device Policy & Smooth Re-Binding ─────────────────────────────
-    // When a student scans the authentic QR code issued from the Admin Portal,
-    // their identity is physically authenticated. We re-bind the current device
-    // so students are NEVER locked out when scanning their QR code.
+    // ── Strict Single-Device Policy ──────────────────────────────────────
+    // Enforce that not a single portal is logged into two different devices at a time.
+    // If the portal is already active on another device, the second device scanner
+    // is strictly blocked from logging in.
     final currentDeviceId = await getDeviceId();
     final storedDeviceId = authData['linkedDeviceId'] as String? ?? '';
 
     if (storedDeviceId.isNotEmpty && storedDeviceId != currentDeviceId) {
       debugPrint(
-          '[StudentAuthService] Valid QR scan re-binding device from $storedDeviceId to $currentDeviceId for student $cleanCode');
-      try {
-        await AuditLogService.logAction(
-          actorId: validStudentId,
-          actorName: cleanCode,
-          actorRole: 'STUDENT',
-          action: 'STUDENT_DEVICE_REBOUND',
-          transactionId: validStudentId,
-          details: 'Device re-bound on official QR scan for student ($cleanCode).',
-        );
-      } catch (_) {}
+        '[StudentAuthService] Multi-device login rejected: student $cleanCode already active on device $storedDeviceId, attempted from $currentDeviceId',
+      );
+      throw Exception(
+        'This student portal is already logged in on another device.\n\n'
+        'For privacy and security, simultaneous logins on multiple devices are not permitted.\n\n'
+        'Please log out from your active device first, or contact the academy administrator to reset your device access.',
+      );
     }
 
     if (currentDeviceId.isEmpty) {
@@ -439,6 +435,7 @@ class StudentAuthService {
       studentId: validStudentId,
       studentCode: cleanCode,
       deviceId: currentDeviceId,
+      qrToken: storedPlainToken.isNotEmpty ? storedPlainToken : rawToken,
     );
 
     debugPrint(
@@ -607,6 +604,7 @@ class StudentAuthService {
     required String studentId,
     required String studentCode,
     required String deviceId,
+    String? qrToken,
   }) async {
     try {
       Box sessionBox;
@@ -615,12 +613,16 @@ class StudentAuthService {
       } else {
         sessionBox = await Hive.openBox(_sessionBoxName);
       }
-      await sessionBox.put(_sessionKey, {
+      final sessionMap = {
         'studentId': studentId,
         'studentCode': studentCode,
         'deviceId': deviceId,
         'loginTime': DateTime.now().toIso8601String(),
-      });
+      };
+      if (qrToken != null && qrToken.trim().isNotEmpty) {
+        sessionMap['qrToken'] = qrToken.trim();
+      }
+      await sessionBox.put(_sessionKey, sessionMap);
     } catch (e) {
       debugPrint('Failed to save student session: $e');
     }
@@ -688,11 +690,17 @@ class StudentAuthService {
         final studentCode = session['studentCode'] as String? ?? '';
 
         // Clear device binding in Firestore so admin sees "Not Bound"
+        // only if this device was the actively bound device
         if (studentId.isNotEmpty) {
           try {
-            await resetDeviceBinding(studentId, studentCode: studentCode);
-            debugPrint(
-                '[StudentAuthService] Device binding cleared on logout for $studentId');
+            final devId = await getDeviceId();
+            final doc = await _firestore.collection('student_auth').doc(studentId).get();
+            final linked = doc.data()?['linkedDeviceId'] as String? ?? '';
+            if (linked.isEmpty || linked == devId) {
+              await resetDeviceBinding(studentId, studentCode: studentCode);
+              debugPrint(
+                  '[StudentAuthService] Device binding cleared on logout for $studentId');
+            }
           } catch (e) {
             debugPrint(
                 '[StudentAuthService] Failed to reset device binding on logout: $e');
@@ -800,14 +808,17 @@ class StudentAuthService {
 
   /// Creates (or merges into) the `student_auth` document for a new student.
   ///
+  /// Creates (or merges into) the `student_auth` document for a new student.
+  ///
   /// Uses [SetOptions(merge: true)] so that if a document already exists,
   /// existing identity fields are preserved and only provided fields are written.
   static Future<Map<String, String>> createStudentAuthRecord({
     required String studentId,
     required String studentCode,
     required String studentName,
+    String? customToken,
   }) async {
-    final plainToken = generateQrToken();
+    final plainToken = customToken ?? generateQrToken();
     final tokenHash = hashQrToken(plainToken);
     final cleanCode = studentCode.trim().toUpperCase();
 
@@ -819,6 +830,8 @@ class StudentAuthService {
       'qrTokenHash': tokenHash,
       'qrTokenUpdatedAt': FieldValue.serverTimestamp(),
       'accountStatus': 'active',
+      'linkedDeviceId': '',
+      'deviceLinkedAt': null,
       'createdAt': FieldValue.serverTimestamp(),
     };
 
@@ -846,10 +859,78 @@ class StudentAuthService {
     };
   }
 
+  /// Batch creates unique student_auth records for bulk registration.
+  /// Guarantees that every student receives their own distinct, unique QR token and hash.
+  /// Writes all records to Firestore in batches and returns a map of studentId -> qrToken.
+  static Future<Map<String, String>> createStudentAuthRecordsBulk({
+    required List<StudentModel> students,
+    Map<String, String>? pregeneratedTokens,
+  }) async {
+    final Map<String, String> tokenMap = {};
+    if (students.isEmpty) return tokenMap;
+
+    // Use chunks of 150 students (each takes 2 ops in Firestore: studentId and studentCode doc)
+    const int chunkSize = 150;
+    for (int i = 0; i < students.length; i += chunkSize) {
+      final end = (i + chunkSize < students.length) ? i + chunkSize : students.length;
+      final chunk = students.sublist(i, end);
+      final batch = _firestore.batch();
+
+      for (final student in chunk) {
+        final plainToken = pregeneratedTokens?[student.id] ?? generateQrToken();
+        tokenMap[student.id] = plainToken;
+        final tokenHash = hashQrToken(plainToken);
+        final cleanCode = student.studentCode.trim().toUpperCase();
+
+        final record = {
+          'studentId': student.id,
+          'studentCode': cleanCode,
+          'studentName': student.name,
+          'qrToken': plainToken,
+          'qrTokenHash': tokenHash,
+          'qrTokenUpdatedAt': FieldValue.serverTimestamp(),
+          'accountStatus': 'active',
+          'linkedDeviceId': '',
+          'deviceLinkedAt': null,
+          'createdAt': FieldValue.serverTimestamp(),
+        };
+
+        final docRefById = _firestore.collection('student_auth').doc(student.id);
+        batch.set(docRefById, record, SetOptions(merge: true));
+
+        if (cleanCode != student.id && cleanCode.isNotEmpty) {
+          final docRefByCode = _firestore.collection('student_auth').doc(cleanCode);
+          batch.set(docRefByCode, record, SetOptions(merge: true));
+        }
+      }
+
+      try {
+        await batch.commit();
+        debugPrint('[StudentAuthService] Successfully committed bulk auth batch of ${chunk.length} students.');
+      } catch (e) {
+        debugPrint('[StudentAuthService] Bulk auth batch commit error: $e. Falling back to individual writes.');
+        for (final student in chunk) {
+          final token = tokenMap[student.id]!;
+          try {
+            await createStudentAuthRecord(
+              studentId: student.id,
+              studentCode: student.studentCode,
+              studentName: student.name,
+              customToken: token,
+            );
+          } catch (_) {}
+        }
+      }
+    }
+
+    return tokenMap;
+  }
+
   /// Regenerates the QR token for an existing student.
   ///
-  /// Syncs to both [studentId] and [studentCode] documents and ensures
-  /// [accountStatus] is active.
+  /// Syncs to both [studentId] and [studentCode] documents, ensures
+  /// [accountStatus] is active, and RESETS [linkedDeviceId] so the student
+  /// can immediately re-access their portal with the newly generated QR code.
   static Future<String> generateAndStoreQrToken(
     String studentId, {
     String? studentCode,
@@ -867,6 +948,9 @@ class StudentAuthService {
       'qrTokenHash': hash,
       'qrTokenUpdatedAt': FieldValue.serverTimestamp(),
       'accountStatus': 'active',
+      // Reset device binding so student can re-access portal on their device
+      'linkedDeviceId': '',
+      'deviceLinkedAt': null,
     };
     if (cleanCode != null) {
       updateData['studentCode'] = cleanCode;

@@ -70,6 +70,7 @@ class StudentQrWidget extends StatelessWidget {
             version: QrVersions.auto,
             size: size,
             gapless: true,
+            padding: const EdgeInsets.all(8),
             errorCorrectionLevel: QrErrorCorrectLevel.M,
             backgroundColor: Colors.white,
             eyeStyle: const QrEyeStyle(
@@ -225,15 +226,15 @@ class _StudentQrDialogContentState extends State<_StudentQrDialogContent> {
               else
                 StudentQrWidget(
                   student: student,
-                  size: 200,
+                  size: 210,
                   showLabel: true,
                   customQrData: widget.customQrData,
                   qrToken: _token,
                 ),
-              const SizedBox(height: 20),
+              const SizedBox(height: 16),
               Container(
                 width: double.infinity,
-                padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+                padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 14),
                 decoration: BoxDecoration(
                   color: AppTheme.primaryBlue.withValues(alpha: 0.05),
                   borderRadius: BorderRadius.circular(12),
@@ -250,7 +251,7 @@ class _StudentQrDialogContentState extends State<_StudentQrDialogContent> {
                         fontWeight: FontWeight.bold,
                       ),
                     ),
-                    const SizedBox(height: 4),
+                    const SizedBox(height: 2),
                     Text(
                       student.subject,
                       style: TextStyle(
@@ -259,7 +260,7 @@ class _StudentQrDialogContentState extends State<_StudentQrDialogContent> {
                       ),
                     ),
                     if (student.phone.isNotEmpty) ...[
-                      const SizedBox(height: 4),
+                      const SizedBox(height: 2),
                       Text(
                         'Ph: ${student.phone}',
                         style: TextStyle(
@@ -270,6 +271,18 @@ class _StudentQrDialogContentState extends State<_StudentQrDialogContent> {
                     ],
                   ],
                 ),
+              ),
+              const SizedBox(height: 12),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const Icon(Icons.phonelink_lock_rounded, size: 14, color: Colors.grey),
+                  const SizedBox(width: 6),
+                  Text(
+                    'Protected: 1 device active at a time',
+                    style: TextStyle(fontSize: 11, color: Colors.grey.shade600),
+                  ),
+                ],
               ),
             ],
           ),
