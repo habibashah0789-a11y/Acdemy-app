@@ -111,10 +111,6 @@ class _StudentDashboardScreenState extends State<StudentDashboardScreen> {
         }
       });
 
-  bool _isNoticeTargeted(NotificationModel n, StudentModel student) {
-    return NotificationService.isNotificationForStudent(student, student.id, n);
-  }
-
       final studentSubjects = student.subject
           .split(',')
           .map((s) => s.trim())
@@ -157,6 +153,10 @@ class _StudentDashboardScreenState extends State<StudentDashboardScreen> {
         });
       }
     }
+  }
+
+  bool _isNoticeTargeted(NotificationModel n, StudentModel student) {
+    return NotificationService.isNotificationForStudent(student, student.id, n);
   }
 
   Future<void> _refreshData() async {
