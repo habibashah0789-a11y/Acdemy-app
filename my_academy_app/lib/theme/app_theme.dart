@@ -1,5 +1,74 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'app_theme_palette.dart';
+import 'app_theme_registry.dart';
+
+enum AppThemeMode {
+  light,
+  dark,
+  auroraGlass,
+}
+
+@immutable
+class AuroraThemeExtension extends ThemeExtension<AuroraThemeExtension> {
+  final bool isAurora;
+  final Color glassCardBackground;
+  final Color glassBorderColor;
+  final Color primaryBlue;
+  final Color secondaryPurple;
+  final Color cyanHighlight;
+  final LinearGradient primaryGradient;
+  final LinearGradient glassCardGradient;
+
+  const AuroraThemeExtension({
+    required this.isAurora,
+    required this.glassCardBackground,
+    required this.glassBorderColor,
+    required this.primaryBlue,
+    required this.secondaryPurple,
+    required this.cyanHighlight,
+    required this.primaryGradient,
+    required this.glassCardGradient,
+  });
+
+  @override
+  AuroraThemeExtension copyWith({
+    bool? isAurora,
+    Color? glassCardBackground,
+    Color? glassBorderColor,
+    Color? primaryBlue,
+    Color? secondaryPurple,
+    Color? cyanHighlight,
+    LinearGradient? primaryGradient,
+    LinearGradient? glassCardGradient,
+  }) {
+    return AuroraThemeExtension(
+      isAurora: isAurora ?? this.isAurora,
+      glassCardBackground: glassCardBackground ?? this.glassCardBackground,
+      glassBorderColor: glassBorderColor ?? this.glassBorderColor,
+      primaryBlue: primaryBlue ?? this.primaryBlue,
+      secondaryPurple: secondaryPurple ?? this.secondaryPurple,
+      cyanHighlight: cyanHighlight ?? this.cyanHighlight,
+      primaryGradient: primaryGradient ?? this.primaryGradient,
+      glassCardGradient: glassCardGradient ?? this.glassCardGradient,
+    );
+  }
+
+  @override
+  AuroraThemeExtension lerp(ThemeExtension<AuroraThemeExtension>? other, double t) {
+    if (other is! AuroraThemeExtension) return this;
+    return AuroraThemeExtension(
+      isAurora: t < 0.5 ? isAurora : other.isAurora,
+      glassCardBackground: Color.lerp(glassCardBackground, other.glassCardBackground, t)!,
+      glassBorderColor: Color.lerp(glassBorderColor, other.glassBorderColor, t)!,
+      primaryBlue: Color.lerp(primaryBlue, other.primaryBlue, t)!,
+      secondaryPurple: Color.lerp(secondaryPurple, other.secondaryPurple, t)!,
+      cyanHighlight: Color.lerp(cyanHighlight, other.cyanHighlight, t)!,
+      primaryGradient: primaryGradient,
+      glassCardGradient: glassCardGradient,
+    );
+  }
+}
 
 class AppTheme {
   // Brand Colors - Executive Slate & Sapphire Navy Palette
@@ -27,6 +96,20 @@ class AppTheme {
   static const Color darkTextSecondary = Color(0xFF94A3B8);
   static const Color darkBorder = Color(0xFF243044); // Subtle Border Lighting
 
+  // Aurora Glass Theme Colors - Deep Midnight Navy & Translucent Glass
+  static const Color auroraBackground = Color(0xFF070B14); // Deep Midnight Navy
+  static const Color auroraSurface = Color(0xFF0D1527); // Dark Slate Navy Surface
+  static const Color auroraGlassCard = Color(0xB8111D35); // 72% Translucent Glass Surface
+  static const Color auroraGlassCardOpaque = Color(0xFF111D35); // Fully opaque fallback
+  static const Color auroraBorder = Color(0x3338BDF8); // Subtle Cyan-Blue Border (20% alpha)
+  static const Color auroraBorderGlowing = Color(0x6638BDF8); // 40% alpha glowing cyan
+  static const Color auroraPrimaryBlue = Color(0xFF3B82F6); // Vibrant Royal Blue
+  static const Color auroraSecondaryPurple = Color(0xFF8B5CF6); // Electric Purple
+  static const Color auroraCyanHighlight = Color(0xFF06B6D4); // Electric Cyan
+  static const Color auroraTextPrimary = Color(0xFFF8FAFC); // Crisp High Contrast White
+  static const Color auroraTextSecondary = Color(0xFF94A3B8); // Slate Secondary
+  static const Color auroraTextTertiary = Color(0xFF64748B); // Muted Slate
+
   // Gradient Presets - Luxury & Sophisticated
   static const LinearGradient primaryGradient = LinearGradient(
     colors: [Color(0xFF0F172A), Color(0xFF1E3A8A), Color(0xFF1E293B)],
@@ -51,6 +134,81 @@ class AppTheme {
     begin: Alignment.topLeft,
     end: Alignment.bottomRight,
   );
+
+  // Aurora Glass Gradients
+  static const LinearGradient auroraPrimaryGradient = LinearGradient(
+    colors: [Color(0xFF070B14), Color(0xFF0F172A), Color(0xFF1E1B4B)],
+    begin: Alignment.topLeft,
+    end: Alignment.bottomRight,
+  );
+
+  static const LinearGradient auroraAccentGradient = LinearGradient(
+    colors: [Color(0xFF2563EB), Color(0xFF7C3AED), Color(0xFF06B6D4)],
+    begin: Alignment.topLeft,
+    end: Alignment.bottomRight,
+  );
+
+  static const LinearGradient auroraCardGradient = LinearGradient(
+    colors: [Color(0xC013213F), Color(0x990D182E)],
+    begin: Alignment.topLeft,
+    end: Alignment.bottomRight,
+  );
+
+  static const LinearGradient auroraHeaderGradient = LinearGradient(
+    colors: [Color(0xFF0A1022), Color(0xFF172545), Color(0xFF1E1B4B)],
+    begin: Alignment.topLeft,
+    end: Alignment.bottomRight,
+  );
+
+  static AppThemeTokens tokens(BuildContext context) {
+    final t = Theme.of(context).extension<AppThemeTokens>();
+    if (t != null) return t;
+    if (isAurora(context)) return AppThemeRegistry.auroraGlass.tokens;
+    if (Theme.of(context).brightness == Brightness.dark) {
+      return AppThemeRegistry.classicDark.tokens;
+    }
+    return AppThemeRegistry.classicLight.tokens;
+  }
+
+  static bool isAurora(BuildContext context) {
+    final t = Theme.of(context).extension<AppThemeTokens>();
+    if (t != null) return t.id == 'aurora_glass' || (t.isGlass && t.isDark);
+    final ext = Theme.of(context).extension<AuroraThemeExtension>();
+    return ext?.isAurora ?? false;
+  }
+
+  static bool isNeumorphic(BuildContext context) {
+    return tokens(context).isNeumorphic;
+  }
+
+  static bool isGlass(BuildContext context) {
+    return tokens(context).isGlass;
+  }
+
+  static Color cardColor(BuildContext context) {
+    final t = Theme.of(context).extension<AppThemeTokens>();
+    if (t != null) return t.card;
+    if (isAurora(context)) return auroraGlassCard;
+    return Theme.of(context).brightness == Brightness.dark ? darkCard : lightCard;
+  }
+
+  static Color borderColor(BuildContext context) {
+    final t = Theme.of(context).extension<AppThemeTokens>();
+    if (t != null) return t.border;
+    if (isAurora(context)) return auroraBorder;
+    return Theme.of(context).brightness == Brightness.dark ? darkBorder : lightBorder;
+  }
+
+  static LinearGradient headerGradient(BuildContext context) {
+    final t = Theme.of(context).extension<AppThemeTokens>();
+    if (t != null) return t.headerGradient;
+    if (isAurora(context)) return auroraHeaderGradient;
+    return primaryGradient;
+  }
+
+  static List<BoxShadow> cardShadow(BuildContext context) {
+    return tokens(context).cardShadow;
+  }
 
   static ThemeData get lightTheme {
     final baseTextTheme = GoogleFonts.poppinsTextTheme();
@@ -190,6 +348,9 @@ class AppTheme {
         ),
         contentTextStyle: GoogleFonts.poppins(color: Colors.white),
       ),
+      extensions: [
+        AppThemeRegistry.classicLight.tokens,
+      ],
     );
   }
 
@@ -318,6 +479,154 @@ class AppTheme {
         ),
         contentTextStyle: GoogleFonts.poppins(color: Colors.white),
       ),
+      extensions: [
+        AppThemeRegistry.classicDark.tokens,
+      ],
+    );
+  }
+
+  static ThemeData get auroraGlassTheme {
+    final baseTextTheme = GoogleFonts.poppinsTextTheme();
+    return ThemeData(
+      useMaterial3: true,
+      brightness: Brightness.dark,
+      primaryColor: auroraPrimaryBlue,
+      scaffoldBackgroundColor: auroraBackground,
+      colorScheme: const ColorScheme.dark(
+        primary: auroraPrimaryBlue,
+        secondary: auroraSecondaryPurple,
+        tertiary: auroraCyanHighlight,
+        error: warningRed,
+        surface: auroraSurface,
+        onPrimary: Colors.white,
+        onSecondary: Colors.white,
+        onSurface: auroraTextPrimary,
+        outline: auroraBorder,
+      ),
+      textTheme: baseTextTheme.copyWith(
+        displayLarge: GoogleFonts.poppins(color: auroraTextPrimary, fontWeight: FontWeight.bold),
+        displayMedium: GoogleFonts.poppins(color: auroraTextPrimary, fontWeight: FontWeight.bold),
+        titleLarge: GoogleFonts.poppins(color: auroraTextPrimary, fontWeight: FontWeight.w600, fontSize: 20),
+        titleMedium: GoogleFonts.poppins(color: auroraTextPrimary, fontWeight: FontWeight.w600, fontSize: 16),
+        bodyLarge: GoogleFonts.poppins(color: auroraTextPrimary, fontSize: 16),
+        bodyMedium: GoogleFonts.poppins(color: auroraTextSecondary, fontSize: 14),
+        bodySmall: GoogleFonts.poppins(color: auroraTextSecondary, fontSize: 12),
+      ),
+      appBarTheme: AppBarTheme(
+        backgroundColor: auroraSurface,
+        elevation: 0,
+        centerTitle: true,
+        scrolledUnderElevation: 0,
+        titleTextStyle: GoogleFonts.poppins(
+          color: Colors.white,
+          fontSize: 19,
+          fontWeight: FontWeight.w600,
+        ),
+        iconTheme: const IconThemeData(color: Colors.white),
+      ),
+      cardTheme: CardThemeData(
+        color: auroraGlassCardOpaque,
+        elevation: 0,
+        margin: EdgeInsets.zero,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(18),
+          side: const BorderSide(color: auroraBorder, width: 1),
+        ),
+      ),
+      elevatedButtonTheme: ElevatedButtonThemeData(
+        style: ElevatedButton.styleFrom(
+          backgroundColor: auroraPrimaryBlue,
+          foregroundColor: Colors.white,
+          elevation: 3,
+          shadowColor: auroraPrimaryBlue.withValues(alpha: 0.4),
+          textStyle: GoogleFonts.poppins(fontWeight: FontWeight.w600, fontSize: 15),
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(14),
+          ),
+        ),
+      ),
+      outlinedButtonTheme: OutlinedButtonThemeData(
+        style: OutlinedButton.styleFrom(
+          foregroundColor: Colors.white,
+          side: const BorderSide(color: auroraBorder, width: 1.5),
+          textStyle: GoogleFonts.poppins(fontWeight: FontWeight.w600, fontSize: 15),
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(14),
+          ),
+        ),
+      ),
+      inputDecorationTheme: InputDecorationTheme(
+        filled: true,
+        fillColor: auroraSurface,
+        contentPadding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(14),
+          borderSide: const BorderSide(color: auroraBorder),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(14),
+          borderSide: const BorderSide(color: auroraBorder),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(14),
+          borderSide: const BorderSide(color: auroraCyanHighlight, width: 2),
+        ),
+        errorBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(14),
+          borderSide: const BorderSide(color: warningRed, width: 1.5),
+        ),
+        labelStyle: GoogleFonts.poppins(color: auroraTextSecondary),
+        hintStyle: GoogleFonts.poppins(color: auroraTextSecondary.withValues(alpha: 0.7), fontSize: 14),
+        prefixIconColor: auroraTextSecondary,
+        suffixIconColor: auroraTextSecondary,
+      ),
+      bottomNavigationBarTheme: const BottomNavigationBarThemeData(
+        backgroundColor: auroraSurface,
+        selectedItemColor: auroraCyanHighlight,
+        unselectedItemColor: auroraTextSecondary,
+        type: BottomNavigationBarType.fixed,
+        elevation: 8,
+      ),
+      dialogTheme: DialogThemeData(
+        backgroundColor: auroraSurface,
+        elevation: 6,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(24),
+          side: const BorderSide(color: auroraBorder, width: 1),
+        ),
+      ),
+      floatingActionButtonTheme: FloatingActionButtonThemeData(
+        backgroundColor: auroraPrimaryBlue,
+        foregroundColor: Colors.white,
+        elevation: 4,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+        ),
+      ),
+      snackBarTheme: SnackBarThemeData(
+        backgroundColor: auroraSurface,
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(14),
+          side: const BorderSide(color: auroraBorder, width: 1),
+        ),
+        contentTextStyle: GoogleFonts.poppins(color: Colors.white),
+      ),
+      extensions: [
+        AppThemeRegistry.auroraGlass.tokens,
+        AuroraThemeExtension(
+          isAurora: true,
+          glassCardBackground: auroraGlassCard,
+          glassBorderColor: auroraBorder,
+          primaryBlue: auroraPrimaryBlue,
+          secondaryPurple: auroraSecondaryPurple,
+          cyanHighlight: auroraCyanHighlight,
+          primaryGradient: auroraPrimaryGradient,
+          glassCardGradient: auroraCardGradient,
+        ),
+      ],
     );
   }
 }

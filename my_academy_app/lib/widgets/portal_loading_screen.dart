@@ -229,6 +229,7 @@ class _PortalLoadingScreenState extends State<PortalLoadingScreen>
 
   @override
   Widget build(BuildContext context) {
+    final isAurora = AppTheme.isAurora(context);
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Scaffold(
@@ -241,17 +242,23 @@ class _PortalLoadingScreenState extends State<PortalLoadingScreen>
                 gradient: LinearGradient(
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
-                  colors: isDark
+                  colors: isAurora
                       ? [
-                          const Color(0xFF020617),
-                          const Color(0xFF0F172A),
+                          const Color(0xFF070B14),
+                          const Color(0xFF0D1527),
                           const Color(0xFF1E1B4B),
                         ]
-                      : [
-                          const Color(0xFFF8FAFC),
-                          const Color(0xFFF1F5F9),
-                          const Color(0xFFE2E8F0),
-                        ],
+                      : (isDark
+                          ? [
+                              const Color(0xFF020617),
+                              const Color(0xFF0F172A),
+                              const Color(0xFF1E1B4B),
+                            ]
+                          : [
+                              const Color(0xFFF8FAFC),
+                              const Color(0xFFF1F5F9),
+                              const Color(0xFFE2E8F0),
+                            ]),
                 ),
               ),
             ),
@@ -266,7 +273,8 @@ class _PortalLoadingScreenState extends State<PortalLoadingScreen>
               height: 280,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                color: _primaryColor.withValues(alpha: isDark ? 0.25 : 0.12),
+                color: (isAurora ? AppTheme.auroraCyanHighlight : _primaryColor)
+                    .withValues(alpha: isDark ? 0.22 : 0.12),
               ),
             )
                 .animate(onPlay: (controller) => controller.repeat(reverse: true))
@@ -408,21 +416,32 @@ class _PortalLoadingScreenState extends State<PortalLoadingScreen>
                     Container(
                       padding: const EdgeInsets.all(20),
                       decoration: BoxDecoration(
-                        color: isDark
-                            ? const Color(0xFF1E293B).withValues(alpha: 0.7)
-                            : Colors.white.withValues(alpha: 0.85),
+                        color: isAurora
+                            ? AppTheme.auroraGlassCard
+                            : (isDark
+                                ? const Color(0xFF1E293B).withValues(alpha: 0.7)
+                                : Colors.white.withValues(alpha: 0.85)),
                         borderRadius: BorderRadius.circular(20),
                         border: Border.all(
-                          color: isDark
-                              ? Colors.white.withValues(alpha: 0.1)
-                              : Colors.black.withValues(alpha: 0.05),
+                          color: isAurora
+                              ? AppTheme.auroraBorder
+                              : (isDark
+                                  ? Colors.white.withValues(alpha: 0.1)
+                                  : Colors.black.withValues(alpha: 0.05)),
                         ),
                         boxShadow: [
                           BoxShadow(
-                            color: Colors.black.withValues(alpha: isDark ? 0.3 : 0.06),
+                            color: (isAurora ? const Color(0xFF020617) : Colors.black)
+                                .withValues(alpha: isDark ? 0.3 : 0.06),
                             blurRadius: 20,
                             offset: const Offset(0, 10),
                           ),
+                          if (isAurora)
+                            BoxShadow(
+                              color: AppTheme.auroraPrimaryBlue.withValues(alpha: 0.12),
+                              blurRadius: 22,
+                              offset: const Offset(0, 4),
+                            ),
                         ],
                       ),
                       child: Column(

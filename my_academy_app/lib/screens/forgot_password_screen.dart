@@ -11,6 +11,8 @@ import '../widgets/portal_loading_screen.dart';
 import 'main_wrapper.dart';
 import '../teacher_portal/teacher_main_wrapper.dart';
 import '../models/teacher_model.dart';
+import '../services/auth_service.dart';
+import '../services/teacher_service.dart';
 
 class ForgotPasswordScreen extends StatefulWidget {
   final String initialRole; // 'admin' or 'teacher'
@@ -245,6 +247,278 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
         );
       }
     }
+  }
+
+  void _showNewPasswordLoginDialog() {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final primaryColor = _selectedRole == 'admin' ? AppTheme.primaryBlue : AppTheme.secondaryGreen;
+    final passwordCtrl = TextEditingController();
+    bool obscure = true;
+    bool isLoggingIn = false;
+    String? dialogError;
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (sheetCtx) {
+        return StatefulBuilder(
+          builder: (ctx, setSheetState) {
+            return Container(
+              padding: EdgeInsets.only(
+                left: 24,
+                right: 24,
+                top: 24,
+                bottom: MediaQuery.of(ctx).viewInsets.bottom + 24,
+              ),
+              decoration: BoxDecoration(
+                color: isDark ? const Color(0xFF0F172A) : Colors.white,
+                borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.2),
+                    blurRadius: 20,
+                    offset: const Offset(0, -4),
+                  ),
+                ],
+              ),
+              child: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Center(
+                      child: Container(
+                        width: 40,
+                        height: 4,
+                        decoration: BoxDecoration(
+                          color: Colors.grey.shade400,
+                          borderRadius: BorderRadius.circular(2),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(10),
+                          decoration: BoxDecoration(
+                            color: primaryColor.withValues(alpha: 0.12),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Icon(
+                            _selectedRole == 'admin' ? Icons.admin_panel_settings_rounded : Icons.school_rounded,
+                            color: primaryColor,
+                            size: 24,
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Access ${_selectedRole == 'admin' ? 'Administrator' : 'Teacher'} Portal',
+                                style: GoogleFonts.poppins(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.bold,
+                                  color: isDark ? Colors.white : const Color(0xFF0F172A),
+                                ),
+                              ),
+                              Text(
+                                'Sign in with your new reset password',
+                                style: GoogleFonts.poppins(
+                                  fontSize: 12,
+                                  color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 20),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                      decoration: BoxDecoration(
+                        color: primaryColor.withValues(alpha: 0.08),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Row(
+                        children: [
+                          Icon(Icons.email_outlined, size: 16, color: primaryColor),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              _emailController.text.trim(),
+                              style: GoogleFonts.poppins(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w600,
+                                color: primaryColor,
+                              ),
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    if (dialogError != null) ...[
+                      Container(
+                        padding: const EdgeInsets.all(10),
+                        decoration: BoxDecoration(
+                          color: Colors.red.withValues(alpha: 0.1),
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(color: Colors.red.withValues(alpha: 0.3)),
+                        ),
+                        child: Row(
+                          children: [
+                            const Icon(Icons.error_outline_rounded, color: Colors.red, size: 16),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                dialogError!,
+                                style: GoogleFonts.poppins(fontSize: 12, color: Colors.red),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 14),
+                    ],
+                    TextFormField(
+                      controller: passwordCtrl,
+                      obscureText: obscure,
+                      style: GoogleFonts.poppins(color: isDark ? Colors.white : Colors.black87),
+                      decoration: InputDecoration(
+                        labelText: 'New Password',
+                        hintText: 'Enter your new password',
+                        filled: true,
+                        fillColor: isDark ? const Color(0xFF1E293B) : const Color(0xFFF8FAFC),
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(14)),
+                        prefixIcon: Icon(Icons.lock_outline_rounded, color: primaryColor),
+                        suffixIcon: IconButton(
+                          icon: Icon(obscure ? Icons.visibility_off : Icons.visibility, color: Colors.grey),
+                          onPressed: () => setSheetState(() => obscure = !obscure),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 24),
+                    SizedBox(
+                      width: double.infinity,
+                      height: 50,
+                      child: ElevatedButton(
+                        onPressed: isLoggingIn
+                            ? null
+                            : () async {
+                                final pwd = passwordCtrl.text.trim();
+                                if (pwd.isEmpty) {
+                                  setSheetState(() => dialogError = 'Please enter your new password.');
+                                  return;
+                                }
+                                setSheetState(() {
+                                  isLoggingIn = true;
+                                  dialogError = null;
+                                });
+
+                                try {
+                                  final email = _emailController.text.trim();
+                                  final user = await AuthService.loginWithEmailPassword(email, pwd);
+
+                                  Navigator.of(sheetCtx).pop(); // Close sheet
+                                  if (!mounted) return;
+
+                                  if (_selectedRole == 'teacher') {
+                                    TeacherModel? teacher = await TeacherService.getCurrentTeacher();
+                                    teacher ??= _matchedTeacher ??
+                                        TeacherModel(
+                                          id: user.uid,
+                                          name: user.displayName ?? 'Teacher',
+                                          email: email,
+                                          teacherId: 'T-FAC-001',
+                                          subject: 'Faculty',
+                                          section: 'FSc',
+                                          assignedClasses: const ['First Year'],
+                                          createdAt: DateTime.now(),
+                                        );
+
+                                    Navigator.of(context).pushAndRemoveUntil(
+                                      MaterialPageRoute(
+                                        builder: (portalCtx) => PortalLoadingScreen.teacher(
+                                          teacherName: teacher!.name,
+                                          subject: teacher.subject,
+                                          onComplete: () {
+                                            Navigator.of(portalCtx).pushAndRemoveUntil(
+                                              MaterialPageRoute(
+                                                builder: (_) => TeacherMainWrapper(teacher: teacher!),
+                                              ),
+                                              (_) => false,
+                                            );
+                                          },
+                                        ),
+                                      ),
+                                      (_) => false,
+                                    );
+                                  } else {
+                                    final adminName = user.displayName ?? 'Administrator';
+                                    Navigator.of(context).pushAndRemoveUntil(
+                                      MaterialPageRoute(
+                                        builder: (portalCtx) => PortalLoadingScreen.admin(
+                                          adminName: adminName,
+                                          onComplete: () {
+                                            Navigator.of(portalCtx).pushAndRemoveUntil(
+                                              MaterialPageRoute(builder: (_) => const MainWrapper()),
+                                              (_) => false,
+                                            );
+                                          },
+                                        ),
+                                      ),
+                                      (_) => false,
+                                    );
+                                  }
+                                } catch (e) {
+                                  setSheetState(() {
+                                    isLoggingIn = false;
+                                    dialogError = e.toString().replaceFirst('Exception: ', '');
+                                  });
+                                }
+                              },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: primaryColor,
+                          foregroundColor: Colors.white,
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                          elevation: 4,
+                        ),
+                        child: isLoggingIn
+                            ? const SizedBox(
+                                width: 24,
+                                height: 24,
+                                child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2.5),
+                              )
+                            : Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  const Icon(Icons.login_rounded, size: 18),
+                                  const SizedBox(width: 8),
+                                  Text(
+                                    'Sign In & Access Portal',
+                                    style: GoogleFonts.poppins(
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
   }
 
   void _onDigitChanged(String val, int index) {
@@ -660,6 +934,74 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                               ),
                             ],
                           ),
+                  ),
+                ),
+
+                const SizedBox(height: 24),
+                Divider(color: isDark ? Colors.white12 : Colors.grey.shade300),
+                const SizedBox(height: 16),
+
+                // Direct New Password Login Option for Email Link Resets
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: isDark ? const Color(0xFF1E293B) : Colors.white,
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(color: primaryColor.withValues(alpha: 0.2)),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(isDark ? 0.2 : 0.04),
+                        blurRadius: 10,
+                        offset: const Offset(0, 4),
+                      ),
+                    ],
+                  ),
+                  child: Column(
+                    children: [
+                      Row(
+                        children: [
+                          Icon(Icons.mark_email_read_outlined, color: primaryColor, size: 20),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: Text(
+                              'Already reset via the email link?',
+                              style: GoogleFonts.poppins(
+                                fontWeight: FontWeight.w600,
+                                fontSize: 13,
+                                color: isDark ? Colors.white : const Color(0xFF0F172A),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        'If you opened the link sent to your email and saved your new password, sign in directly to access your ${_selectedRole.toUpperCase()} portal.',
+                        style: GoogleFonts.poppins(
+                          fontSize: 12,
+                          color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
+                          height: 1.4,
+                        ),
+                      ),
+                      const SizedBox(height: 14),
+                      SizedBox(
+                        width: double.infinity,
+                        height: 46,
+                        child: OutlinedButton.icon(
+                          onPressed: _showNewPasswordLoginDialog,
+                          icon: const Icon(Icons.login_rounded, size: 18),
+                          label: Text(
+                            'Sign In With New Password',
+                            style: GoogleFonts.poppins(fontWeight: FontWeight.bold, fontSize: 13),
+                          ),
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor: primaryColor,
+                            side: BorderSide(color: primaryColor, width: 1.5),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
                 ),
               ],

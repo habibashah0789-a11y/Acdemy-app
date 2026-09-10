@@ -260,11 +260,11 @@ class _StudentFeeScreenState extends State<StudentFeeScreen> {
                   Expanded(
                     child: _statChip('Total Due', student.totalFee, AppTheme.primaryBlue),
                   ),
-                  Container(width: 1, height: 44, color: isDark ? AppTheme.darkBorder : AppTheme.lightBorder),
+                  Container(width: 1, height: 44, color: AppTheme.borderColor(context)),
                   Expanded(
                     child: _statChip('Submitted', student.feeSubmitted, AppTheme.secondaryGreen),
                   ),
-                  Container(width: 1, height: 44, color: isDark ? AppTheme.darkBorder : AppTheme.lightBorder),
+                  Container(width: 1, height: 44, color: AppTheme.borderColor(context)),
                   Expanded(
                     child: _statChip(
                       'Remaining',

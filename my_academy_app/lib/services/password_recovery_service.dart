@@ -101,9 +101,27 @@ class PasswordRecoveryService {
     bool resetEmailSent = false;
     String? resetEmailError;
     try {
-      await _auth.sendPasswordResetEmail(email: cleanEmail);
-      resetEmailSent = true;
-      debugPrint('[PasswordRecoveryService] Firebase password reset link sent to $cleanEmail');
+      // First try sending with ActionCodeSettings targeting the app web/mobile continue URL
+      try {
+        final actionCodeSettings = ActionCodeSettings(
+          url: 'https://quaid-academy.web.app/?mode=resetPassword&email=$cleanEmail&role=$role',
+          handleCodeInApp: true,
+          androidPackageName: 'com.example.myAcademyApp',
+          androidInstallApp: true,
+          androidMinimumVersion: '1',
+        );
+        await _auth.sendPasswordResetEmail(
+          email: cleanEmail,
+          actionCodeSettings: actionCodeSettings,
+        );
+        resetEmailSent = true;
+        debugPrint('[PasswordRecoveryService] Password reset link sent with ActionCodeSettings to $cleanEmail');
+      } catch (settingsError) {
+        debugPrint('[PasswordRecoveryService] ActionCodeSettings failed ($settingsError), falling back to standard reset link');
+        await _auth.sendPasswordResetEmail(email: cleanEmail);
+        resetEmailSent = true;
+        debugPrint('[PasswordRecoveryService] Firebase standard password reset link sent to $cleanEmail');
+      }
     } catch (e) {
       debugPrint('[PasswordRecoveryService] Firebase reset email failed: $e');
       resetEmailError = e.toString();
@@ -114,8 +132,8 @@ class PasswordRecoveryService {
       await _firestore.collection('mail').add({
         'to': [cleanEmail],
         'message': {
-          'subject': '[$userName] Quaid Academy Verification OTP: $otp',
-          'text': 'Your Quaid Academy verification code is: $otp. This code expires in 15 minutes.',
+          'subject': '[$userName] Quaid Academy Verification OTP: $otp & Password Reset',
+          'text': 'Your Quaid Academy verification code is: $otp. This code expires in 15 minutes. Use the reset link or OTP to access your portal.',
           'html': '''
             <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 24px; border: 1px solid #e2e8f0; border-radius: 16px;">
               <div style="text-align: center; margin-bottom: 20px;">
@@ -132,7 +150,7 @@ class PasswordRecoveryService {
               </div>
               <p style="color: #64748B; font-size: 13px; line-height: 1.5;">
                 Enter this 6-digit code in the app to verify your identity and access your portal directly.
-                ${resetEmailSent ? '<br/>We have also sent an official password reset link to this email.' : ''}
+                ${resetEmailSent ? '<br/>We have also sent an official password reset link to this email. Once reset, the app will authenticate you and load your portal.' : ''}
               </p>
               <hr style="border: 0; border-top: 1px solid #e2e8f0; margin: 24px 0;" />
               <p style="font-size: 11px; color: #94A3B8; text-align: center;">

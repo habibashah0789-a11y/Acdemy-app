@@ -191,7 +191,9 @@ class _TeacherLoginScreenState extends State<TeacherLoginScreen> {
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
                   colors: isDark 
-                    ? [const Color(0xFF020617), const Color(0xFF1E3A8A), const Color(0xFF0F172A)]
+                    ? (AppTheme.isAurora(context)
+                        ? const [Color(0xFF070B14), Color(0xFF0C1425), Color(0xFF080F1F)]
+                        : const [Color(0xFF020617), Color(0xFF1E3A8A), Color(0xFF0F172A)])
                     : [const Color(0xFFF0F9FF), const Color(0xFFE0F2FE), const Color(0xFFBAE6FD)],
                 ),
               ),
@@ -207,7 +209,7 @@ class _TeacherLoginScreenState extends State<TeacherLoginScreen> {
               height: 300,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                color: const Color(0xFF3B82F6).withOpacity(isDark ? 0.15 : 0.08),
+                color: (AppTheme.isAurora(context) ? const Color(0xFF3B82F6) : const Color(0xFF3B82F6)).withValues(alpha: isDark ? 0.15 : 0.08),
               ),
             ).animate(onPlay: (controller) => controller.repeat(reverse: true))
              .scale(begin: const Offset(1, 1), end: const Offset(1.2, 1.2), duration: 4.seconds)
@@ -222,7 +224,7 @@ class _TeacherLoginScreenState extends State<TeacherLoginScreen> {
               height: 400,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                color: const Color(0xFF8B5CF6).withOpacity(isDark ? 0.1 : 0.05),
+                color: (AppTheme.isAurora(context) ? const Color(0xFF06B6D4) : const Color(0xFF8B5CF6)).withValues(alpha: isDark ? 0.1 : 0.05),
               ),
             ).animate(onPlay: (controller) => controller.repeat(reverse: true))
              .scale(begin: const Offset(1, 1), end: const Offset(1.1, 1.1), duration: 6.seconds)
@@ -355,10 +357,14 @@ class _TeacherLoginScreenState extends State<TeacherLoginScreen> {
                         child: Container(
                           padding: const EdgeInsets.all(32),
                           decoration: BoxDecoration(
-                            color: isDark ? Colors.white.withOpacity(0.05) : Colors.white.withOpacity(0.7),
+                            color: isDark
+                                ? (AppTheme.isAurora(context) ? AppTheme.auroraGlassCard : Colors.white.withOpacity(0.05))
+                                : Colors.white.withOpacity(0.7),
                             borderRadius: BorderRadius.circular(28),
                             border: Border.all(
-                              color: isDark ? Colors.white.withOpacity(0.1) : Colors.white,
+                              color: isDark
+                                  ? (AppTheme.isAurora(context) ? AppTheme.auroraBorder : Colors.white.withOpacity(0.1))
+                                  : Colors.white,
                               width: 1.5,
                             ),
                             boxShadow: [

@@ -143,7 +143,9 @@ class _StudentLoginScreenState extends State<StudentLoginScreen> {
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
                   colors: isDark 
-                    ? [const Color(0xFF020617), const Color(0xFF1E3A8A), const Color(0xFF0F172A)]
+                    ? (AppTheme.isAurora(context)
+                        ? const [Color(0xFF070B14), Color(0xFF0C1425), Color(0xFF080F1F)]
+                        : const [Color(0xFF020617), Color(0xFF1E3A8A), Color(0xFF0F172A)])
                     : [const Color(0xFFF0FDF4), const Color(0xFFDCFCE7), const Color(0xFFBBF7D0)],
                 ),
               ),
@@ -159,7 +161,7 @@ class _StudentLoginScreenState extends State<StudentLoginScreen> {
               height: 300,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                color: const Color(0xFF22C55E).withOpacity(isDark ? 0.15 : 0.08),
+                color: (AppTheme.isAurora(context) ? const Color(0xFF06B6D4) : const Color(0xFF22C55E)).withValues(alpha: isDark ? 0.15 : 0.08),
               ),
             ).animate(onPlay: (controller) => controller.repeat(reverse: true))
              .scale(begin: const Offset(1, 1), end: const Offset(1.2, 1.2), duration: 4.seconds)
@@ -174,7 +176,7 @@ class _StudentLoginScreenState extends State<StudentLoginScreen> {
               height: 400,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                color: const Color(0xFF3B82F6).withOpacity(isDark ? 0.1 : 0.05),
+                color: (AppTheme.isAurora(context) ? const Color(0xFF8B5CF6) : const Color(0xFF3B82F6)).withValues(alpha: isDark ? 0.12 : 0.05),
               ),
             ).animate(onPlay: (controller) => controller.repeat(reverse: true))
              .scale(begin: const Offset(1, 1), end: const Offset(1.1, 1.1), duration: 6.seconds)
@@ -483,7 +485,7 @@ class _StudentLoginScreenState extends State<StudentLoginScreen> {
                   decoration: BoxDecoration(
                     gradient: isLocked
                         ? null
-                        : AppTheme.primaryGradient,
+                        : (AppTheme.isAurora(context) ? AppTheme.auroraAccentGradient : AppTheme.primaryGradient),
                     color: isLocked
                         ? (isDark ? Colors.grey.shade700 : Colors.grey.shade300)
                         : null,

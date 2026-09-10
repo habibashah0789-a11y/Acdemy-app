@@ -140,14 +140,16 @@ class _StudentNotificationsScreenState extends State<StudentNotificationsScreen>
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Scaffold(
-      backgroundColor: isDark ? AppTheme.darkBackground : AppTheme.lightBackground,
+      backgroundColor: isDark
+          ? (AppTheme.isAurora(context) ? AppTheme.auroraBackground : AppTheme.darkBackground)
+          : AppTheme.lightBackground,
       appBar: AppBar(
         automaticallyImplyLeading: false,
         title: Text(
           _isLoading ? 'Academy Announcements' : 'Academy Announcements (${_notices.length})',
           style: GoogleFonts.poppins(fontWeight: FontWeight.bold, fontSize: 18),
         ),
-        backgroundColor: AppTheme.primaryBlue,
+        backgroundColor: AppTheme.isAurora(context) ? AppTheme.auroraBackground : AppTheme.primaryBlue,
         foregroundColor: Colors.white,
         bottom: TabBar(
           controller: _tabController,

@@ -104,33 +104,49 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 
   Widget _buildGreeting() {
+    final isAurora = AppTheme.isAurora(context);
     final isDark = Theme.of(context).brightness == Brightness.dark;
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(22),
       decoration: BoxDecoration(
-        gradient: isDark
+        gradient: isAurora
             ? const LinearGradient(
-                colors: [Color(0xFF161F30), Color(0xFF0F172A), Color(0xFF1A263B)],
+                colors: [Color(0xFF0C1427), Color(0xFF131D38), Color(0xFF1E1B4B)],
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
               )
-            : const LinearGradient(
-                colors: [Color(0xFF0F172A), Color(0xFF1E3A8A), Color(0xFF1E293B)],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              ),
+            : (isDark
+                ? const LinearGradient(
+                    colors: [Color(0xFF161F30), Color(0xFF0F172A), Color(0xFF1A263B)],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  )
+                : const LinearGradient(
+                    colors: [Color(0xFF0F172A), Color(0xFF1E3A8A), Color(0xFF1E293B)],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  )),
         borderRadius: BorderRadius.circular(24),
         border: Border.all(
-          color: isDark ? const Color(0xFF2E3D56) : Colors.white.withValues(alpha: 0.15),
+          color: isAurora
+              ? AppTheme.auroraBorder
+              : (isDark ? const Color(0xFF2E3D56) : Colors.white.withValues(alpha: 0.15)),
           width: 1.2,
         ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: isDark ? 0.35 : 0.15),
+            color: (isAurora ? const Color(0xFF020617) : Colors.black)
+                .withValues(alpha: isDark ? 0.35 : 0.15),
             blurRadius: 20,
             offset: const Offset(0, 8),
-          )
+          ),
+          if (isAurora)
+            BoxShadow(
+              color: AppTheme.auroraPrimaryBlue.withValues(alpha: 0.12),
+              blurRadius: 24,
+              offset: const Offset(0, 4),
+            ),
         ],
       ),
       child: Column(
@@ -2761,6 +2777,7 @@ class _DashboardStatSliderState extends State<DashboardStatSlider> {
 
   @override
   Widget build(BuildContext context) {
+    final isAurora = AppTheme.isAurora(context);
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     final List<Widget> slides = [
@@ -2771,11 +2788,13 @@ class _DashboardStatSliderState extends State<DashboardStatSlider> {
         value: '${widget.students.length}',
         subtitle: 'Tap to view class strength',
         icon: Icons.school_rounded,
-        iconColor: AppTheme.primaryBlue,
-        gradientColors: isDark
-            ? [const Color(0xFF1E293B), const Color(0xFF0F172A)]
-            : [const Color(0xFFEFF6FF), const Color(0xFFDBEAFE)],
-        borderColor: AppTheme.primaryBlue,
+        iconColor: isAurora ? AppTheme.auroraCyanHighlight : AppTheme.primaryBlue,
+        gradientColors: isAurora
+            ? [const Color(0xD8111D35), const Color(0xB80D1629)]
+            : (isDark
+                ? [const Color(0xFF1E293B), const Color(0xFF0F172A)]
+                : [const Color(0xFFEFF6FF), const Color(0xFFDBEAFE)]),
+        borderColor: isAurora ? AppTheme.auroraCyanHighlight : AppTheme.primaryBlue,
         onTap: widget.onTotalStudentsTap,
       ),
       // Slide 2: Collected
@@ -2786,9 +2805,11 @@ class _DashboardStatSliderState extends State<DashboardStatSlider> {
         subtitle: 'Tap for daily records',
         icon: Icons.payments_rounded,
         iconColor: AppTheme.secondaryGreen,
-        gradientColors: isDark
-            ? [const Color(0xFF1E293B), const Color(0xFF0F172A)]
-            : [const Color(0xFFECFDF5), const Color(0xFFD1FAE5)],
+        gradientColors: isAurora
+            ? [const Color(0xD8111D35), const Color(0xB80D1629)]
+            : (isDark
+                ? [const Color(0xFF1E293B), const Color(0xFF0F172A)]
+                : [const Color(0xFFECFDF5), const Color(0xFFD1FAE5)]),
         borderColor: AppTheme.secondaryGreen,
         onTap: widget.onCollectedTap,
       ),
@@ -2800,9 +2821,11 @@ class _DashboardStatSliderState extends State<DashboardStatSlider> {
         subtitle: 'Tap to send fee reminders',
         icon: Icons.warning_amber_rounded,
         iconColor: AppTheme.warningRed,
-        gradientColors: isDark
-            ? [const Color(0xFF1E293B), const Color(0xFF0F172A)]
-            : [const Color(0xFFFEF2F2), const Color(0xFFFEE2E2)],
+        gradientColors: isAurora
+            ? [const Color(0xD8111D35), const Color(0xB80D1629)]
+            : (isDark
+                ? [const Color(0xFF1E293B), const Color(0xFF0F172A)]
+                : [const Color(0xFFFEF2F2), const Color(0xFFFEE2E2)]),
         borderColor: AppTheme.warningRed,
         onTap: widget.onPendingTap,
       ),
@@ -2813,11 +2836,13 @@ class _DashboardStatSliderState extends State<DashboardStatSlider> {
         value: 'View Schedules',
         subtitle: 'Tap to view timetable',
         icon: Icons.schedule_rounded,
-        iconColor: AppTheme.accentIndigo,
-        gradientColors: isDark
-            ? [const Color(0xFF1E293B), const Color(0xFF0F172A)]
-            : [const Color(0xFFEEF2FF), const Color(0xFFE0E7FF)],
-        borderColor: AppTheme.accentIndigo,
+        iconColor: isAurora ? AppTheme.auroraSecondaryPurple : AppTheme.accentIndigo,
+        gradientColors: isAurora
+            ? [const Color(0xD8111D35), const Color(0xB80D1629)]
+            : (isDark
+                ? [const Color(0xFF1E293B), const Color(0xFF0F172A)]
+                : [const Color(0xFFEEF2FF), const Color(0xFFE0E7FF)]),
+        borderColor: isAurora ? AppTheme.auroraSecondaryPurple : AppTheme.accentIndigo,
         onTap: widget.onClassSchedulesTap,
       ),
     ];

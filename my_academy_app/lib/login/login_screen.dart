@@ -110,6 +110,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final isAurora = AppTheme.isAurora(context);
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Scaffold(
@@ -122,9 +123,11 @@ class _LoginScreenState extends State<LoginScreen> {
                 gradient: LinearGradient(
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
-                  colors: isDark 
-                    ? [const Color(0xFF020617), const Color(0xFF0F172A), const Color(0xFF1E293B)]
-                    : [const Color(0xFFF8FAFC), const Color(0xFFF1F5F9), const Color(0xFFE2E8F0)],
+                  colors: isAurora
+                    ? [const Color(0xFF070B14), const Color(0xFF0D1527), const Color(0xFF1E1B4B)]
+                    : (isDark 
+                        ? [const Color(0xFF020617), const Color(0xFF0F172A), const Color(0xFF1E293B)]
+                        : [const Color(0xFFF8FAFC), const Color(0xFFF1F5F9), const Color(0xFFE2E8F0)]),
                 ),
               ),
             ),
@@ -139,7 +142,9 @@ class _LoginScreenState extends State<LoginScreen> {
               height: 300,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                color: AppTheme.primaryBlue.withOpacity(isDark ? 0.15 : 0.08),
+                color: isAurora
+                    ? AppTheme.auroraCyanHighlight.withValues(alpha: 0.16)
+                    : AppTheme.primaryBlue.withOpacity(isDark ? 0.15 : 0.08),
               ),
             ).animate(onPlay: (controller) => controller.repeat(reverse: true))
              .scale(begin: const Offset(1, 1), end: const Offset(1.2, 1.2), duration: 4.seconds)
@@ -154,7 +159,9 @@ class _LoginScreenState extends State<LoginScreen> {
               height: 400,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                color: const Color(0xFF10B981).withOpacity(isDark ? 0.1 : 0.05),
+                color: isAurora
+                    ? AppTheme.auroraSecondaryPurple.withValues(alpha: 0.16)
+                    : const Color(0xFF10B981).withOpacity(isDark ? 0.1 : 0.05),
               ),
             ).animate(onPlay: (controller) => controller.repeat(reverse: true))
              .scale(begin: const Offset(1, 1), end: const Offset(1.1, 1.1), duration: 6.seconds)
@@ -290,18 +297,29 @@ class _LoginScreenState extends State<LoginScreen> {
                         child: Container(
                           padding: const EdgeInsets.all(32),
                           decoration: BoxDecoration(
-                            color: isDark ? Colors.white.withOpacity(0.05) : Colors.white.withOpacity(0.7),
+                            color: isAurora
+                                ? AppTheme.auroraGlassCard
+                                : (isDark ? Colors.white.withOpacity(0.05) : Colors.white.withOpacity(0.7)),
                             borderRadius: BorderRadius.circular(28),
                             border: Border.all(
-                              color: isDark ? Colors.white.withOpacity(0.1) : Colors.white,
+                              color: isAurora
+                                  ? AppTheme.auroraBorder
+                                  : (isDark ? Colors.white.withOpacity(0.1) : Colors.white),
                               width: 1.5,
                             ),
                             boxShadow: [
                               BoxShadow(
-                                color: Colors.black.withOpacity(0.05),
+                                color: (isAurora ? const Color(0xFF020617) : Colors.black)
+                                    .withOpacity(isAurora ? 0.4 : 0.05),
                                 blurRadius: 30,
                                 offset: const Offset(0, 10),
-                              )
+                              ),
+                              if (isAurora)
+                                BoxShadow(
+                                  color: AppTheme.auroraPrimaryBlue.withValues(alpha: 0.12),
+                                  blurRadius: 25,
+                                  offset: const Offset(0, 4),
+                                ),
                             ],
                           ),
                           child: Form(

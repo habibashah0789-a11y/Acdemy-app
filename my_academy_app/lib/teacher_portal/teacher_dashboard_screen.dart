@@ -133,13 +133,14 @@ class _TeacherDashboardScreenState extends State<TeacherDashboardScreen> {
 
   Widget _buildPayoutLedgerTile(
       BuildContext context, bool isDark, Color subjectColor) {
+    final isAurora = AppTheme.isAurora(context);
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: isDark ? AppTheme.darkCard : Colors.white,
+        color: isDark ? (isAurora ? AppTheme.auroraGlassCard : AppTheme.darkCard) : Colors.white,
         borderRadius: BorderRadius.circular(18),
         border: Border.all(
-          color: isDark ? AppTheme.darkBorder : AppTheme.lightBorder,
+          color: isDark ? (isAurora ? AppTheme.auroraBorder : AppTheme.darkBorder) : AppTheme.lightBorder,
         ),
         boxShadow: isDark
             ? null
@@ -213,9 +214,11 @@ class _TeacherDashboardScreenState extends State<TeacherDashboardScreen> {
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                   decoration: BoxDecoration(
-                    color: Colors.indigo.shade50,
+                    color: isDark ? Colors.white.withValues(alpha: 0.06) : Colors.indigo.shade50,
                     borderRadius: BorderRadius.circular(10),
-                    border: Border.all(color: Colors.indigo.shade100),
+                    border: Border.all(
+                      color: isAurora ? AppTheme.auroraBorder : (isDark ? Colors.white12 : Colors.indigo.shade100),
+                    ),
                   ),
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -225,7 +228,7 @@ class _TeacherDashboardScreenState extends State<TeacherDashboardScreen> {
                         style: GoogleFonts.poppins(
                           fontSize: 12,
                           fontWeight: FontWeight.w600,
-                          color: Colors.indigo.shade900,
+                          color: isDark ? Colors.white70 : Colors.indigo.shade900,
                         ),
                       ),
                       Text(
@@ -263,7 +266,7 @@ class _TeacherDashboardScreenState extends State<TeacherDashboardScreen> {
                     ),
                   ),
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.indigo.shade900,
+                    backgroundColor: isAurora ? AppTheme.auroraPrimaryBlue : Colors.indigo.shade900,
                     padding: const EdgeInsets.symmetric(vertical: 12),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(12),
@@ -280,13 +283,14 @@ class _TeacherDashboardScreenState extends State<TeacherDashboardScreen> {
 
   Widget _buildDailyRecordsTile(
       BuildContext context, bool isDark, Color subjectColor) {
+    final isAurora = AppTheme.isAurora(context);
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: isDark ? AppTheme.darkCard : Colors.white,
+        color: isDark ? (isAurora ? AppTheme.auroraGlassCard : AppTheme.darkCard) : Colors.white,
         borderRadius: BorderRadius.circular(18),
         border: Border.all(
-          color: isDark ? AppTheme.darkBorder : AppTheme.lightBorder,
+          color: isDark ? (isAurora ? AppTheme.auroraBorder : AppTheme.darkBorder) : AppTheme.lightBorder,
         ),
         boxShadow: isDark
             ? null
@@ -375,19 +379,25 @@ class _TeacherDashboardScreenState extends State<TeacherDashboardScreen> {
   }
 
   Widget _buildWelcomeBanner(Color subjectColor, bool isDark, bool isWide) {
+    final isAurora = AppTheme.isAurora(context);
     return Container(
       width: double.infinity,
       padding: EdgeInsets.all(isWide ? 28 : 20),
       decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [AppTheme.primaryDarkBlue, subjectColor],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
+        gradient: isAurora
+            ? AppTheme.auroraPrimaryGradient
+            : LinearGradient(
+                colors: [AppTheme.primaryDarkBlue, subjectColor],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
         borderRadius: BorderRadius.circular(20),
+        border: isAurora ? Border.all(color: AppTheme.auroraBorder) : null,
         boxShadow: [
           BoxShadow(
-            color: subjectColor.withValues(alpha: 0.25),
+            color: isAurora
+                ? AppTheme.auroraPrimaryBlue.withValues(alpha: 0.25)
+                : subjectColor.withValues(alpha: 0.25),
             blurRadius: 16,
             offset: const Offset(0, 6),
           ),
@@ -504,13 +514,14 @@ class _TeacherDashboardScreenState extends State<TeacherDashboardScreen> {
 
   Widget _buildStatCard(_StatCard item, int index) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final isAurora = AppTheme.isAurora(context);
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: isDark ? AppTheme.darkCard : Colors.white,
+        color: isDark ? (isAurora ? AppTheme.auroraGlassCard : AppTheme.darkCard) : Colors.white,
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
-          color: item.color.withValues(alpha: 0.18),
+          color: isAurora ? AppTheme.auroraBorder : item.color.withValues(alpha: 0.18),
         ),
         boxShadow: isDark
             ? null

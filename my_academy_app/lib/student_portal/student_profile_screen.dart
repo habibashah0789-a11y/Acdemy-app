@@ -22,6 +22,7 @@ import '../widgets/shimmer_loading_widget.dart';
 import '../widgets/student_avatar.dart';
 import 'student_auth_service.dart';
 import 'student_login_screen.dart';
+import '../settings/theme_selection_screen.dart';
 
 class StudentProfileScreen extends StatefulWidget {
   const StudentProfileScreen({super.key});
@@ -385,14 +386,16 @@ class _StudentProfileScreenState extends State<StudentProfileScreen> {
     final student = _student!;
 
     return Scaffold(
-      backgroundColor: isDark ? AppTheme.darkBackground : AppTheme.lightBackground,
+      backgroundColor: isDark
+          ? (AppTheme.isAurora(context) ? AppTheme.auroraBackground : AppTheme.darkBackground)
+          : AppTheme.lightBackground,
       appBar: AppBar(
         automaticallyImplyLeading: false,
         title: Text(
           'My Student Profile',
           style: GoogleFonts.poppins(fontWeight: FontWeight.bold, fontSize: 18),
         ),
-        backgroundColor: AppTheme.primaryBlue,
+        backgroundColor: AppTheme.isAurora(context) ? AppTheme.auroraBackground : AppTheme.primaryBlue,
         foregroundColor: Colors.white,
         actions: [
           IconButton(
@@ -562,6 +565,14 @@ class _StudentProfileScreenState extends State<StudentProfileScreen> {
               padding: const EdgeInsets.symmetric(vertical: 6),
               child: Column(
                 children: [
+                  ListTile(
+                    leading: const Icon(Icons.palette_outlined, color: AppTheme.primaryBlue),
+                    title: Text('Appearance & Theme', style: GoogleFonts.poppins(fontSize: 14, fontWeight: FontWeight.w600)),
+                    subtitle: Text('Choose your preferred visual theme', style: GoogleFonts.poppins(fontSize: 11, color: Colors.grey)),
+                    trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+                    onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const ThemeSelectionScreen())),
+                  ),
+                  const Divider(height: 1),
                   ListTile(
                     leading: const Icon(Icons.info_outline_rounded, color: AppTheme.primaryBlue),
                     title: Text('About Quaid Academy', style: GoogleFonts.poppins(fontSize: 14, fontWeight: FontWeight.w600)),

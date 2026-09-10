@@ -209,20 +209,31 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen>
           AnimatedBuilder(
             animation: _bgController,
             builder: (context, _) {
+              final isAurora = AppTheme.isAurora(context);
               return Container(
                 decoration: BoxDecoration(
                   gradient: LinearGradient(
                     begin: Alignment.topLeft,
                     end: Alignment.bottomRight,
-                    colors: [
-                      const Color(0xFF0F172A),
-                      Color.lerp(
-                        const Color(0xFF1E3A8A),
-                        const Color(0xFF1E40AF),
-                        _bgController.value,
-                      )!,
-                      const Color(0xFF0F172A),
-                    ],
+                    colors: isAurora
+                        ? [
+                            const Color(0xFF070B14),
+                            Color.lerp(
+                              const Color(0xFF0D1527),
+                              const Color(0xFF1E1B4B),
+                              _bgController.value,
+                            )!,
+                            const Color(0xFF080D1A),
+                          ]
+                        : [
+                            const Color(0xFF0F172A),
+                            Color.lerp(
+                              const Color(0xFF1E3A8A),
+                              const Color(0xFF1E40AF),
+                              _bgController.value,
+                            )!,
+                            const Color(0xFF0F172A),
+                          ],
                     stops: const [0.0, 0.5, 1.0],
                   ),
                 ),

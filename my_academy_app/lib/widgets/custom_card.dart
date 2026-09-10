@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
+import '../theme/app_theme.dart';
 import '../theme/ui_helpers.dart';
 
 class CustomCard extends StatelessWidget {
@@ -30,14 +31,14 @@ class CustomCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final cardBg = backgroundColor ?? (isDark ? Theme.of(context).colorScheme.surface : Colors.white);
-    final cardShadows = shadows ?? UIHelpers.cardShadow(context);
+    final tokens = AppTheme.tokens(context);
+    final cardBg = backgroundColor ?? tokens.card;
+    final cardShadows = shadows ?? tokens.cardShadow;
     final radius = BorderRadius.circular(borderRadius);
 
     final borderSide = border?.top ??
         BorderSide(
-          color: isDark ? Colors.white.withValues(alpha: 0.08) : const Color(0xFFE2E8F0),
+          color: tokens.border,
           width: 1,
         );
 

@@ -181,18 +181,18 @@ class _TeacherStudentsScreenState extends State<TeacherStudentsScreen>
                           )
                         : null,
                     filled: true,
-                    fillColor: isDark ? AppTheme.darkSurface : Colors.white,
+                    fillColor: isDark ? (AppTheme.isAurora(context) ? AppTheme.auroraGlassCard : AppTheme.darkSurface) : Colors.white,
                     contentPadding: const EdgeInsets.symmetric(vertical: 10),
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
                       borderSide: BorderSide(
-                        color: isDark ? AppTheme.darkBorder : AppTheme.lightBorder,
+                        color: AppTheme.borderColor(context),
                       ),
                     ),
                     enabledBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
                       borderSide: BorderSide(
-                        color: isDark ? AppTheme.darkBorder : AppTheme.lightBorder,
+                        color: AppTheme.borderColor(context),
                       ),
                     ),
                   ),
@@ -458,12 +458,12 @@ class _TeacherStudentsScreenState extends State<TeacherStudentsScreen>
             decoration: BoxDecoration(
               color: isSelected
                   ? _subjectColor
-                  : (isDark ? AppTheme.darkCard : Colors.white),
+                  : (isDark ? (AppTheme.isAurora(context) ? AppTheme.auroraGlassCard : AppTheme.darkCard) : Colors.white),
               borderRadius: BorderRadius.circular(14),
               border: Border.all(
                 color: isSelected
                     ? _subjectColor
-                    : (isDark ? AppTheme.darkBorder : _subjectColor.withValues(alpha: 0.2)),
+                    : (isDark ? (AppTheme.isAurora(context) ? AppTheme.auroraBorder : AppTheme.darkBorder) : _subjectColor.withValues(alpha: 0.2)),
                 width: isSelected ? 2 : 1.2,
               ),
               boxShadow: [
@@ -543,11 +543,16 @@ class _TeacherStudentsScreenState extends State<TeacherStudentsScreen>
     final isPaid = student.isSubjectPaid(widget.teacher.subject);
     final remaining = student.getSubjectRemaining(widget.teacher.subject);
     final schedule = student.getScheduleForSubject(widget.teacher.subject).trim();
+    final isAurora = AppTheme.isAurora(context);
 
     return Card(
       margin: const EdgeInsets.only(bottom: 8),
-      elevation: 1,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+      elevation: isAurora ? 0 : 1,
+      color: isDark ? (isAurora ? AppTheme.auroraGlassCard : AppTheme.darkCard) : null,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(14),
+        side: isAurora ? const BorderSide(color: AppTheme.auroraBorder) : BorderSide.none,
+      ),
       child: ListTile(
         contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
         onTap: () => Navigator.push(

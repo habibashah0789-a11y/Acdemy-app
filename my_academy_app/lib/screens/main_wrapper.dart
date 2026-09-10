@@ -41,48 +41,65 @@ class _MainWrapperState extends State<MainWrapper> {
 
   @override
   Widget build(BuildContext context) {
+    final tokens = AppTheme.tokens(context);
+    final isAurora = AppTheme.isAurora(context);
+
     return Scaffold(
       body: IndexedStack(
         index: _currentIndex,
         children: _screens,
       ),
-      bottomNavigationBar: BottomNavigationBar(
-        type: BottomNavigationBarType.fixed,
-        currentIndex: _currentIndex,
-        onTap: (index) {
-          if (_currentIndex != index) {
-            setState(() {
-              _currentIndex = index;
-            });
-          }
-        },
-        items: const [
-          BottomNavigationBarItem(
-            icon: Icon(Icons.dashboard_rounded),
-            activeIcon: Icon(Icons.dashboard_rounded),
-            label: 'Dashboard',
+      bottomNavigationBar: Container(
+        decoration: BoxDecoration(
+          color: tokens.navBar,
+          border: Border(
+            top: BorderSide(
+              color: isAurora ? AppTheme.auroraBorder : tokens.border.withValues(alpha: 0.5),
+              width: isAurora ? 1.2 : 0.8,
+            ),
           ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.school_outlined),
-            activeIcon: Icon(Icons.school_rounded),
-            label: 'Students',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.supervisor_account_outlined),
-            activeIcon: Icon(Icons.supervisor_account_rounded),
-            label: 'Teachers',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.account_balance_wallet_outlined),
-            activeIcon: Icon(Icons.account_balance_wallet_rounded),
-            label: 'Finance',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.settings_outlined),
-            activeIcon: Icon(Icons.settings_rounded),
-            label: 'Settings',
-          ),
-        ],
+        ),
+        child: BottomNavigationBar(
+          type: BottomNavigationBarType.fixed,
+          currentIndex: _currentIndex,
+          backgroundColor: tokens.navBar,
+          selectedItemColor: isAurora ? AppTheme.auroraCyanHighlight : tokens.navBarSelected,
+          unselectedItemColor: isAurora ? AppTheme.auroraTextSecondary : tokens.navBarUnselected,
+          onTap: (index) {
+            if (_currentIndex != index) {
+              setState(() {
+                _currentIndex = index;
+              });
+            }
+          },
+          items: const [
+            BottomNavigationBarItem(
+              icon: Icon(Icons.dashboard_rounded),
+              activeIcon: Icon(Icons.dashboard_rounded),
+              label: 'Dashboard',
+            ),
+            BottomNavigationBarItem(
+              icon: Icon(Icons.school_outlined),
+              activeIcon: Icon(Icons.school_rounded),
+              label: 'Students',
+            ),
+            BottomNavigationBarItem(
+              icon: Icon(Icons.supervisor_account_outlined),
+              activeIcon: Icon(Icons.supervisor_account_rounded),
+              label: 'Teachers',
+            ),
+            BottomNavigationBarItem(
+              icon: Icon(Icons.account_balance_wallet_outlined),
+              activeIcon: Icon(Icons.account_balance_wallet_rounded),
+              label: 'Finance',
+            ),
+            BottomNavigationBarItem(
+              icon: Icon(Icons.settings_outlined),
+              activeIcon: Icon(Icons.settings_rounded),
+              label: 'Settings',
+            ),
+          ],
+        ),
       ),
     );
   }

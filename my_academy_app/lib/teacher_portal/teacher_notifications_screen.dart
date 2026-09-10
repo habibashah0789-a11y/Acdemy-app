@@ -268,11 +268,16 @@ class _TeacherNotificationsScreenState
 
     final color = _colorForType(type, mediaType);
     final icon = _iconForType(type, mediaType);
+    final isAurora = AppTheme.isAurora(context);
 
     return Card(
       margin: const EdgeInsets.only(bottom: 12),
-      elevation: isRead ? 0.5 : 3,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      elevation: isAurora ? 0 : (isRead ? 0.5 : 3),
+      color: isDark ? (isAurora ? AppTheme.auroraGlassCard : AppTheme.darkCard) : null,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+        side: isAurora ? const BorderSide(color: AppTheme.auroraBorder) : BorderSide.none,
+      ),
       child: InkWell(
         borderRadius: BorderRadius.circular(16),
         onTap: () {

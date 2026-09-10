@@ -24,36 +24,14 @@ class UIHelpers {
 
   // Soft Premium Shadows
   static List<BoxShadow> cardShadow(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    if (isDark) {
-      return [
-        BoxShadow(
-          color: Colors.black.withValues(alpha: 0.3),
-          blurRadius: 12,
-          offset: const Offset(0, 4),
-        ),
-      ];
-    }
-    return [
-      BoxShadow(
-        color: const Color(0xFF64748B).withValues(alpha: 0.08),
-        blurRadius: 16,
-        spreadRadius: 1,
-        offset: const Offset(0, 4),
-      ),
-      BoxShadow(
-        color: Colors.black.withValues(alpha: 0.02),
-        blurRadius: 4,
-        offset: const Offset(0, 2),
-      ),
-    ];
+    return AppTheme.cardShadow(context);
   }
 
   // Premium Header Decoration
   static BoxDecoration headerGradientDecoration(BuildContext context) {
-    return const BoxDecoration(
-      gradient: AppTheme.primaryGradient,
-      borderRadius: BorderRadius.only(
+    return BoxDecoration(
+      gradient: AppTheme.headerGradient(context),
+      borderRadius: const BorderRadius.only(
         bottomLeft: Radius.circular(28),
         bottomRight: Radius.circular(28),
       ),
@@ -62,17 +40,19 @@ class UIHelpers {
 
   // Glassmorphic / Subtle Overlay Container
   static BoxDecoration glassDecoration(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final tokens = AppTheme.tokens(context);
     return BoxDecoration(
-      color: isDark
-          ? Colors.white.withValues(alpha: 0.06)
-          : Colors.white.withValues(alpha: 0.85),
+      color: tokens.isGlass
+          ? tokens.card
+          : (tokens.isDark
+              ? Colors.white.withValues(alpha: 0.06)
+              : Colors.white.withValues(alpha: 0.85)),
       borderRadius: r16,
       border: Border.all(
-        color: isDark
-            ? Colors.white.withValues(alpha: 0.1)
-            : Colors.white.withValues(alpha: 0.5),
+        color: tokens.border,
+        width: 1.2,
       ),
+      boxShadow: tokens.cardShadow,
     );
   }
 

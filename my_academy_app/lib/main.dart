@@ -26,11 +26,13 @@ import 'provider/theme_provider.dart';
 // Screens
 import 'screens/main_wrapper.dart';
 import 'screens/role_selection_screen.dart';
+import 'screens/reset_password_screen.dart';
 import 'student_portal/student_main_wrapper.dart';
 
 // Teacher portal
 import 'teacher_portal/teacher_main_wrapper.dart';
 import 'services/teacher_service.dart';
+import 'models/teacher_model.dart';
 
 // Loading
 import 'widgets/portal_loading_screen.dart';
@@ -106,8 +108,8 @@ class MyApp extends StatelessWidget {
       navigatorKey: appNavigatorKey,
       title: 'Quaid Academy',
       debugShowCheckedModeBanner: false,
-      theme: AppTheme.lightTheme,
-      darkTheme: AppTheme.darkTheme,
+      theme: themeProvider.currentThemeData,
+      darkTheme: themeProvider.currentThemeData,
       themeMode: themeProvider.themeMode,
       home: const AuthWrapper(),
     );
@@ -122,10 +124,47 @@ class AuthWrapper extends StatefulWidget {
 }
 
 class _AuthWrapperState extends State<AuthWrapper> {
+  Map<String, String>? _resetParams;
+
   @override
   void initState() {
     super.initState();
-    // Notification permission request removed per user request
+    _checkUrlParams();
+  }
+
+  void _checkUrlParams() {
+    try {
+      final uri = Uri.base;
+      String? mode = uri.queryParameters['mode'];
+      String? oobCode = uri.queryParameters['oobCode'];
+      String? email = uri.queryParameters['email'];
+      String? role = uri.queryParameters['role'];
+
+      // Also support hash routing format (#/?mode=resetPassword&oobCode=...)
+      if ((oobCode == null || oobCode.isEmpty) && uri.fragment.isNotEmpty) {
+        final fragment = uri.fragment;
+        if (fragment.contains('?')) {
+          final queryPart = fragment.substring(fragment.indexOf('?') + 1);
+          final params = Uri.splitQueryString(queryPart);
+          mode ??= params['mode'];
+          oobCode ??= params['oobCode'];
+          email ??= params['email'];
+          role ??= params['role'];
+        }
+      }
+
+      if (mode == 'resetPassword' && oobCode != null && oobCode.isNotEmpty) {
+        setState(() {
+          _resetParams = {
+            'oobCode': oobCode!,
+            if (email != null) 'email': email,
+            if (role != null) 'role': role,
+          };
+        });
+      }
+    } catch (e) {
+      debugPrint('[AuthWrapper] Error checking URL params: $e');
+    }
   }
 
   Widget _buildStartupSplash(BuildContext context) {
@@ -139,6 +178,15 @@ class _AuthWrapperState extends State<AuthWrapper> {
 
   @override
   Widget build(BuildContext context) {
+    // If opened via password reset link from email, show ResetPasswordScreen immediately
+    if (_resetParams != null) {
+      return ResetPasswordScreen(
+        oobCode: _resetParams!['oobCode']!,
+        emailHint: _resetParams!['email'],
+        roleHint: _resetParams!['role'],
+      );
+    }
+
     return StreamBuilder<User?>(
       stream: FirebaseAuth.instance.authStateChanges(),
       builder: (context, snapshot) {
@@ -214,7 +262,7 @@ class _RoleRoutingWrapperState extends State<RoleRoutingWrapper> {
   String? _role;
   bool _isLoading = true;
   String? _error;
-  dynamic _teacherModel; // TeacherModel? — stored as dynamic to avoid circular dep at this level
+  TeacherModel? _teacherModel;
 
   @override
   void initState() {
@@ -278,20 +326,70 @@ class _RoleRoutingWrapperState extends State<RoleRoutingWrapper> {
         }
       }
 
-      // 4. Check admins collection or explicit server role
+      // 4. Check admins collection (by UID and by email)
       if (role.isEmpty) {
         try {
-          final adminDoc = await firestore.collection('admins').doc(widget.user.uid).get().timeout(const Duration(seconds: 2));
+          final adminDoc = await firestore
+              .collection('admins')
+              .doc(widget.user.uid)
+              .get()
+              .timeout(const Duration(seconds: 2));
           if (adminDoc.exists && adminDoc.data()?['admin'] == true) {
             role = 'admin';
+          }
+        } catch (_) {}
+
+        if (role.isEmpty && widget.user.email != null && widget.user.email!.isNotEmpty) {
+          try {
+            final aQuery = await firestore
+                .collection('admins')
+                .where('email', isEqualTo: widget.user.email!.trim().toLowerCase())
+                .limit(1)
+                .get()
+                .timeout(const Duration(seconds: 2));
+            if (aQuery.docs.isNotEmpty) {
+              role = 'admin';
+            }
+          } catch (_) {}
+        }
+      }
+
+      // 4b. Also check teachers collection by email if role still empty
+      if (role.isEmpty && widget.user.email != null && widget.user.email!.isNotEmpty) {
+        try {
+          final tQuery = await firestore
+              .collection('teachers')
+              .where('email', isEqualTo: widget.user.email!.trim().toLowerCase())
+              .limit(1)
+              .get()
+              .timeout(const Duration(seconds: 2));
+          if (tQuery.docs.isNotEmpty) {
+            role = 'teacher';
+            _teacherModel = TeacherModel.fromFirestore(tQuery.docs.first);
           }
         } catch (_) {}
       }
 
       if (role == 'admin') {
+        try {
+          await roleDocRef.set({'role': 'admin'}, SetOptions(merge: true));
+        } catch (_) {}
         if (mounted) {
           setState(() {
             _role = 'admin';
+            _isLoading = false;
+          });
+        }
+        return;
+      }
+
+      if (role == 'teacher') {
+        try {
+          await roleDocRef.set({'role': 'teacher'}, SetOptions(merge: true));
+        } catch (_) {}
+        if (mounted) {
+          setState(() {
+            _role = 'teacher';
             _isLoading = false;
           });
         }
@@ -364,11 +462,18 @@ class _RoleRoutingWrapperState extends State<RoleRoutingWrapper> {
     }
 
     if (_role == 'teacher') {
-      if (_teacherModel != null) {
-        return TeacherMainWrapper(teacher: _teacherModel!);
-      }
-      // Teacher model not loaded yet — show role selection as fallback
-      return const RoleSelectionScreen();
+      final teacher = _teacherModel ??
+          TeacherModel(
+            id: widget.user.uid,
+            name: widget.user.displayName ?? 'Faculty Member',
+            email: widget.user.email ?? '',
+            teacherId: 'T-FAC-001',
+            subject: 'Faculty',
+            section: 'FSc',
+            assignedClasses: const ['First Year'],
+            createdAt: DateTime.now(),
+          );
+      return TeacherMainWrapper(teacher: teacher);
     }
 
     // Unknown role — sign out and show role selection

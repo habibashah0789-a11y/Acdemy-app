@@ -205,20 +205,24 @@ class _StudentDashboardScreenState extends State<StudentDashboardScreen> {
         ? (student.feeSubmitted / student.totalFee).clamp(0.0, 1.0)
         : 0.0;
 
+    final isAurora = AppTheme.isAurora(context);
+
     return Scaffold(
-      backgroundColor: isDark ? AppTheme.darkBackground : AppTheme.lightBackground,
+      backgroundColor: isAurora
+          ? AppTheme.auroraBackground
+          : (isDark ? AppTheme.darkBackground : AppTheme.lightBackground),
       body: RefreshIndicator(
         onRefresh: _refreshData,
-        color: AppTheme.primaryBlue,
+        color: isAurora ? AppTheme.auroraCyanHighlight : AppTheme.primaryBlue,
         child: CustomScrollView(
           physics: const AlwaysScrollableScrollPhysics(),
           slivers: [
             // Modern Curved Header
             SliverToBoxAdapter(
               child: Container(
-                decoration: const BoxDecoration(
-                  gradient: AppTheme.primaryGradient,
-                  borderRadius: BorderRadius.only(
+                decoration: BoxDecoration(
+                  gradient: AppTheme.headerGradient(context),
+                  borderRadius: const BorderRadius.only(
                     bottomLeft: Radius.circular(32),
                     bottomRight: Radius.circular(32),
                   ),

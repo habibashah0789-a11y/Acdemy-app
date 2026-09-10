@@ -16,6 +16,7 @@ import '../screens/app_info_screens.dart';
 import '../utils/image_utils.dart';
 import '../widgets/crop_image_dialog.dart';
 import '../widgets/teacher_avatar.dart';
+import '../settings/theme_selection_screen.dart';
 
 class TeacherProfileScreen extends StatelessWidget {
   final TeacherModel teacher;
@@ -137,6 +138,49 @@ class TeacherProfileScreen extends StatelessWidget {
 
                 // ── Assigned Classes ──
                 _buildClassesCard(isDark, currentTeacher, subjectColor),
+                // ── Appearance & Theme ──
+                Material(
+                  color: isDark ? AppTheme.darkCard : Colors.white,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16),
+                    side: BorderSide(
+                      color: isDark ? AppTheme.darkBorder : AppTheme.lightBorder,
+                    ),
+                  ),
+                  clipBehavior: Clip.antiAlias,
+                  child: ListTile(
+                    leading: Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: subjectColor.withValues(alpha: 0.12),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: Icon(Icons.palette_outlined,
+                          color: subjectColor, size: 20),
+                    ),
+                    title: Text(
+                      'Appearance & Theme',
+                      style: GoogleFonts.poppins(
+                        fontSize: 14,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    subtitle: Text(
+                      'Choose your preferred visual theme',
+                      style: GoogleFonts.poppins(
+                          fontSize: 11, color: Colors.grey),
+                    ),
+                    trailing:
+                        const Icon(Icons.arrow_forward_ios_rounded, size: 16),
+                    onTap: () {
+                      Navigator.of(context).push(
+                        MaterialPageRoute(
+                            builder: (_) => const ThemeSelectionScreen()),
+                      );
+                    },
+                  ),
+                ).animate().fadeIn(),
+
                 const SizedBox(height: 20),
 
                 // ── About App & Manual ──
@@ -460,6 +504,7 @@ class TeacherProfileScreen extends StatelessWidget {
           await picker.pickImage(source: source, imageQuality: 75);
       if (pickedFile != null && context.mounted) {
         final bytes = await pickedFile.readAsBytes();
+        if (!mounted) return;
         final cropped = await showDialog<Uint8List>(
           context: context,
           barrierDismissible: false,
@@ -473,6 +518,7 @@ class TeacherProfileScreen extends StatelessWidget {
           targetHeight: 360,
           quality: 75,
         );
+        if (!mounted) return;
 
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(

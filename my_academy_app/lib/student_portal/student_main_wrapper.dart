@@ -343,7 +343,16 @@ $st
 
   @override
   Widget build(BuildContext context) {
+    final isAurora = AppTheme.isAurora(context);
     final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    final navBg = isAurora
+        ? AppTheme.auroraSurface
+        : (isDark ? AppTheme.darkSurface : Colors.white);
+    final activeColor = isAurora ? AppTheme.auroraCyanHighlight : AppTheme.primaryBlue;
+    final indicatorColor = isAurora
+        ? AppTheme.auroraCyanHighlight.withValues(alpha: 0.18)
+        : AppTheme.primaryBlue.withValues(alpha: 0.14);
 
     return Scaffold(
       body: IndexedStack(
@@ -352,10 +361,17 @@ $st
       ),
       bottomNavigationBar: Container(
         decoration: BoxDecoration(
-          color: isDark ? AppTheme.darkSurface : Colors.white,
+          color: navBg,
+          border: isAurora
+              ? const Border(
+                  top: BorderSide(color: AppTheme.auroraBorder, width: 1.2),
+                )
+              : null,
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withValues(alpha: 0.06),
+              color: isAurora
+                  ? const Color(0xFF020617).withValues(alpha: 0.6)
+                  : Colors.black.withValues(alpha: 0.06),
               blurRadius: 16,
               offset: const Offset(0, -4),
             )
@@ -363,13 +379,13 @@ $st
         ),
         child: NavigationBarTheme(
           data: NavigationBarThemeData(
-            indicatorColor: AppTheme.primaryBlue.withValues(alpha: 0.14),
+            indicatorColor: indicatorColor,
             labelTextStyle: WidgetStateProperty.resolveWith((states) {
               if (states.contains(WidgetState.selected)) {
                 return GoogleFonts.poppins(
                   fontSize: 12,
                   fontWeight: FontWeight.bold,
-                  color: AppTheme.primaryBlue,
+                  color: activeColor,
                 );
               }
               return GoogleFonts.poppins(
@@ -382,7 +398,7 @@ $st
             }),
             iconTheme: WidgetStateProperty.resolveWith((states) {
               if (states.contains(WidgetState.selected)) {
-                return const IconThemeData(color: AppTheme.primaryBlue, size: 24);
+                return IconThemeData(color: activeColor, size: 24);
               }
               return IconThemeData(
                 color: isDark

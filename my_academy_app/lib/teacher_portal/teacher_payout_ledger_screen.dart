@@ -4,6 +4,7 @@ import 'package:intl/intl.dart';
 import '../models/teacher_model.dart';
 import '../models/teacher_payout_model.dart';
 import '../services/teacher_payout_service.dart';
+import '../theme/app_theme.dart';
 
 class TeacherPayoutLedgerScreen extends StatefulWidget {
   final TeacherModel teacher;
@@ -28,10 +29,17 @@ class _TeacherPayoutLedgerScreenState
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final isAurora = AppTheme.isAurora(context);
+
     return Scaffold(
-      backgroundColor: const Color(0xFFF8FAFC),
+      backgroundColor: isDark
+          ? (isAurora ? AppTheme.auroraBackground : AppTheme.darkBackground)
+          : const Color(0xFFF8FAFC),
       appBar: AppBar(
-        backgroundColor: Colors.indigo.shade900,
+        backgroundColor: isAurora
+            ? AppTheme.auroraBackground
+            : (isDark ? AppTheme.darkSurface : Colors.indigo.shade900),
         elevation: 0,
         iconTheme: const IconThemeData(color: Colors.white),
         title: Text(
@@ -159,19 +167,23 @@ class _TeacherPayoutLedgerScreenState
 
   Widget _buildHeaderSummary(
       double totalReceived, double thisMonthReceived, int transactionCount) {
+    final isAurora = AppTheme.isAurora(context);
     return Container(
       width: double.infinity,
       decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [
-            Colors.indigo.shade900,
-            Colors.indigo.shade800,
-            const Color(0xFF1E1B4B),
-          ],
-          begin: Alignment.topCenter,
-          end: Alignment.bottomCenter,
-        ),
+        gradient: isAurora
+            ? AppTheme.auroraPrimaryGradient
+            : LinearGradient(
+                colors: [
+                  Colors.indigo.shade900,
+                  Colors.indigo.shade800,
+                  const Color(0xFF1E1B4B),
+                ],
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+              ),
         borderRadius: const BorderRadius.vertical(bottom: Radius.circular(24)),
+        border: isAurora ? const Border(bottom: BorderSide(color: AppTheme.auroraBorder)) : null,
       ),
       padding: const EdgeInsets.fromLTRB(20, 10, 20, 24),
       child: Column(
@@ -311,15 +323,22 @@ class _TeacherPayoutLedgerScreenState
   }
 
   Widget _buildTransactionCard(BuildContext context, TeacherPayoutModel payout) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final isAurora = AppTheme.isAurora(context);
     final dateStr =
         DateFormat('dd MMM yyyy, hh:mm a').format(payout.paymentDate);
 
     return Card(
       margin: const EdgeInsets.only(bottom: 12),
       elevation: 0,
+      color: isDark ? (isAurora ? AppTheme.auroraGlassCard : AppTheme.darkCard) : Colors.white,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(16),
-        side: BorderSide(color: Colors.grey.shade200),
+        side: BorderSide(
+          color: isAurora
+              ? AppTheme.auroraBorder
+              : (isDark ? AppTheme.darkBorder : Colors.grey.shade200),
+        ),
       ),
       child: InkWell(
         borderRadius: BorderRadius.circular(16),

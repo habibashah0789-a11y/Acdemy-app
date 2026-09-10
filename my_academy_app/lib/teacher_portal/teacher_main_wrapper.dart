@@ -53,6 +53,7 @@ class _TeacherMainWrapperState extends State<TeacherMainWrapper> {
   Widget build(BuildContext context) {
     final size = MediaQuery.of(context).size;
     final isWide = size.width >= 700;
+    final isAurora = AppTheme.isAurora(context);
 
     if (isWide) {
       return Scaffold(
@@ -60,6 +61,11 @@ class _TeacherMainWrapperState extends State<TeacherMainWrapper> {
           children: [
             NavigationRail(
               selectedIndex: _currentIndex,
+              backgroundColor: isAurora ? AppTheme.auroraSurface : null,
+              selectedIconTheme: isAurora ? const IconThemeData(color: AppTheme.auroraCyanHighlight) : null,
+              unselectedIconTheme: isAurora ? const IconThemeData(color: AppTheme.auroraTextSecondary) : null,
+              selectedLabelTextStyle: isAurora ? GoogleFonts.poppins(fontSize: 11, color: AppTheme.auroraCyanHighlight, fontWeight: FontWeight.bold) : null,
+              unselectedLabelTextStyle: isAurora ? GoogleFonts.poppins(fontSize: 11, color: AppTheme.auroraTextSecondary) : null,
               onDestinationSelected: (i) => setState(() => _currentIndex = i),
               labelType: NavigationRailLabelType.all,
               leading: Padding(
@@ -70,7 +76,14 @@ class _TeacherMainWrapperState extends State<TeacherMainWrapper> {
                       width: 48,
                       height: 48,
                       decoration: BoxDecoration(
-                        color: AppTheme.primaryBlue,
+                        gradient: isAurora
+                            ? const LinearGradient(
+                                colors: [Color(0xFF1E3A8A), Color(0xFF7C3AED)],
+                                begin: Alignment.topLeft,
+                                end: Alignment.bottomRight,
+                              )
+                            : null,
+                        color: isAurora ? null : AppTheme.primaryBlue,
                         borderRadius: BorderRadius.circular(14),
                       ),
                       child: const Center(
@@ -83,7 +96,7 @@ class _TeacherMainWrapperState extends State<TeacherMainWrapper> {
                       style: GoogleFonts.poppins(
                         fontSize: 10,
                         fontWeight: FontWeight.w600,
-                        color: AppTheme.lightTextSecondary,
+                        color: isAurora ? AppTheme.auroraCyanHighlight : AppTheme.lightTextSecondary,
                       ),
                     ),
                   ],
@@ -98,7 +111,11 @@ class _TeacherMainWrapperState extends State<TeacherMainWrapper> {
                       ))
                   .toList(),
             ),
-            const VerticalDivider(width: 1, thickness: 1),
+            VerticalDivider(
+              width: 1,
+              thickness: 1,
+              color: isAurora ? AppTheme.auroraBorder : null,
+            ),
             Expanded(child: _screens[_currentIndex]),
           ],
         ),
@@ -110,17 +127,30 @@ class _TeacherMainWrapperState extends State<TeacherMainWrapper> {
         index: _currentIndex,
         children: _screens,
       ),
-      bottomNavigationBar: BottomNavigationBar(
-        type: BottomNavigationBarType.fixed,
-        currentIndex: _currentIndex,
-        onTap: (i) => setState(() => _currentIndex = i),
-        items: _navItems
-            .map((item) => BottomNavigationBarItem(
-                  icon: _buildIcon(item.icon, item.label),
-                  activeIcon: _buildIcon(item.activeIcon, item.label),
-                  label: item.label,
-                ))
-            .toList(),
+      bottomNavigationBar: Container(
+        decoration: isAurora
+            ? const BoxDecoration(
+                color: AppTheme.auroraSurface,
+                border: Border(
+                  top: BorderSide(color: AppTheme.auroraBorder, width: 1.2),
+                ),
+              )
+            : null,
+        child: BottomNavigationBar(
+          type: BottomNavigationBarType.fixed,
+          currentIndex: _currentIndex,
+          backgroundColor: isAurora ? AppTheme.auroraSurface : null,
+          selectedItemColor: isAurora ? AppTheme.auroraCyanHighlight : null,
+          unselectedItemColor: isAurora ? AppTheme.auroraTextSecondary : null,
+          onTap: (i) => setState(() => _currentIndex = i),
+          items: _navItems
+              .map((item) => BottomNavigationBarItem(
+                    icon: _buildIcon(item.icon, item.label),
+                    activeIcon: _buildIcon(item.activeIcon, item.label),
+                    label: item.label,
+                  ))
+              .toList(),
+        ),
       ),
     );
   }
