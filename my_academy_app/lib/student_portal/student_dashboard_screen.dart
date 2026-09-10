@@ -13,6 +13,7 @@ import '../widgets/shimmer_loading_widget.dart';
 import '../widgets/student_avatar.dart';
 import 'student_auth_service.dart';
 import '../services/notification_service.dart';
+import '../services/database_service.dart';
 
 class StudentDashboardScreen extends StatefulWidget {
   const StudentDashboardScreen({super.key});
