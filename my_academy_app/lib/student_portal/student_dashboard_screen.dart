@@ -96,8 +96,11 @@ class _StudentDashboardScreenState extends State<StudentDashboardScreen> {
           .snapshots()
           .listen((doc) {
         if (doc.exists && mounted) {
+          final updatedStudent = StudentModel.fromFirestore(doc);
+          StudentAvatar.invalidateCache(updatedStudent.id);
+          DatabaseService.studentBox.put(updatedStudent.id, updatedStudent);
           setState(() {
-            _student = StudentModel.fromFirestore(doc);
+            _student = updatedStudent;
             _isLoading = false;
           });
         }
@@ -273,7 +276,7 @@ class _StudentDashboardScreenState extends State<StudentDashboardScreen> {
                               child: GestureDetector(
                                 onTap: () => StudentAvatar.showFullScreen(context, student),
                                 child: Hero(
-                                  tag: 'student_avatar_zoom_${student.id}',
+                                  tag: 'student_avatar_zoom_dash_${student.id}',
                                   child: StudentAvatar(
                                     student: student,
                                     size: 48,

@@ -427,12 +427,23 @@ exactMatch = true
   static Future<StudentModel?> fetchCurrentStudent({
     required String studentId,
     String? studentCode,
+    bool forceRefresh = false,
   }) async {
-    // 0. Try local Hive box first (instantaneous & offline-friendly)
-    if (studentId.isNotEmpty) {
+    // 0. Try local Hive box first if not forcing a refresh (instantaneous & offline-friendly)
+    if (!forceRefresh && studentId.isNotEmpty) {
       try {
         final localStudent = DatabaseService.studentBox.get(studentId);
         if (localStudent != null) {
+          // Asynchronously revalidate in the background to ensure Hive cache stays fresh
+          unawaited(() async {
+            try {
+              final doc = await _firestore.collection('students').doc(studentId).get();
+              if (doc.exists && doc.data() != null) {
+                final fresh = StudentModel.fromFirestore(doc);
+                await DatabaseService.studentBox.put(fresh.id, fresh);
+              }
+            } catch (_) {}
+          }());
           return localStudent;
         }
       } catch (e) {
@@ -440,32 +451,14 @@ exactMatch = true
       }
     }
 
-    // 0.5. Try local Firestore cache (fast, offline-friendly fallback)
-    if (studentId.isNotEmpty) {
-      try {
-        final doc = await _firestore
-            .collection('students')
-            .doc(studentId)
-            .get(const GetOptions(source: Source.cache));
-        if (doc.exists && doc.data() != null) {
-          final student = StudentModel.fromFirestore(doc);
-          // Sync back to local Hive cache
-          try {
-            await DatabaseService.studentBox.put(student.id, student);
-          } catch (_) {}
-          return student;
-        }
-      } catch (_) {}
-    }
-
-    // 1. Try direct lookup by studentId from server
+    // 1. Direct lookup by studentId from Firestore server
     if (studentId.isNotEmpty) {
       try {
         final doc = await _firestore
             .collection('students')
             .doc(studentId)
             .get()
-            .timeout(const Duration(seconds: 4));
+            .timeout(const Duration(seconds: 5));
         if (doc.exists && doc.data() != null) {
           final student = StudentModel.fromFirestore(doc);
           // Sync back to local Hive cache
@@ -478,6 +471,23 @@ exactMatch = true
         debugPrint(
             '[StudentAuthService] Direct fetch failed for $studentId: $e');
       }
+    }
+
+    // 1.5. Try local Firestore cache if offline / direct fetch timed out
+    if (studentId.isNotEmpty) {
+      try {
+        final doc = await _firestore
+            .collection('students')
+            .doc(studentId)
+            .get(const GetOptions(source: Source.cache));
+        if (doc.exists && doc.data() != null) {
+          final student = StudentModel.fromFirestore(doc);
+          try {
+            await DatabaseService.studentBox.put(student.id, student);
+          } catch (_) {}
+          return student;
+        }
+      } catch (_) {}
     }
 
     // 2. Query by studentCode if available

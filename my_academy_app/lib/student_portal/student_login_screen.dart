@@ -11,6 +11,7 @@ import 'dart:ui';
 import 'student_qr_scanner_screen.dart';
 import '../services/notification_service.dart';
 import '../screens/role_selection_screen.dart';
+import '../widgets/portal_loading_screen.dart';
 import 'student_main_wrapper.dart';
 
 
@@ -61,17 +62,33 @@ class _StudentLoginScreenState extends State<StudentLoginScreen> {
         scannedQrToken: tokenToUse,
       );
 
-      await NotificationService.init();
-      await NotificationService.registerFcmToken(
-        userId: studentId,
-        role: 'student',
-        studentId: studentId,
-      );
-      NotificationService.listenForStudent(studentId);
+      // Non-blocking notification registration for speed
+      unawaited(() async {
+        try {
+          await NotificationService.init();
+          await NotificationService.registerFcmToken(
+            userId: studentId,
+            role: 'student',
+            studentId: studentId,
+          );
+          NotificationService.listenForStudent(studentId);
+        } catch (_) {}
+      }());
 
       if (mounted) {
+        final codeLabel = enteredCode.isNotEmpty ? enteredCode : tokenToUse;
         Navigator.of(context).pushAndRemoveUntil(
-          MaterialPageRoute(builder: (_) => const StudentMainWrapper()),
+          MaterialPageRoute(
+            builder: (_) => PortalLoadingScreen.student(
+              studentCode: codeLabel,
+              onComplete: () {
+                Navigator.of(context).pushAndRemoveUntil(
+                  MaterialPageRoute(builder: (_) => const StudentMainWrapper()),
+                  (_) => false,
+                );
+              },
+            ),
+          ),
           (_) => false,
         );
       }

@@ -8,6 +8,8 @@ import '../screens/role_selection_screen.dart';
 import '../services/auth_service.dart';
 import '../theme/app_theme.dart';
 import '../widgets/shimmer_loading_widget.dart';
+import '../widgets/portal_loading_screen.dart';
+import '../screens/main_wrapper.dart';
 import 'dart:ui';
 import '../theme/ui_helpers.dart';
 import '../widgets/custom_card.dart';
@@ -66,7 +68,17 @@ class _LoginScreenState extends State<LoginScreen> {
 
       if (mounted) {
         Navigator.of(context).pushAndRemoveUntil(
-          MaterialPageRoute(builder: (_) => const AuthWrapper()),
+          MaterialPageRoute(
+            builder: (_) => PortalLoadingScreen.admin(
+              adminName: user.displayName ?? 'Administrator',
+              onComplete: () {
+                Navigator.of(context).pushAndRemoveUntil(
+                  MaterialPageRoute(builder: (_) => const MainWrapper()),
+                  (route) => false,
+                );
+              },
+            ),
+          ),
           (route) => false,
         );
       }

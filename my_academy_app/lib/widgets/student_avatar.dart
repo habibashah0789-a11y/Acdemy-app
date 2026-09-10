@@ -78,12 +78,21 @@ class StudentAvatar extends StatefulWidget {
     );
   }
 
+  static final Map<String, String?> _localPathCache = {};
+
+  static void invalidateCache([String? studentId]) {
+    if (studentId != null) {
+      _localPathCache.remove(studentId);
+    } else {
+      _localPathCache.clear();
+    }
+  }
+
   @override
   State<StudentAvatar> createState() => _StudentAvatarState();
 }
 
 class _StudentAvatarState extends State<StudentAvatar> {
-  static final Map<String, String?> _localPathCache = {};
   String? _localPath;
   bool _checkedLocal = false;
 
@@ -98,21 +107,22 @@ class _StudentAvatarState extends State<StudentAvatar> {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.student.id != widget.student.id || 
         oldWidget.student.profilePicUrl != widget.student.profilePicUrl) {
+      StudentAvatar._localPathCache.remove(widget.student.id);
       _initLocalCheck();
     }
   }
 
   void _initLocalCheck() {
     final url = widget.student.profilePicUrl.trim();
-    // If base64 or on Web, no local disk check needed
+    // If remote URL, base64, or on Web, no local disk check needed unless offline
     if (url.startsWith('data:image') || (!url.startsWith('http') && url.length > 100) || kIsWeb) {
       _localPath = null;
       _checkedLocal = true;
       return;
     }
 
-    if (_localPathCache.containsKey(widget.student.id)) {
-      _localPath = _localPathCache[widget.student.id];
+    if (StudentAvatar._localPathCache.containsKey(widget.student.id)) {
+      _localPath = StudentAvatar._localPathCache[widget.student.id];
       _checkedLocal = true;
       return;
     }
@@ -138,7 +148,7 @@ class _StudentAvatarState extends State<StudentAvatar> {
           resolved = legacyPath;
         }
       }
-      _localPathCache[widget.student.id] = resolved;
+      StudentAvatar._localPathCache[widget.student.id] = resolved;
 
       if (mounted) {
         setState(() {
@@ -169,7 +179,7 @@ class _StudentAvatarState extends State<StudentAvatar> {
 
   @override
   Widget build(BuildContext context) {
-    if (!_checkedLocal) {
+    if (!_checkedLocal && widget.student.profilePicUrl.trim().isEmpty) {
       return SizedBox(
         width: widget.size,
         height: widget.size,
@@ -182,52 +192,63 @@ class _StudentAvatarState extends State<StudentAvatar> {
 
     final url = widget.student.profilePicUrl.trim();
 
-    if (_localPath != null) {
-      imageWidget = Image.file(
-        io.File(_localPath!),
+    if (url.startsWith('http://') || url.startsWith('https://')) {
+      imageWidget = CachedNetworkImage(
+        key: ValueKey('avatar_net_${widget.student.id}_${url.hashCode}'),
+        imageUrl: url,
         fit: widget.fit,
-        cacheWidth: cacheDimension,
-        cacheHeight: cacheDimension,
-        errorBuilder: (context, error, stackTrace) => _buildFallback(),
+        memCacheWidth: cacheDimension,
+        memCacheHeight: cacheDimension,
+        placeholder: (context, url) => _buildFallback(),
+        errorWidget: (context, url, error) {
+          if (_localPath != null && io.File(_localPath!).existsSync()) {
+            return Image.file(
+              io.File(_localPath!),
+              fit: widget.fit,
+              cacheWidth: cacheDimension,
+              cacheHeight: cacheDimension,
+              errorBuilder: (_, __, ___) => _buildFallback(),
+            );
+          }
+          return _buildFallback();
+        },
       );
-    } else if (url.isNotEmpty) {
-      if (url.startsWith('http://') || url.startsWith('https://')) {
-        imageWidget = CachedNetworkImage(
-          imageUrl: url,
+    } else if (url.startsWith('data:image') || (!url.contains('/') && !url.contains('\\') && url.length > 50)) {
+      final bytes = _tryDecodeBase64(url);
+      if (bytes != null) {
+        imageWidget = Image.memory(
+          bytes,
+          key: ValueKey('avatar_b64_${widget.student.id}_${url.hashCode}'),
           fit: widget.fit,
-          memCacheWidth: cacheDimension,
-          memCacheHeight: cacheDimension,
-          placeholder: (context, url) => _buildFallback(),
-          errorWidget: (context, url, error) => _buildFallback(),
-        );
-      } else if (url.startsWith('data:image') || (!url.contains('/') && !url.contains('\\') && url.length > 50)) {
-        final bytes = _tryDecodeBase64(url);
-        if (bytes != null) {
-          imageWidget = Image.memory(
-            bytes,
-            fit: widget.fit,
-            errorBuilder: (_, __, ___) => _buildFallback(),
-          );
-        } else {
-          imageWidget = _buildFallback();
-        }
-      } else if (url.startsWith('blob:')) {
-        imageWidget = Image.network(
-          url,
-          fit: widget.fit,
-          errorBuilder: (_, __, ___) => _buildFallback(),
-        );
-      } else if (!kIsWeb && io.File(url).existsSync()) {
-        imageWidget = Image.file(
-          io.File(url),
-          fit: widget.fit,
-          cacheWidth: cacheDimension,
-          cacheHeight: cacheDimension,
           errorBuilder: (_, __, ___) => _buildFallback(),
         );
       } else {
         imageWidget = _buildFallback();
       }
+    } else if (url.startsWith('blob:')) {
+      imageWidget = Image.network(
+        url,
+        fit: widget.fit,
+        errorBuilder: (_, __, ___) => _buildFallback(),
+      );
+    } else if (!kIsWeb && url.isNotEmpty && io.File(url).existsSync()) {
+      imageWidget = Image.file(
+        io.File(url),
+        key: ValueKey('avatar_file_${widget.student.id}_$url'),
+        fit: widget.fit,
+        cacheWidth: cacheDimension,
+        cacheHeight: cacheDimension,
+        errorBuilder: (_, __, ___) => _buildFallback(),
+      );
+    } else if (_localPath != null && io.File(_localPath!).existsSync()) {
+      imageWidget = Image.file(
+        io.File(_localPath!),
+        key: ValueKey('avatar_local_${widget.student.id}_$_localPath'),
+        fit: widget.fit,
+        cacheWidth: cacheDimension,
+        cacheHeight: cacheDimension,
+        errorBuilder: (_, __, ___) => _buildFallback(),
+      );
     } else {
       imageWidget = _buildFallback();
     }

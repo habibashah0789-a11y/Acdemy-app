@@ -11,6 +11,9 @@ import 'student_notifications_screen.dart';
 import 'student_profile_screen.dart';
 import 'student_login_screen.dart';
 import 'package:hive_flutter/hive_flutter.dart';
+import '../models/student_model.dart';
+import '../services/database_service.dart';
+import '../widgets/student_avatar.dart';
 
 enum DeviceBindingState {
   checking,
@@ -102,6 +105,12 @@ class _StudentMainWrapperState extends State<StudentMainWrapper> {
       if (!doc.exists && mounted) {
         _handleForceLogout(
             'Your account has been deleted by administration. Please login again.');
+      } else if (doc.exists) {
+        try {
+          final s = StudentModel.fromFirestore(doc);
+          StudentAvatar.invalidateCache(s.id);
+          DatabaseService.studentBox.put(s.id, s);
+        } catch (_) {}
       }
     }, onError: (e) {
       debugPrint('[StudentMainWrapper] Student status stream error: $e');

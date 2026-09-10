@@ -7,6 +7,7 @@ import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:image_picker/image_picker.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:firebase_storage/firebase_storage.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../models/student_model.dart';
 import '../services/database_service.dart';
@@ -15,6 +16,7 @@ import '../widgets/crop_image_dialog.dart';
 import '../theme/app_theme.dart';
 import '../utils/image_utils.dart';
 import '../widgets/shimmer_loading_widget.dart';
+import '../widgets/student_avatar.dart';
 
 class EditStudentScreen extends StatefulWidget {
   final StudentModel student;
@@ -334,6 +336,7 @@ class _EditStudentScreenState extends State<EditStudentScreen> {
           quality: 75,
         );
         picUrl = 'data:image/png;base64,${base64Encode(compressed)}';
+        StudentAvatar.invalidateCache(widget.student.id);
         if (!kIsWeb) {
           try {
             await ImageUtils.saveImageLocally(widget.student.id, compressed);
@@ -367,6 +370,13 @@ class _EditStudentScreenState extends State<EditStudentScreen> {
               final updatedWithRemoteUrl = currentStudent.copyWith(profilePicUrl: url);
               await DatabaseService.updateStudent(updatedWithRemoteUrl);
             }
+
+            // Direct Firestore document sync for real-time propagation across all portals
+            await FirebaseFirestore.instance.collection('students').doc(studentIdToUpdate).set({
+              'profilePicUrl': url,
+              'updatedAt': FieldValue.serverTimestamp(),
+            }, SetOptions(merge: true));
+            StudentAvatar.invalidateCache(studentIdToUpdate);
           } catch (e) {
             debugPrint('Background storage upload error: $e');
           }
@@ -464,6 +474,11 @@ class _EditStudentScreenState extends State<EditStudentScreen> {
         paymentHistoryJson: history.isNotEmpty ? jsonEncode(history) : null,
       );
       await DatabaseService.updateStudent(updated);
+      StudentAvatar.invalidateCache(updated.id);
+      await FirebaseFirestore.instance.collection('students').doc(updated.id).set({
+        'profilePicUrl': picUrl,
+        'updatedAt': FieldValue.serverTimestamp(),
+      }, SetOptions(merge: true));
       
       // Trigger Notification strictly to the specific teacher whose fee was edited or paid
       if (subjectPaidDiffs.isNotEmpty) {

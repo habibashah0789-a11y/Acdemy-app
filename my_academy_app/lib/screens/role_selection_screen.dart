@@ -12,6 +12,7 @@ import '../teacher_portal/teacher_main_wrapper.dart';
 import '../services/teacher_service.dart';
 import 'main_wrapper.dart';
 import '../theme/app_theme.dart';
+import '../widgets/portal_loading_screen.dart';
 
 class RoleSelectionScreen extends StatefulWidget {
   const RoleSelectionScreen({super.key});
@@ -50,7 +51,17 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen>
       if (targetRole == 'student') {
         Navigator.pushReplacement(
           context,
-          MaterialPageRoute(builder: (_) => const StudentMainWrapper()),
+          MaterialPageRoute(
+            builder: (_) => PortalLoadingScreen.student(
+              studentCode: studentSession['studentCode'] ?? 'Student',
+              onComplete: () {
+                Navigator.pushReplacement(
+                  context,
+                  MaterialPageRoute(builder: (_) => const StudentMainWrapper()),
+                );
+              },
+            ),
+          ),
         );
       } else {
         _showAccessRestrictedDialog(
@@ -82,14 +93,34 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen>
           if (mounted && teacher != null) {
             Navigator.pushReplacement(
               context,
-              MaterialPageRoute(builder: (_) => TeacherMainWrapper(teacher: teacher)),
+              MaterialPageRoute(
+                builder: (_) => PortalLoadingScreen.teacher(
+                  teacherName: teacher.name,
+                  subject: teacher.subject,
+                  onComplete: () {
+                    Navigator.pushReplacement(
+                      context,
+                      MaterialPageRoute(builder: (_) => TeacherMainWrapper(teacher: teacher)),
+                    );
+                  },
+                ),
+              ),
             );
             return;
           }
         } else if (targetRole == 'admin') {
           Navigator.pushReplacement(
             context,
-            MaterialPageRoute(builder: (_) => const MainWrapper()),
+            MaterialPageRoute(
+              builder: (_) => PortalLoadingScreen.admin(
+                onComplete: () {
+                  Navigator.pushReplacement(
+                    context,
+                    MaterialPageRoute(builder: (_) => const MainWrapper()),
+                  );
+                },
+              ),
+            ),
           );
           return;
         }

@@ -5,10 +5,12 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../theme/app_theme.dart';
 import 'dart:ui';
+import 'dart:async';
 import '../models/teacher_model.dart';
 import '../services/teacher_service.dart';
 import '../services/notification_service.dart';
 import '../screens/role_selection_screen.dart';
+import '../widgets/portal_loading_screen.dart';
 import 'teacher_main_wrapper.dart';
 
 
@@ -96,19 +98,29 @@ class _TeacherLoginScreenState extends State<TeacherLoginScreen> {
         return;
       }
 
-      // Register FCM token for teacher notifications
-      try {
-        await NotificationService.registerFcmToken(
-          userId: teacher.id,
-          role: 'teacher',
-        );
-      } catch (_) {}
+      // Register FCM token for teacher notifications (non-blocking for fast execution)
+      unawaited(NotificationService.registerFcmToken(
+        userId: teacher.id,
+        role: 'teacher',
+      ));
 
-      // 3. Navigate to teacher portal
+      // 3. Navigate to teacher portal with rich loading experience
       if (mounted) {
+        final currentTeacher = teacher;
         Navigator.of(context).pushAndRemoveUntil(
           MaterialPageRoute(
-            builder: (_) => TeacherMainWrapper(teacher: teacher!),
+            builder: (_) => PortalLoadingScreen.teacher(
+              teacherName: currentTeacher.name,
+              subject: currentTeacher.subject,
+              onComplete: () {
+                Navigator.of(context).pushAndRemoveUntil(
+                  MaterialPageRoute(
+                    builder: (_) => TeacherMainWrapper(teacher: currentTeacher),
+                  ),
+                  (_) => false,
+                );
+              },
+            ),
           ),
           (_) => false,
         );

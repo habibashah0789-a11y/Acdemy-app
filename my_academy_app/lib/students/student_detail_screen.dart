@@ -548,7 +548,12 @@ class _StudentDetailScreenState extends State<StudentDetailScreen> {
 
       // 2. Immediately update the student record with instant photo URL (0ms UI latency)
       final updatedStudent = student.copyWith(profilePicUrl: instantBase64Url);
+      StudentAvatar.invalidateCache(student.id);
       await DatabaseService.updateStudent(updatedStudent);
+      await FirebaseFirestore.instance.collection('students').doc(student.id).set({
+        'profilePicUrl': instantBase64Url,
+        'updatedAt': FieldValue.serverTimestamp(),
+      }, SetOptions(merge: true));
 
       if (mounted) {
         setState(() {
@@ -585,6 +590,7 @@ class _StudentDetailScreenState extends State<StudentDetailScreen> {
           final currentStudent = DatabaseService.studentBox.get(studentIdToUpdate);
           if (currentStudent != null) {
             final finalStudent = currentStudent.copyWith(profilePicUrl: remoteUrl);
+            StudentAvatar.invalidateCache(studentIdToUpdate);
             await DatabaseService.updateStudent(finalStudent);
             if (mounted) {
               setState(() {
@@ -592,6 +598,13 @@ class _StudentDetailScreenState extends State<StudentDetailScreen> {
               });
             }
           }
+
+          // Direct Firestore sync for real-time propagation to student portal
+          await FirebaseFirestore.instance.collection('students').doc(studentIdToUpdate).set({
+            'profilePicUrl': remoteUrl,
+            'updatedAt': FieldValue.serverTimestamp(),
+          }, SetOptions(merge: true));
+          StudentAvatar.invalidateCache(studentIdToUpdate);
         } catch (e) {
           debugPrint('Background storage upload error: $e');
         }

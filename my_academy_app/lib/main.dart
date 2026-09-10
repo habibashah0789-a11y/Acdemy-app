@@ -32,6 +32,9 @@ import 'student_portal/student_main_wrapper.dart';
 import 'teacher_portal/teacher_main_wrapper.dart';
 import 'services/teacher_service.dart';
 
+// Loading
+import 'widgets/portal_loading_screen.dart';
+
 
 import 'package:firebase_messaging/firebase_messaging.dart';
 
@@ -126,31 +129,10 @@ class _AuthWrapperState extends State<AuthWrapper> {
   }
 
   Widget _buildStartupSplash(BuildContext context) {
-    return Scaffold(
-      body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Image.asset(
-              'assets/images/Quaid Academy logo.png',
-              width: 90,
-              height: 90,
-              errorBuilder: (_, __, ___) => const Icon(Icons.school_rounded, size: 72, color: AppTheme.primaryBlue),
-            ),
-            const SizedBox(height: 20),
-            SizedBox(
-              width: 120,
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(4),
-                child: const LinearProgressIndicator(
-                  backgroundColor: Colors.black12,
-                  valueColor: AlwaysStoppedAnimation<Color>(AppTheme.primaryBlue),
-                  minHeight: 3,
-                ),
-              ),
-            ),
-          ],
-        ),
+    return const Scaffold(
+      body: BeautifulLoadingWidget(
+        message: 'Initializing Quaid Academy...',
+        size: 88,
       ),
     );
   }
@@ -203,14 +185,10 @@ class _StudentPortalEntryWrapperState extends State<StudentPortalEntryWrapper> {
   @override
   Widget build(BuildContext context) {
     if (_checkingSession) {
-      return Scaffold(
-        body: Center(
-          child: Image.asset(
-            'assets/images/Quaid Academy logo.png',
-            width: 80,
-            height: 80,
-            errorBuilder: (_, __, ___) => const Icon(Icons.school_rounded, size: 64, color: AppTheme.primaryBlue),
-          ),
+      return const Scaffold(
+        body: BeautifulLoadingWidget(
+          message: 'Checking Student Session...',
+          size: 80,
         ),
       );
     }
@@ -343,24 +321,10 @@ class _RoleRoutingWrapperState extends State<RoleRoutingWrapper> {
   @override
   Widget build(BuildContext context) {
     if (_isLoading) {
-      return Scaffold(
-        body: Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Image.asset(
-                'assets/images/Quaid Academy logo.png',
-                width: 80,
-                height: 80,
-                errorBuilder: (_, __, ___) => const Icon(Icons.school_rounded, size: 64, color: AppTheme.primaryBlue),
-              ),
-              const SizedBox(height: 16),
-              Text(
-                'Verifying Permissions...',
-                style: GoogleFonts.poppins(color: AppTheme.primaryBlue, fontSize: 13),
-              ),
-            ],
-          ),
+      return const Scaffold(
+        body: BeautifulLoadingWidget(
+          message: 'Verifying Security & Role Access...',
+          size: 80,
         ),
       );
     }
