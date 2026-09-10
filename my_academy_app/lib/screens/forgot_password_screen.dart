@@ -55,6 +55,19 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
     if (widget.initialEmail != null && widget.initialEmail!.isNotEmpty) {
       _emailController.text = widget.initialEmail!;
     }
+    for (int i = 0; i < 6; i++) {
+      final index = i;
+      _otpFocusNodes[index].onKeyEvent = (node, event) {
+        if (event is KeyDownEvent &&
+            event.logicalKey == LogicalKeyboardKey.backspace &&
+            _otpControllers[index].text.isEmpty &&
+            index > 0) {
+          _otpFocusNodes[index - 1].requestFocus();
+          return KeyEventResult.handled;
+        }
+        return KeyEventResult.ignored;
+      };
+    }
   }
 
   @override
@@ -181,17 +194,20 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                 id: 'temp_teacher',
                 name: userName,
                 email: _emailController.text.trim(),
-                phone: '',
+                teacherId: 'T-FAC-001',
                 subject: 'Faculty',
+                section: 'FSc',
+                assignedClasses: const ['First Year'],
+                createdAt: DateTime.now(),
               );
 
           Navigator.of(context).pushAndRemoveUntil(
             MaterialPageRoute(
-              builder: (_) => PortalLoadingScreen.teacher(
+              builder: (portalCtx) => PortalLoadingScreen.teacher(
                 teacherName: targetTeacher.name,
                 subject: targetTeacher.subject,
                 onComplete: () {
-                  Navigator.of(context).pushAndRemoveUntil(
+                  Navigator.of(portalCtx).pushAndRemoveUntil(
                     MaterialPageRoute(
                       builder: (_) => TeacherMainWrapper(teacher: targetTeacher),
                     ),
@@ -205,10 +221,10 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
         } else {
           Navigator.of(context).pushAndRemoveUntil(
             MaterialPageRoute(
-              builder: (_) => PortalLoadingScreen.admin(
+              builder: (portalCtx) => PortalLoadingScreen.admin(
                 adminName: userName,
                 onComplete: () {
-                  Navigator.of(context).pushAndRemoveUntil(
+                  Navigator.of(portalCtx).pushAndRemoveUntil(
                     MaterialPageRoute(builder: (_) => const MainWrapper()),
                     (_) => false,
                   );
@@ -232,10 +248,16 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
   }
 
   void _onDigitChanged(String val, int index) {
-    if (val.length == 1 && index < 5) {
+    if (val.length > 1) {
+      final lastChar = val.substring(val.length - 1);
+      _otpControllers[index].text = lastChar;
+      _otpControllers[index].selection = const TextSelection.collapsed(offset: 1);
+      if (index < 5) {
+        _otpFocusNodes[index + 1].requestFocus();
+      }
+    } else if (val.length == 1 && index < 5) {
       _otpFocusNodes[index + 1].requestFocus();
-    }
-    if (val.isEmpty && index > 0) {
+    } else if (val.isEmpty && index > 0) {
       _otpFocusNodes[index - 1].requestFocus();
     }
     // Auto-verify if all 6 digits filled
@@ -500,46 +522,37 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                       width: 46,
                       height: 54,
                       margin: const EdgeInsets.symmetric(horizontal: 4),
-                      child: RawKeyboardListener(
-                        focusNode: FocusNode(),
-                        onKey: (event) {
-                          if (event is RawKeyDownEvent &&
-                              event.logicalKey == LogicalKeyboardKey.backspace &&
-                              _otpControllers[i].text.isEmpty &&
-                              i > 0) {
-                            _otpFocusNodes[i - 1].requestFocus();
-                          }
-                        },
-                        child: TextFormField(
-                          controller: _otpControllers[i],
-                          focusNode: _otpFocusNodes[i],
-                          keyboardType: TextInputType.number,
-                          textAlign: TextAlign.center,
-                          maxLength: 1,
-                          style: GoogleFonts.poppins(
-                            fontSize: 22,
-                            fontWeight: FontWeight.bold,
-                            color: primaryColor,
-                          ),
-                          decoration: InputDecoration(
-                            counterText: '',
-                            contentPadding: EdgeInsets.zero,
-                            filled: true,
-                            fillColor: isDark ? const Color(0xFF1E293B) : Colors.white,
-                            border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(12),
-                              borderSide: BorderSide(
-                                color: isDark ? Colors.white12 : Colors.grey.shade300,
-                              ),
-                            ),
-                            focusedBorder: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(12),
-                              borderSide: BorderSide(color: primaryColor, width: 2),
-                            ),
-                          ),
-                          inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-                          onChanged: (v) => _onDigitChanged(v, i),
+                      child: TextFormField(
+                        controller: _otpControllers[i],
+                        focusNode: _otpFocusNodes[i],
+                        keyboardType: TextInputType.number,
+                        textAlign: TextAlign.center,
+                        style: GoogleFonts.poppins(
+                          fontSize: 22,
+                          fontWeight: FontWeight.bold,
+                          color: primaryColor,
                         ),
+                        decoration: InputDecoration(
+                          counterText: '',
+                          contentPadding: EdgeInsets.zero,
+                          filled: true,
+                          fillColor: isDark ? const Color(0xFF1E293B) : Colors.white,
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: BorderSide(
+                              color: isDark ? Colors.white12 : Colors.grey.shade300,
+                            ),
+                          ),
+                          focusedBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: BorderSide(color: primaryColor, width: 2),
+                          ),
+                        ),
+                        inputFormatters: [
+                          FilteringTextInputFormatter.digitsOnly,
+                          LengthLimitingTextInputFormatter(2),
+                        ],
+                        onChanged: (v) => _onDigitChanged(v, i),
                       ),
                     );
                   }),
