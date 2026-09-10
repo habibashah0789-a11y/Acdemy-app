@@ -160,6 +160,74 @@ void main() {
       expect(NotificationService.isNotificationForTeacher(teacherBiology, feeBioNotif), isTrue);
     });
 
+    test('Teacher DOES NOT receive fee payment notification when fee was paid for another subject', () {
+      final feePhyNotif = NotificationModel(
+        id: 'pay_student_1_Physics_123',
+        title: '💳 Fee Payment: Ali Khan',
+        message: 'Student Ali Khan (FSc First Year - Physics) has paid a fee installment of Rs 3000.',
+        studentName: 'Ali Khan',
+        className: 'FSc',
+        subject: 'Physics',
+        registeredBy: 'Admin',
+        timestamp: DateTime.now(),
+        notificationType: 'fee_payment',
+        isRead: false,
+      );
+
+      expect(NotificationService.isNotificationForTeacher(teacherBiology, feePhyNotif), isFalse);
+    });
+
+    test('Teacher DOES NOT receive multi-subject general fee notification', () {
+      final multiSubNotif = NotificationModel(
+        id: 'pay_student_1_general',
+        title: '💳 Fee Payment Received',
+        message: 'Ali Khan has paid Rs 5000.',
+        studentName: 'Ali Khan',
+        className: 'FSc',
+        subject: 'Biology, Physics, Chemistry',
+        registeredBy: 'Admin',
+        timestamp: DateTime.now(),
+        notificationType: 'fee_payment',
+        isRead: false,
+      );
+
+      expect(NotificationService.isNotificationForTeacher(teacherBiology, multiSubNotif), isFalse);
+    });
+
+    test('Teacher receives fee edited notification specifically for their subject', () {
+      final feeEditBioNotif = NotificationModel(
+        id: 'fee_edit_student_1_Biology_123',
+        title: '📝 Fee Updated: Ali Khan',
+        message: 'Fee details for Ali Khan (FSc First Year - Biology) have been edited: Total Rs 6000, Paid Rs 2000.',
+        studentName: 'Ali Khan',
+        className: 'FSc',
+        subject: 'Biology',
+        registeredBy: 'Admin',
+        timestamp: DateTime.now(),
+        notificationType: 'fee_edited',
+        isRead: false,
+      );
+
+      expect(NotificationService.isNotificationForTeacher(teacherBiology, feeEditBioNotif), isTrue);
+    });
+
+    test('Teacher DOES NOT receive fee edited notification for another subject', () {
+      final feeEditChemNotif = NotificationModel(
+        id: 'fee_edit_student_1_Chemistry_123',
+        title: '📝 Fee Updated: Ali Khan',
+        message: 'Fee details for Ali Khan (FSc First Year - Chemistry) have been edited: Total Rs 6000, Paid Rs 2000.',
+        studentName: 'Ali Khan',
+        className: 'FSc',
+        subject: 'Chemistry',
+        registeredBy: 'Admin',
+        timestamp: DateTime.now(),
+        notificationType: 'fee_edited',
+        isRead: false,
+      );
+
+      expect(NotificationService.isNotificationForTeacher(teacherBiology, feeEditChemNotif), isFalse);
+    });
+
     test('Teacher DOES NOT receive generic admin announcements or fee reminders', () {
       final genericAdminNotif = NotificationModel(
         id: 'announcement_1',

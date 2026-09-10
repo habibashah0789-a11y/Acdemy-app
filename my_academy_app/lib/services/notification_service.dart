@@ -684,8 +684,155 @@ Firebase projectId = ${Firebase.app().options.projectId}
     required StudentModel student,
     required double amount,
     bool isSecondInstallment = false,
+    String? targetSubject,
+    Map<String, double>? subjectAmounts,
   }) async {
     final fullName = student.name;
+
+    // 1. If subjectAmounts map is provided, dispatch targeted notices for each specified subject
+    if (subjectAmounts != null && subjectAmounts.isNotEmpty) {
+      for (final entry in subjectAmounts.entries) {
+        final sub = entry.key.trim();
+        final subAmount = entry.value;
+        if (subAmount <= 0) continue;
+
+        final bool isSubSecond = student.getSubjectPaid(sub) > subAmount;
+        final subTitle = isSubSecond
+            ? '💳 2nd Installment: $fullName'
+            : '💳 Fee Payment: $fullName';
+        final subBody = isSubSecond
+            ? 'Student $fullName (${student.classType} ${student.grade} - $sub) has paid Rs ${subAmount.toStringAsFixed(0)} as 2nd installment.'
+            : 'Student $fullName (${student.classType} ${student.grade} - $sub) has paid a fee installment of Rs ${subAmount.toStringAsFixed(0)}.';
+
+        final notifId = 'pay_${student.id}_${sub}_${DateTime.now().millisecondsSinceEpoch}';
+        final data = {
+          'id': notifId,
+          'title': subTitle,
+          'body': subBody,
+          'message': subBody,
+          'studentName': fullName,
+          'studentId': student.id,
+          'studentCode': student.studentCode,
+          'class': student.classType,
+          'className': student.classType,
+          'targetSection': student.classType,
+          'grade': student.grade,
+          'targetGrade': student.grade,
+          'subject': sub,
+          'targetSubject': sub,
+          'amount': subAmount,
+          'registeredBy': 'Administrator',
+          'timestamp': FieldValue.serverTimestamp(),
+          'createdAt': FieldValue.serverTimestamp(),
+          'type': isSubSecond ? 'second_installment' : 'fee_payment',
+          'notificationType': isSubSecond ? 'second_installment' : 'fee_payment',
+          'isRead': false,
+        };
+
+        await _firestore.collection(_collection).doc(notifId).set(data);
+        final notifModel = NotificationModel.fromMap(data, notifId);
+        await _saveNotification(notifModel, emitLocal: true);
+
+        final safeSub = sub.toLowerCase().replaceAll(RegExp(r'[^a-z0-9]'), '_');
+        unawaited(triggerPushNotification(
+          targetTopic: 'subject_$safeSub',
+          title: subTitle,
+          body: subBody,
+          channelId: defaultChannelId,
+          payload: {
+            'type': isSubSecond ? 'second_installment' : 'fee_payment',
+            'studentId': student.id,
+            'subject': sub,
+          },
+        ));
+      }
+      showLocalNotification(
+        channelId: 'fee_reminders',
+        title: '💳 Fee Payment Received',
+        body: '$fullName has paid Rs ${amount.toStringAsFixed(0)} across subjects.',
+      );
+      return;
+    }
+
+    // 2. If a single specific targetSubject is provided
+    if (targetSubject != null && targetSubject.trim().isNotEmpty) {
+      final sub = targetSubject.trim();
+      final title = isSecondInstallment
+          ? '💳 2nd Installment: $fullName'
+          : '💳 Fee Payment: $fullName';
+      final message = isSecondInstallment
+          ? 'Student $fullName (${student.classType} ${student.grade} - $sub) has paid Rs ${amount.toStringAsFixed(0)} as 2nd installment.'
+          : 'Student $fullName (${student.classType} ${student.grade} - $sub) has paid a fee installment of Rs ${amount.toStringAsFixed(0)}.';
+
+      final notifId = 'pay_${student.id}_${sub}_${DateTime.now().millisecondsSinceEpoch}';
+      final data = {
+        'id': notifId,
+        'title': title,
+        'body': message,
+        'message': message,
+        'studentName': fullName,
+        'studentId': student.id,
+        'studentCode': student.studentCode,
+        'class': student.classType,
+        'className': student.classType,
+        'targetSection': student.classType,
+        'grade': student.grade,
+        'targetGrade': student.grade,
+        'subject': sub,
+        'targetSubject': sub,
+        'amount': amount,
+        'registeredBy': 'Administrator',
+        'timestamp': FieldValue.serverTimestamp(),
+        'createdAt': FieldValue.serverTimestamp(),
+        'type': isSecondInstallment ? 'second_installment' : 'fee_payment',
+        'notificationType': isSecondInstallment ? 'second_installment' : 'fee_payment',
+        'isRead': false,
+      };
+
+      await _firestore.collection(_collection).doc(notifId).set(data);
+      final notifModel = NotificationModel.fromMap(data, notifId);
+      await _saveNotification(notifModel, emitLocal: true);
+
+      final safeSub = sub.toLowerCase().replaceAll(RegExp(r'[^a-z0-9]'), '_');
+      unawaited(triggerPushNotification(
+        targetTopic: 'subject_$safeSub',
+        title: title,
+        body: message,
+        channelId: defaultChannelId,
+        payload: {
+          'type': isSecondInstallment ? 'second_installment' : 'fee_payment',
+          'studentId': student.id,
+          'subject': sub,
+        },
+      ));
+
+      showLocalNotification(
+        channelId: 'fee_reminders',
+        title: title,
+        body: message,
+      );
+      return;
+    }
+
+    // 3. Fallback: No specific subject given
+    final enrolledSubjects = student.subject
+        .split(',')
+        .map((s) => s.trim())
+        .where((s) => s.isNotEmpty)
+        .toList();
+
+    // If the student only has 1 subject, target that subject directly
+    if (enrolledSubjects.length == 1) {
+      await createFeePaymentNotification(
+        student: student,
+        amount: amount,
+        isSecondInstallment: isSecondInstallment,
+        targetSubject: enrolledSubjects.first,
+      );
+      return;
+    }
+
+    // If multi-subject and unallocated, record as admin notice only so teachers of unedited subjects are not notified
     final title = isSecondInstallment ? '💳 Second Installment Received' : '💳 Fee Payment Received';
     final message = isSecondInstallment
         ? '$fullName has paid Rs ${amount.toStringAsFixed(0)} as their second installment.'
@@ -702,7 +849,7 @@ Firebase projectId = ${Firebase.app().options.projectId}
       timestamp: DateTime.now(),
       notificationType: isSecondInstallment ? 'second_installment' : 'fee_payment',
       isRead: false,
-      studentId: student.id,
+      studentId: 'admin_only', // Unallocated payment notice is kept for Admin only
     );
 
     await _saveNotification(notification, emitLocal: true);
@@ -711,58 +858,68 @@ Firebase projectId = ${Firebase.app().options.projectId}
       title: notification.title,
       body: notification.message,
     );
+  }
 
-    // Create per-subject notifications so each subject teacher receives it directly
-    try {
-      final subjects = student.subject
-          .split(',')
-          .map((s) => s.trim())
-          .where((s) => s.isNotEmpty)
-          .toList();
+  /// Creates a targeted notification for a specific teacher when their subject fee is edited/adjusted.
+  static Future<void> createFeeEditedNotification({
+    required StudentModel student,
+    required String subject,
+    required double newTotalFee,
+    required double newPaid,
+  }) async {
+    final fullName = student.name;
+    final title = '📝 Fee Updated: $fullName';
+    final remaining = (newTotalFee - newPaid).clamp(0.0, double.infinity);
+    final message =
+        'Fee details for $fullName (${student.classType} ${student.grade} - $subject) have been edited: Total Rs ${newTotalFee.toStringAsFixed(0)}, Paid Rs ${newPaid.toStringAsFixed(0)}, Due Rs ${remaining.toStringAsFixed(0)}.';
 
-      if (subjects.isEmpty) {
-        subjects.add('all');
-      }
+    final notifId = 'fee_edit_${student.id}_${subject}_${DateTime.now().millisecondsSinceEpoch}';
+    final data = {
+      'id': notifId,
+      'title': title,
+      'body': message,
+      'message': message,
+      'studentName': fullName,
+      'studentId': student.id,
+      'studentCode': student.studentCode,
+      'class': student.classType,
+      'className': student.classType,
+      'targetSection': student.classType,
+      'grade': student.grade,
+      'targetGrade': student.grade,
+      'subject': subject,
+      'targetSubject': subject,
+      'amount': newPaid,
+      'registeredBy': 'Administrator',
+      'timestamp': FieldValue.serverTimestamp(),
+      'createdAt': FieldValue.serverTimestamp(),
+      'type': 'fee_edited',
+      'notificationType': 'fee_edited',
+      'isRead': false,
+    };
 
-      for (final sub in subjects) {
-        final notifId = 'pay_${student.id}_${sub}_${DateTime.now().millisecondsSinceEpoch}';
-        final subTitle = isSecondInstallment
-            ? '💳 2nd Installment: ${student.name}'
-            : '💳 Fee Payment: ${student.name}';
-        final subBody = isSecondInstallment
-            ? 'Student ${student.name} (${student.classType} ${student.grade} - $sub) has paid Rs ${amount.toStringAsFixed(0)} as 2nd installment.'
-            : 'Student ${student.name} (${student.classType} ${student.grade} - $sub) has paid a fee installment of Rs ${amount.toStringAsFixed(0)}.';
+    await _firestore.collection(_collection).doc(notifId).set(data);
+    final notifModel = NotificationModel.fromMap(data, notifId);
+    await _saveNotification(notifModel, emitLocal: true);
 
-        final data = {
-          'id': notifId,
-          'title': subTitle,
-          'body': subBody,
-          'message': subBody,
-          'studentName': student.name,
-          'studentId': student.id,
-          'studentCode': student.studentCode,
-          'class': student.classType,
-          'className': student.classType,
-          'targetSection': student.classType,
-          'grade': student.grade,
-          'targetGrade': student.grade,
-          'subject': sub,
-          'targetSubject': sub,
-          'amount': amount,
-          'registeredBy': 'Administrator',
-          'timestamp': FieldValue.serverTimestamp(),
-          'createdAt': FieldValue.serverTimestamp(),
-          'type': isSecondInstallment ? 'second_installment' : 'fee_payment',
-          'notificationType': isSecondInstallment ? 'second_installment' : 'fee_payment',
-          'isRead': false,
-        };
+    final safeSub = subject.toLowerCase().replaceAll(RegExp(r'[^a-z0-9]'), '_');
+    unawaited(triggerPushNotification(
+      targetTopic: 'subject_$safeSub',
+      title: title,
+      body: message,
+      channelId: defaultChannelId,
+      payload: {
+        'type': 'fee_edited',
+        'studentId': student.id,
+        'subject': subject,
+      },
+    ));
 
-        await _firestore.collection(_collection).doc(notifId).set(data);
-      }
-      debugPrint('[NotificationService] Fee payment notification dispatched for ${student.name} ($subjects)');
-    } catch (e) {
-      debugPrint('[NotificationService] Fee payment teacher notifications error: $e');
-    }
+    showLocalNotification(
+      channelId: 'fee_reminders',
+      title: title,
+      body: message,
+    );
   }
 
   /// Creates a personalized fee reminder notification targeted to a specific student.
@@ -1402,8 +1559,8 @@ status = PENDING
           notifSubjects.any((nSub) => nSub == tSub || nSub.contains(tSub) || tSub.contains(nSub)));
     }
 
-    // If subject is not explicitly in notification, check student database for enrolled subjects
-    if (!subjectMatches && studentId.isNotEmpty && DatabaseService.studentBox.isOpen) {
+    // Fallback: ONLY if subject is NOT explicitly in notification, check student database for enrolled subjects
+    if (notifSubjects.isEmpty && studentId.isNotEmpty && DatabaseService.studentBox.isOpen) {
       try {
         final student = DatabaseService.studentBox.get(studentId);
         if (student != null) {
@@ -1464,12 +1621,19 @@ status = PENDING
       return true;
     }
 
-    // 5. Fee Payments & Installments: ONLY if student is enrolled in teacher's subject & section
+    // 5. Fee Payments & Fee Updates: ONLY if explicitly targeted to this teacher's specific subject & section
     if (notifType == 'fee_payment' ||
         notifType == 'second_installment' ||
         notifType == 'fee_payment_verified' ||
         notifType == 'fee_installment' ||
-        notifId.startsWith('pay_')) {
+        notifType == 'fee_edited' ||
+        notifId.startsWith('pay_') ||
+        notifId.startsWith('fee_edit_')) {
+      // Exclude multi-subject general admin notices so teachers only receive their single specific subject notice
+      if (notifSubjects.length > 1 &&
+          (data['targetSubject'] == null || data['targetSubject'].toString().trim().isEmpty)) {
+        return false;
+      }
       return true;
     }
 

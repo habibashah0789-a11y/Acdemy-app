@@ -68,12 +68,11 @@ class _EditStudentScreenState extends State<EditStudentScreen> {
     _engC = TextEditingController(text: s.englishFee.toStringAsFixed(0));
     _mathC = TextEditingController(text: s.mathFee.toStringAsFixed(0));
 
-    final payments = s.subjectPayments;
-    _bioPaidC = TextEditingController(text: (payments['Biology'] ?? 0).toStringAsFixed(0));
-    _phyPaidC = TextEditingController(text: (payments['Physics'] ?? 0).toStringAsFixed(0));
-    _chemPaidC = TextEditingController(text: (payments['Chemistry'] ?? 0).toStringAsFixed(0));
-    _engPaidC = TextEditingController(text: (payments['English'] ?? 0).toStringAsFixed(0));
-    _mathPaidC = TextEditingController(text: (payments['Math'] ?? 0).toStringAsFixed(0));
+    _bioPaidC = TextEditingController(text: s.getSubjectPaid('Biology').toStringAsFixed(0));
+    _phyPaidC = TextEditingController(text: s.getSubjectPaid('Physics').toStringAsFixed(0));
+    _chemPaidC = TextEditingController(text: s.getSubjectPaid('Chemistry').toStringAsFixed(0));
+    _engPaidC = TextEditingController(text: s.getSubjectPaid('English').toStringAsFixed(0));
+    _mathPaidC = TextEditingController(text: s.getSubjectPaid('Math').toStringAsFixed(0));
 
     _existingUrl = s.profilePicUrl;
 
@@ -411,6 +410,23 @@ class _EditStudentScreenState extends State<EditStudentScreen> {
         subjectPayments[sub] = double.tryParse(_getPaidControllerForSubject(sub).text.trim()) ?? 0;
       }
 
+      // Track per-subject payment increases and fee modifications
+      final Map<String, double> subjectPaidDiffs = {};
+      final List<String> subjectsWithFeeEdited = [];
+
+      for (final sub in _selectedSubjectSchedules.keys) {
+        final double oldSubPaid = widget.student.getSubjectPaid(sub);
+        final double newSubPaid = subjectPayments[sub] ?? 0;
+        final double oldSubTotal = widget.student.getSubjectTotalFee(sub);
+        final double newSubTotal = double.tryParse(_getFeeControllerForSubject(sub).text.trim()) ?? 0;
+
+        if (newSubPaid > oldSubPaid) {
+          subjectPaidDiffs[sub] = newSubPaid - oldSubPaid;
+        } else if (newSubPaid != oldSubPaid || newSubTotal != oldSubTotal) {
+          subjectsWithFeeEdited.add(sub);
+        }
+      }
+
       String studentCodeToUse = widget.student.studentCode;
       final oldLevel = StudentModel.getClassLevelCode(widget.student.classType, widget.student.grade);
       final newLevel = StudentModel.getClassLevelCode(_selectedClassType, _selectedGrade);
@@ -449,13 +465,39 @@ class _EditStudentScreenState extends State<EditStudentScreen> {
       );
       await DatabaseService.updateStudent(updated);
       
-      // Trigger Notification if payment was made
-      if (newPaid > oldPaid) {
-        final isSecond = history.length == 2;
+      // Trigger Notification strictly to the specific teacher whose fee was edited or paid
+      if (subjectPaidDiffs.isNotEmpty) {
+        for (final entry in subjectPaidDiffs.entries) {
+          final sub = entry.key;
+          final diffAmount = entry.value;
+          final bool isSubSecond = widget.student.getSubjectPaid(sub) > 0;
+          await NotificationService.createFeePaymentNotification(
+            student: updated,
+            amount: diffAmount,
+            isSecondInstallment: isSubSecond,
+            targetSubject: sub,
+          );
+        }
+      } else if (subjectsWithFeeEdited.isNotEmpty) {
+        for (final sub in subjectsWithFeeEdited) {
+          final double subPaid = subjectPayments[sub] ?? 0;
+          final double subTotal = double.tryParse(_getFeeControllerForSubject(sub).text.trim()) ?? 0;
+          await NotificationService.createFeeEditedNotification(
+            student: updated,
+            subject: sub,
+            newTotalFee: subTotal,
+            newPaid: subPaid,
+          );
+        }
+      } else if (newPaid > oldPaid) {
+        // Fallback if individual subject controllers had no diff but overall newPaid changed
+        final subjects = _selectedSubjectSchedules.keys.toList();
+        final singleSub = subjects.length == 1 ? subjects.first : null;
         await NotificationService.createFeePaymentNotification(
           student: updated,
           amount: newPaid - oldPaid,
-          isSecondInstallment: isSecond,
+          isSecondInstallment: history.length >= 2,
+          targetSubject: singleSub,
         );
       }
 
