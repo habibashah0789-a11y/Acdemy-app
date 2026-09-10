@@ -35,6 +35,7 @@ class StudentQrWidget extends StatelessWidget {
       'type': 'student_access',
       'version': 1,
       'studentCode': student.studentCode,
+      'studentId': student.id,
       'token': token ?? student.id,
     };
     return jsonEncode(payload);
@@ -142,7 +143,7 @@ class _StudentQrDialogContentState extends State<_StudentQrDialogContent> {
   @override
   void initState() {
     super.initState();
-    if (widget.customQrData != null) {
+    if (widget.customQrData != null && widget.customQrData!.trim().isNotEmpty) {
       _token = widget.customQrData;
       _isLoading = false;
     } else {
@@ -152,10 +153,14 @@ class _StudentQrDialogContentState extends State<_StudentQrDialogContent> {
 
   Future<void> _fetchToken() async {
     try {
-      final info = await StudentAuthService.getStudentAuthInfo(widget.student.id);
+      final info = await StudentAuthService.getOrGenerateStudentAuthInfo(
+        studentId: widget.student.id,
+        studentCode: widget.student.studentCode,
+        studentName: widget.student.name,
+      );
       if (mounted) {
         setState(() {
-          _token = info?['qrToken']?.toString();
+          _token = info['qrToken']?.toString();
           _isLoading = false;
         });
       }

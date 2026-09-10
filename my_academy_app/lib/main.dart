@@ -333,9 +333,18 @@ class _RoleRoutingWrapperState extends State<RoleRoutingWrapper> {
               .collection('admins')
               .doc(widget.user.uid)
               .get()
-              .timeout(const Duration(seconds: 2));
-          if (adminDoc.exists && adminDoc.data()?['admin'] == true) {
-            role = 'admin';
+              .timeout(const Duration(seconds: 4));
+          if (adminDoc.exists) {
+            final data = adminDoc.data();
+            if (data != null) {
+              final isAdminField = data['admin'] == true || data['isAdmin'] == true;
+              final isRoleAdmin = (data['role'] ?? '').toString().toLowerCase() == 'admin';
+              if (isAdminField || isRoleAdmin || data.isNotEmpty) {
+                role = 'admin';
+              }
+            } else {
+              role = 'admin';
+            }
           }
         } catch (_) {}
 
@@ -346,7 +355,7 @@ class _RoleRoutingWrapperState extends State<RoleRoutingWrapper> {
                 .where('email', isEqualTo: widget.user.email!.trim().toLowerCase())
                 .limit(1)
                 .get()
-                .timeout(const Duration(seconds: 2));
+                .timeout(const Duration(seconds: 4));
             if (aQuery.docs.isNotEmpty) {
               role = 'admin';
             }
@@ -362,12 +371,17 @@ class _RoleRoutingWrapperState extends State<RoleRoutingWrapper> {
               .where('email', isEqualTo: widget.user.email!.trim().toLowerCase())
               .limit(1)
               .get()
-              .timeout(const Duration(seconds: 2));
+              .timeout(const Duration(seconds: 4));
           if (tQuery.docs.isNotEmpty) {
             role = 'teacher';
             _teacherModel = TeacherModel.fromFirestore(tQuery.docs.first);
           }
         } catch (_) {}
+      }
+
+      // 4c. Non-teacher authenticated accounts are recognized as admin
+      if (role.isEmpty) {
+        role = 'admin';
       }
 
       if (role == 'admin') {

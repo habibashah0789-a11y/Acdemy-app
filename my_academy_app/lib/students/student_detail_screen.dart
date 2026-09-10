@@ -117,12 +117,13 @@ class _StudentDetailScreenState extends State<StudentDetailScreen> {
   Future<void> _loadAuthInfo() async {
     setState(() => _isLoadingAuth = true);
     try {
-      final info = await StudentAuthService.getStudentAuthInfo(
-        student.id,
+      final info = await StudentAuthService.getOrGenerateStudentAuthInfo(
+        studentId: student.id,
         studentCode: student.studentCode,
+        studentName: student.name,
       );
       if (mounted) {
-        final initialDeviceId = info?['linkedDeviceId'] as String? ?? '';
+        final initialDeviceId = info['linkedDeviceId'] as String? ?? '';
         setState(() {
           _authInfo = info;
           if (initialDeviceId.isNotEmpty) _deviceId = initialDeviceId;
@@ -301,7 +302,11 @@ class _StudentDetailScreenState extends State<StudentDetailScreen> {
     if (confirm == true) {
       setState(() => _isLoadingAuth = true);
       try {
-        final newPlainToken = await StudentAuthService.generateAndStoreQrToken(student.id);
+        final newPlainToken = await StudentAuthService.generateAndStoreQrToken(
+          student.id,
+          studentCode: student.studentCode,
+          studentName: student.name,
+        );
         await _loadAuthInfo();
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(

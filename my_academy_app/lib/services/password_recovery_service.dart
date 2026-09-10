@@ -101,7 +101,6 @@ class PasswordRecoveryService {
     bool resetEmailSent = false;
     String? resetEmailError;
     try {
-      // First try sending with ActionCodeSettings targeting the app web/mobile continue URL
       try {
         final actionCodeSettings = ActionCodeSettings(
           url: 'https://quaid-academy.web.app/?mode=resetPassword&email=$cleanEmail&role=$role',
@@ -117,14 +116,35 @@ class PasswordRecoveryService {
         resetEmailSent = true;
         debugPrint('[PasswordRecoveryService] Password reset link sent with ActionCodeSettings to $cleanEmail');
       } catch (settingsError) {
-        debugPrint('[PasswordRecoveryService] ActionCodeSettings failed ($settingsError), falling back to standard reset link');
+        debugPrint('[PasswordRecoveryService] ActionCodeSettings fallback to standard reset link: $settingsError');
         await _auth.sendPasswordResetEmail(email: cleanEmail);
         resetEmailSent = true;
         debugPrint('[PasswordRecoveryService] Firebase standard password reset link sent to $cleanEmail');
       }
+    } on FirebaseAuthException catch (e) {
+      debugPrint('[PasswordRecoveryService] Firebase reset email FirebaseAuthException: ${e.code}');
+      String message;
+      switch (e.code) {
+        case 'user-not-found':
+          message = 'No registered account found with this email in Quaid Academy.';
+          break;
+        case 'invalid-email':
+          message = 'Please provide a valid email address.';
+          break;
+        case 'too-many-requests':
+          message = 'Too many password reset requests. Please wait a few minutes before trying again.';
+          break;
+        case 'network-request-failed':
+          message = 'Network connection failed. Please check your internet connection.';
+          break;
+        default:
+          message = e.message ?? 'Failed to send password reset email. Please try again.';
+      }
+      throw Exception(message);
     } catch (e) {
       debugPrint('[PasswordRecoveryService] Firebase reset email failed: $e');
       resetEmailError = e.toString();
+      throw Exception('Failed to send password reset email: ${e.toString().replaceFirst("Exception: ", "")}');
     }
 
     // 4. Queue custom branded email into Firestore 'mail' collection (Firebase Email Extension)
@@ -274,5 +294,39 @@ class PasswordRecoveryService {
       'userName': data['userName'] ?? (role == 'admin' ? 'Administrator' : 'Teacher'),
       'teacher': teacher,
     };
+  }
+
+  /// Completes password reset in-app using Firebase Auth confirmPasswordReset
+  static Future<void> resetPasswordWithCode({
+    required String oobCode,
+    required String newPassword,
+  }) async {
+    try {
+      await _auth.confirmPasswordReset(
+        code: oobCode.trim(),
+        newPassword: newPassword.trim(),
+      );
+    } on FirebaseAuthException catch (e) {
+      String message;
+      switch (e.code) {
+        case 'expired-action-code':
+          message = 'This password reset code has expired. Please request a fresh reset link.';
+          break;
+        case 'invalid-action-code':
+          message = 'This reset code is invalid or has already been used.';
+          break;
+        case 'weak-password':
+          message = 'Password should be at least 6 characters long.';
+          break;
+        case 'user-disabled':
+          message = 'This account has been disabled.';
+          break;
+        default:
+          message = e.message ?? 'Failed to reset password.';
+      }
+      throw Exception(message);
+    } catch (e) {
+      throw Exception('Failed to reset password: $e');
+    }
   }
 }

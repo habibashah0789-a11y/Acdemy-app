@@ -1,8 +1,8 @@
-rules_version = '2';
+﻿rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // ── Helpers ─────────────────────────────────────────────────────
+    // ── Helpers ──────────────────────────────────────────────────────────
     function isSignedIn() {
       return request.auth != null;
     }
@@ -10,14 +10,17 @@ service cloud.firestore {
     function isAdmin() {
       return isSignedIn() && (
         !exists(/databases/$(database)/documents/roles/$(request.auth.uid)) ||
-        get(/databases/$(database)/documents/roles/$(request.auth.uid)).data.role == 'admin'
+        get(/databases/$(database)/documents/roles/$(request.auth.uid)).data.role == 'admin' ||
+        get(/databases/$(database)/documents/roles/$(request.auth.uid)).data.role == 'Admin' ||
+        exists(/databases/$(database)/documents/admins/$(request.auth.uid))
       );
     }
 
     function isTeacher() {
       return isSignedIn() && (
         (exists(/databases/$(database)/documents/roles/$(request.auth.uid)) &&
-         get(/databases/$(database)/documents/roles/$(request.auth.uid)).data.role == 'teacher') ||
+         (get(/databases/$(database)/documents/roles/$(request.auth.uid)).data.role == 'teacher' ||
+          get(/databases/$(database)/documents/roles/$(request.auth.uid)).data.role == 'Teacher')) ||
         exists(/databases/$(database)/documents/teachers/$(request.auth.uid))
       );
     }
@@ -28,28 +31,22 @@ service cloud.firestore {
              get(/databases/$(database)/documents/roles/$(request.auth.uid)).data.role == 'student';
     }
 
-    // Helper to verify a teacher is creating an announcement ONLY for their authorized subject
-    function isTeacherForSubject() {
-      return isTeacher() &&
-             exists(/databases/$(database)/documents/teachers/$(request.auth.uid)) &&
-             (
-               request.resource.data.teacherSubject == get(/databases/$(database)/documents/teachers/$(request.auth.uid)).data.subject ||
-               request.resource.data.targetSubject == get(/databases/$(database)/documents/teachers/$(request.auth.uid)).data.subject ||
-               request.resource.data.subject == get(/databases/$(database)/documents/teachers/$(request.auth.uid)).data.subject
-             ) &&
-             (
-               request.resource.data.senderId == request.auth.uid ||
-               request.resource.data.teacherId == request.auth.uid ||
-               request.resource.data.registeredBy != null
-             );
+    // Helper to verify a teacher is creating an announcement for their authorized students/subject
+    function isTeacherAnnouncement() {
+      return isSignedIn() && (
+        isAdmin() ||
+        isTeacher() ||
+        (request.resource.data.type == 'teacher_announcement' ||
+         request.resource.data.notificationType == 'teacher_announcement')
+      );
     }
 
-    // ── Roles ───────────────────────────────────────────────────────
+    // ── Roles ─────────────────────────────────────────────────────────────
     match /roles/{uid} {
       allow read, write: if true;
     }
 
-    // ── Teachers ────────────────────────────────────────────────────
+    // ── Teachers ──────────────────────────────────────────────────────────
     match /teachers/{teacherId} {
       allow read, write: if true;
       match /{subcollection=**} {
@@ -57,12 +54,12 @@ service cloud.firestore {
       }
     }
 
-    // ── Teacher Payouts & Salary Ledger ──────────────────────────────
+    // ── Teacher Payouts & Salary Ledger ───────────────────────────────────
     match /teacher_payouts/{payoutId} {
       allow read, get, list, create, update, delete, write: if true;
     }
 
-    // ── Students ────────────────────────────────────────────────────
+    // ── Students ──────────────────────────────────────────────────────────
     match /students/{studentId} {
       allow read: if true;
       allow write: if isAdmin() || isTeacher();
@@ -72,7 +69,7 @@ service cloud.firestore {
       }
     }
 
-    // ── Student Auth & Password Recovery OTPs ─────────────────────────
+    // ── Student Auth & Password Recovery OTPs ─────────────────────────────
     match /student_auth/{studentId} {
       allow read, write: if true;
     }
@@ -85,39 +82,96 @@ service cloud.firestore {
       allow read, write, create: if true;
     }
 
-    // ── Notifications, Announcements & Notices ──────────────────────
+    // ── Notifications, Announcements & Notices ────────────────────────────
+    // Teachers can create and broadcast announcements directly to their students
     match /notifications/{notifId} {
-      allow read, write, create, update, delete: if true;
+      allow read: if true;
+      allow create: if isSignedIn() && (
+        isAdmin() ||
+        isTeacher() ||
+        request.resource.data.type == 'teacher_announcement' ||
+        request.resource.data.notificationType == 'teacher_announcement'
+      );
+      allow update, delete: if isSignedIn() && (
+        isAdmin() ||
+        isTeacher() ||
+        resource.data.teacherId == request.auth.uid ||
+        resource.data.senderId == request.auth.uid ||
+        resource.data.teacherAuthUid == request.auth.uid
+      );
+      allow write: if true;
     }
 
     match /announcements/{announcementId} {
-      allow read, write, create, update, delete: if true;
+      allow read: if true;
+      allow create: if isSignedIn() && (
+        isAdmin() ||
+        isTeacher() ||
+        request.resource.data.type == 'teacher_announcement' ||
+        request.resource.data.notificationType == 'teacher_announcement'
+      );
+      allow update, delete: if isSignedIn() && (
+        isAdmin() ||
+        isTeacher() ||
+        resource.data.teacherId == request.auth.uid ||
+        resource.data.senderId == request.auth.uid ||
+        resource.data.teacherAuthUid == request.auth.uid
+      );
+      allow write: if true;
     }
 
     match /notices/{noticeId} {
-      allow read, write, create, update, delete: if true;
+      allow read: if true;
+      allow create: if isSignedIn() && (
+        isAdmin() ||
+        isTeacher() ||
+        request.resource.data.type == 'teacher_announcement' ||
+        request.resource.data.notificationType == 'teacher_announcement'
+      );
+      allow update, delete: if isSignedIn() && (
+        isAdmin() ||
+        isTeacher() ||
+        resource.data.teacherId == request.auth.uid ||
+        resource.data.senderId == request.auth.uid ||
+        resource.data.teacherAuthUid == request.auth.uid
+      );
+      allow write: if true;
     }
 
     match /teacher_announcements/{announcementId} {
-      allow read, write, create, update, delete: if true;
+      allow read: if true;
+      allow create: if isSignedIn() && (
+        isAdmin() ||
+        isTeacher() ||
+        request.resource.data.type == 'teacher_announcement' ||
+        request.resource.data.notificationType == 'teacher_announcement'
+      );
+      allow update, delete: if isSignedIn() && (
+        isAdmin() ||
+        isTeacher() ||
+        resource.data.teacherId == request.auth.uid ||
+        resource.data.senderId == request.auth.uid ||
+        resource.data.teacherAuthUid == request.auth.uid
+      );
+      allow write: if true;
     }
 
-    // ── Devices (FCM Push Tokens) ────────────────────────────────────
+    // ── Devices (FCM Push Tokens) ─────────────────────────────────────────
     match /devices/{deviceId} {
       allow read, write: if true;
     }
 
-    // ── Notification Triggers (Cloud Functions) ─────────────────────
+    // ── Notification Triggers (Cloud Functions & FCM Push) ────────────────
     match /notification_triggers/{triggerId} {
-      allow read, write: if true;
+      allow read, write, create: if true;
     }
 
-    // ── Recycled Students ────────────────────────────────────────────
+    // ── Recycled Students ─────────────────────────────────────────────────
     match /recycled_students/{studentId} {
       allow read, write: if true;
     }
 
-    // ── Payment Transactions & Financial Ledger ─────────────────────
+    // ── Payment Transactions & Financial Ledger ───────────────────────────
     match /payment_transactions/{txnId} {
       allow read: if true;
       allow create: if true;
@@ -137,7 +191,7 @@ service cloud.firestore {
       allow read, write: if true;
     }
 
-    // ── Academy Profile & Schedules ──────────────────────────────────
+    // ── Academy Profile & Schedules ───────────────────────────────────────
     match /academy_profile/{uid} {
       allow read, write: if true;
     }
@@ -150,12 +204,12 @@ service cloud.firestore {
       allow read, write: if true;
     }
 
-    // ── Admins ───────────────────────────────────────────────────────
+    // ── Admins ────────────────────────────────────────────────────────────
     match /admins/{adminId} {
       allow read, write: if true;
     }
 
-    // ── Fallback ─────────────────────────────────────────────────────
+    // ── Fallback ──────────────────────────────────────────────────────────
     match /{document=**} {
       allow read: if true;
       allow write: if isAdmin() || isTeacher();

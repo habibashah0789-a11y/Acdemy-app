@@ -2,12 +2,10 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:google_fonts/google_fonts.dart';
-import '../login/login_screen.dart';
 import '../theme/app_theme.dart';
 import '../widgets/shimmer_loading_widget.dart';
 import '../widgets/custom_card.dart';
 import 'student_auth_service.dart';
-import 'dart:ui';
 import 'student_qr_scanner_screen.dart';
 import '../services/notification_service.dart';
 import '../screens/role_selection_screen.dart';
@@ -253,13 +251,13 @@ class _StudentLoginScreenState extends State<StudentLoginScreen> {
                       borderRadius: BorderRadius.circular(30),
                       boxShadow: [
                         BoxShadow(
-                          color: const Color(0xFF22C55E).withOpacity(0.4),
+                          color: const Color(0xFF22C55E).withValues(alpha: 0.4),
                           blurRadius: 30,
                           offset: const Offset(0, 10),
                         )
                       ],
                       border: Border.all(
-                        color: Colors.white.withOpacity(0.2),
+                        color: Colors.white.withValues(alpha: 0.2),
                         width: 1.5,
                       ),
                     ),

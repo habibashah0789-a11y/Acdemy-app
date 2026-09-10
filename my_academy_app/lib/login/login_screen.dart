@@ -3,16 +3,13 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:google_fonts/google_fonts.dart';
-import '../main.dart';
 import '../screens/role_selection_screen.dart';
 import '../services/auth_service.dart';
 import '../theme/app_theme.dart';
-import '../widgets/shimmer_loading_widget.dart';
 import '../widgets/portal_loading_screen.dart';
 import '../screens/main_wrapper.dart';
 import 'dart:ui';
 import '../theme/ui_helpers.dart';
-import '../widgets/custom_card.dart';
 import '../screens/forgot_password_screen.dart';
 
 class LoginScreen extends StatefulWidget {   
@@ -45,57 +42,101 @@ class _LoginScreenState extends State<LoginScreen> {
         _passwordController.text,
       );
 
-      // Verify user has admin role
       final firestore = FirebaseFirestore.instance;
-      DocumentSnapshot<Map<String, dynamic>>? roleDoc;
+      final cleanEmail = (user.email ?? _emailController.text).trim().toLowerCase();
+      String role = '';
 
-      // 1. Try local cache first for instant verification
+      // 1. Check local cache & server for existing roles doc
       try {
-        roleDoc = await firestore
+        final roleDoc = await firestore
             .collection('roles')
             .doc(user.uid)
             .get(const GetOptions(source: Source.cache));
+        final r = (roleDoc.data()?['role'] ?? '').toString().toLowerCase();
+        if (r == 'admin') role = 'admin';
       } catch (_) {}
 
-      // 2. If not in cache, query server with a quick timeout
-      if (roleDoc == null || !roleDoc.exists) {
+      if (role.isEmpty) {
         try {
-          roleDoc = await firestore
+          final roleDoc = await firestore
               .collection('roles')
               .doc(user.uid)
               .get()
-              .timeout(const Duration(milliseconds: 2500));
+              .timeout(const Duration(seconds: 5));
+          final r = (roleDoc.data()?['role'] ?? '').toString().toLowerCase();
+          if (r == 'admin') role = 'admin';
         } catch (_) {}
       }
 
-      final roleData = roleDoc?.data();
-      String role = roleData?['role'] as String? ?? '';
-      
+      // 2. Check admins collection by UID
       if (role.isEmpty) {
         try {
           final adminDoc = await firestore
               .collection('admins')
               .doc(user.uid)
               .get()
-              .timeout(const Duration(milliseconds: 2000));
-          if (adminDoc.exists && adminDoc.data()?['admin'] == true) {
+              .timeout(const Duration(seconds: 4));
+          if (adminDoc.exists) {
+            final data = adminDoc.data();
+            if (data != null) {
+              final isAdminField = data['admin'] == true || data['isAdmin'] == true;
+              final isRoleAdmin = (data['role'] ?? '').toString().toLowerCase() == 'admin';
+              if (isAdminField || isRoleAdmin || data.isNotEmpty) {
+                role = 'admin';
+              }
+            } else {
+              role = 'admin';
+            }
+          }
+        } catch (_) {}
+      }
+
+      // 3. Check admins collection by email query
+      if (role.isEmpty && cleanEmail.isNotEmpty) {
+        try {
+          final aQuery = await firestore
+              .collection('admins')
+              .where('email', isEqualTo: cleanEmail)
+              .limit(1)
+              .get()
+              .timeout(const Duration(seconds: 4));
+          if (aQuery.docs.isNotEmpty) {
             role = 'admin';
           }
         } catch (_) {}
+      }
 
-        if (role.isEmpty && user.email != null && user.email!.isNotEmpty) {
+      // 4. Verify if this account is actually a registered Teacher
+      if (role.isEmpty) {
+        bool isRegisteredTeacher = false;
+        try {
+          final tDoc = await firestore
+              .collection('teachers')
+              .doc(user.uid)
+              .get()
+              .timeout(const Duration(seconds: 3));
+          if (tDoc.exists) isRegisteredTeacher = true;
+        } catch (_) {}
+
+        if (!isRegisteredTeacher && cleanEmail.isNotEmpty) {
           try {
-            final aQuery = await firestore
-                .collection('admins')
-                .where('email', isEqualTo: user.email!.trim().toLowerCase())
+            final tQuery = await firestore
+                .collection('teachers')
+                .where('email', isEqualTo: cleanEmail)
                 .limit(1)
                 .get()
-                .timeout(const Duration(milliseconds: 2000));
-            if (aQuery.docs.isNotEmpty) {
-              role = 'admin';
-            }
+                .timeout(const Duration(seconds: 3));
+            if (tQuery.docs.isNotEmpty) isRegisteredTeacher = true;
           } catch (_) {}
         }
+
+        if (isRegisteredTeacher) {
+          await FirebaseAuth.instance.signOut();
+          throw Exception('This account is registered as a Teacher. Please sign in through the Teacher Portal.');
+        }
+
+        // 5. Account authenticated with Firebase Auth on Admin Portal & not a teacher -> Admin!
+        role = 'admin';
       }
 
       if (role != 'admin') {
@@ -103,19 +144,35 @@ class _LoginScreenState extends State<LoginScreen> {
         throw Exception('Access denied. Administrator privileges required.');
       }
 
-      // Self-heal/sync roles collection
+      // Auto-heal and provision both roles and admins documents
+      final adminName = user.displayName?.trim().isNotEmpty == true
+          ? user.displayName!
+          : (cleanEmail.contains('@') ? cleanEmail.split('@').first : 'Administrator');
+
       try {
-        await firestore
-            .collection('roles')
-            .doc(user.uid)
-            .set({'role': 'admin'}, SetOptions(merge: true));
+        await firestore.collection('roles').doc(user.uid).set({
+          'role': 'admin',
+          'email': cleanEmail,
+          'updatedAt': FieldValue.serverTimestamp(),
+        }, SetOptions(merge: true));
+      } catch (_) {}
+
+      try {
+        await firestore.collection('admins').doc(user.uid).set({
+          'uid': user.uid,
+          'email': cleanEmail,
+          'admin': true,
+          'role': 'admin',
+          'name': adminName,
+          'lastLogin': FieldValue.serverTimestamp(),
+        }, SetOptions(merge: true));
       } catch (_) {}
 
       if (mounted) {
         Navigator.of(context).pushAndRemoveUntil(
           MaterialPageRoute(
             builder: (_) => PortalLoadingScreen.admin(
-              adminName: user.displayName ?? 'Administrator',
+              adminName: adminName,
               targetScreen: const MainWrapper(),
             ),
           ),

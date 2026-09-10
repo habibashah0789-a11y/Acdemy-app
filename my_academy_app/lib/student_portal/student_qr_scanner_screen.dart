@@ -33,24 +33,29 @@ class StudentQrParser {
     final trimmed = raw.trim();
     if (trimmed.isEmpty) return null;
 
-    // ── Format 1: JSON Payload ──
-    if (trimmed.startsWith('{') && trimmed.endsWith('}')) {
+    // ── Format 1: JSON Payload (flexible search between first { and last }) ──
+    final jsonStart = trimmed.indexOf('{');
+    final jsonEnd = trimmed.lastIndexOf('}');
+    if (jsonStart != -1 && jsonEnd > jsonStart) {
       try {
-        final Map<String, dynamic> json = jsonDecode(trimmed);
-        final type = json['type']?.toString();
-        if (type != null && type != 'student_access' && type != 'student_qr') {
-          return null;
-        }
+        final jsonString = trimmed.substring(jsonStart, jsonEnd + 1);
+        final dynamic decoded = jsonDecode(jsonString);
+        if (decoded is Map) {
+          final type = decoded['type']?.toString().toLowerCase().trim();
+          // Allow student_access, student_qr, student, quaid_student, or null
+          final validTypes = {'student_access', 'student_qr', 'student', 'quaid_student', 'studentaccess'};
+          if (type == null || validTypes.contains(type)) {
+            final code = decoded['studentCode'] ?? decoded['student_code'] ?? decoded['code'] ?? decoded['studentId'] ?? decoded['id'];
+            final token = decoded['token'] ?? decoded['qrToken'] ?? decoded['qr_token'] ?? decoded['id'] ?? decoded['studentId'];
 
-        final code = json['studentCode'] ?? json['student_code'] ?? json['code'] ?? json['studentId'];
-        final token = json['token'] ?? json['qrToken'] ?? json['qr_token'];
-
-        if (code != null && code.toString().trim().isNotEmpty) {
-          return StudentQrScanResult(
-            studentCode: code.toString().trim().toUpperCase(),
-            token: token?.toString().trim(),
-            rawData: trimmed,
-          );
+            if (code != null && code.toString().trim().isNotEmpty) {
+              return StudentQrScanResult(
+                studentCode: code.toString().trim().toUpperCase(),
+                token: token?.toString().trim(),
+                rawData: trimmed,
+              );
+            }
+          }
         }
       } catch (e) {
         debugPrint('[StudentQrParser] JSON parse error: $e');
@@ -72,8 +77,8 @@ class StudentQrParser {
       }
     }
 
-    // ── Format 3: Plain Student Code (e.g. QA-2026-001 or STU-1002) ──
-    final studentCodeRegex = RegExp(r'^[A-Z0-9]{2,10}-[A-Z0-9\-]{2,15}$', caseSensitive: false);
+    // ── Format 3: Plain Student Code (e.g. QA-2026-001, QA-9-2026-001, STU-1002) ──
+    final studentCodeRegex = RegExp(r'^[A-Z0-9]{2,10}(-[A-Z0-9]+){1,4}$', caseSensitive: false);
     if (studentCodeRegex.hasMatch(trimmed)) {
       return StudentQrScanResult(
         studentCode: trimmed.toUpperCase(),
@@ -93,7 +98,7 @@ class StudentQrParser {
     }
 
     // ── Fallback Format: Alphanumeric String ──
-    if (trimmed.length >= 3 && trimmed.length <= 64 && !trimmed.contains('\n')) {
+    if (trimmed.length >= 3 && trimmed.length <= 128 && !trimmed.contains('\n')) {
       return StudentQrScanResult(
         studentCode: trimmed.toUpperCase(),
         token: trimmed,
