@@ -13,6 +13,7 @@ import '../screens/main_wrapper.dart';
 import 'dart:ui';
 import '../theme/ui_helpers.dart';
 import '../widgets/custom_card.dart';
+import '../screens/forgot_password_screen.dart';
 
 class LoginScreen extends StatefulWidget {   
   const LoginScreen({super.key});
@@ -95,42 +96,16 @@ class _LoginScreenState extends State<LoginScreen> {
     }
   }
 
-  Future<void> _handleForgotPassword() async {
-    final email = _emailController.text.trim();
-    if (email.isEmpty || !email.contains('@')) {
-      if (mounted) {
-        UIHelpers.showCustomSnackBar(
-          context,
-          'Please enter your email address first to reset password.',
-          isError: true,
-        );
-      }
-      return;
-    }
-    
-    try {
-      await FirebaseAuth.instance.sendPasswordResetEmail(email: email);
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              'Password reset email sent to $email. Please check your inbox.',
-              style: GoogleFonts.poppins(),
-            ),
-            backgroundColor: Colors.green,
-            behavior: SnackBarBehavior.floating,
-          ),
-        );
-      }
-    } catch (e) {
-      if (mounted) {
-        UIHelpers.showCustomSnackBar(
-          context,
-          'Failed to send reset email. Make sure the email is registered.',
-          isError: true,
-        );
-      }
-    }
+  void _handleForgotPassword() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => ForgotPasswordScreen(
+          initialRole: 'admin',
+          initialEmail: _emailController.text.trim(),
+        ),
+      ),
+    );
   }
 
   @override

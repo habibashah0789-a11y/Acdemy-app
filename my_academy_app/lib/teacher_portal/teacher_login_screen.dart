@@ -12,6 +12,7 @@ import '../services/notification_service.dart';
 import '../screens/role_selection_screen.dart';
 import '../widgets/portal_loading_screen.dart';
 import 'teacher_main_wrapper.dart';
+import '../screens/forgot_password_screen.dart';
 
 
 class TeacherLoginScreen extends StatefulWidget {
@@ -161,30 +162,16 @@ class _TeacherLoginScreenState extends State<TeacherLoginScreen> {
     }
   }
 
-  Future<void> _handleForgotPassword() async {
-    final email = _emailController.text.trim();
-    if (email.isEmpty || !email.contains('@')) {
-      setState(() =>
-          _errorMessage = 'Please enter your email address first.');
-      return;
-    }
-    try {
-      await FirebaseAuth.instance.sendPasswordResetEmail(email: email);
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              'Password reset email sent to $email',
-              style: GoogleFonts.poppins(),
-            ),
-            backgroundColor: AppTheme.secondaryGreen,
-            behavior: SnackBarBehavior.floating,
-          ),
-        );
-      }
-    } catch (e) {
-      setState(() => _errorMessage = 'Failed to send reset email.');
-    }
+  void _handleForgotPassword() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => ForgotPasswordScreen(
+          initialRole: 'teacher',
+          initialEmail: _emailController.text.trim(),
+        ),
+      ),
+    );
   }
 
   @override

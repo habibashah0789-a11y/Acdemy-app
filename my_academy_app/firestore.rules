@@ -72,9 +72,17 @@ service cloud.firestore {
       }
     }
 
-    // ── Student Auth ─────────────────────────────────────────────────
+    // ── Student Auth & Password Recovery OTPs ─────────────────────────
     match /student_auth/{studentId} {
       allow read, write: if true;
+    }
+
+    match /verification_otps/{otpId} {
+      allow read, write: if true;
+    }
+
+    match /mail/{mailId} {
+      allow read, write, create: if true;
     }
 
     // ── Notifications, Announcements & Notices ──────────────────────
