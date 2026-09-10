@@ -504,7 +504,7 @@ class TeacherProfileScreen extends StatelessWidget {
           await picker.pickImage(source: source, imageQuality: 75);
       if (pickedFile != null && context.mounted) {
         final bytes = await pickedFile.readAsBytes();
-        if (!mounted) return;
+        if (!context.mounted) return;
         final cropped = await showDialog<Uint8List>(
           context: context,
           barrierDismissible: false,
@@ -518,7 +518,7 @@ class TeacherProfileScreen extends StatelessWidget {
           targetHeight: 360,
           quality: 75,
         );
-        if (!mounted) return;
+        if (!context.mounted) return;
 
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
