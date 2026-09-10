@@ -1056,13 +1056,13 @@ class _BulkStudentRegistrationWidgetState extends State<BulkStudentRegistrationW
             child: AlertDialog(
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
               title: Row(
-                children: const [
-                  Icon(Icons.check_circle_rounded, color: AppTheme.secondaryGreen, size: 32),
-                  SizedBox(width: 10),
+                children: [
+                  const Icon(Icons.check_circle_rounded, color: AppTheme.secondaryGreen, size: 32),
+                  const SizedBox(width: 10),
                   Expanded(
                     child: Text(
                       'Bulk Registration Complete',
-                      style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                      style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                     ),
                   ),
                 ],
@@ -1166,7 +1166,7 @@ class _BulkStudentRegistrationWidgetState extends State<BulkStudentRegistrationW
       builder: (dialogCtx) {
         String searchQuery = '';
         return StatefulBuilder(
-          builder: (context, setViewerState) {
+          builder: (sbCtx, setViewerState) {
             final filtered = students.where((s) {
               if (searchQuery.isEmpty) return true;
               final q = searchQuery.toLowerCase();
@@ -1215,7 +1215,9 @@ class _BulkStudentRegistrationWidgetState extends State<BulkStudentRegistrationW
                           IconButton(
                             onPressed: () {
                               Navigator.pop(dialogCtx);
-                              Navigator.pop(context, true);
+                              if (Navigator.canPop(context)) {
+                                Navigator.pop(context, true);
+                              }
                             },
                             icon: const Icon(Icons.close_rounded),
                           ),
@@ -1244,7 +1246,7 @@ class _BulkStudentRegistrationWidgetState extends State<BulkStudentRegistrationW
                                   mainAxisSpacing: 16,
                                 ),
                                 itemCount: filtered.length,
-                                itemBuilder: (context, idx) {
+                                itemBuilder: (itemCtx, idx) {
                                   final s = filtered[idx];
                                   final token = qrTokens[s.id];
                                   return Card(
@@ -1302,7 +1304,7 @@ class _BulkStudentRegistrationWidgetState extends State<BulkStudentRegistrationW
                                                 const SizedBox(height: 10),
                                                 OutlinedButton.icon(
                                                   onPressed: () {
-                                                    showStudentQrDialog(context, s, customQrData: token);
+                                                    showStudentQrDialog(itemCtx, s, customQrData: token);
                                                   },
                                                   icon: const Icon(Icons.open_in_new_rounded, size: 14),
                                                   label: const Text('Enlarge', style: TextStyle(fontSize: 11)),
@@ -1317,9 +1319,10 @@ class _BulkStudentRegistrationWidgetState extends State<BulkStudentRegistrationW
                                           ),
                                         ],
                                       ),
-                                    );
-                                  },
-                                ),
+                                    ),
+                                  );
+                                },
+                              ),
                       ),
                       const SizedBox(height: 16),
                       Align(
@@ -1327,7 +1330,9 @@ class _BulkStudentRegistrationWidgetState extends State<BulkStudentRegistrationW
                         child: ElevatedButton(
                           onPressed: () {
                             Navigator.pop(dialogCtx);
-                            Navigator.pop(context, true);
+                            if (Navigator.canPop(context)) {
+                              Navigator.pop(context, true);
+                            }
                           },
                           style: ElevatedButton.styleFrom(
                             backgroundColor: AppTheme.primaryBlue,

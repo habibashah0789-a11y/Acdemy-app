@@ -984,35 +984,50 @@ class StudentAuthService {
     required String currentDeviceId,
     String? studentCode,
   }) async {
-    if (studentId.isEmpty || currentDeviceId.isEmpty) return;
+    final cleanId = studentId.trim();
+    if (cleanId.isEmpty || currentDeviceId.isEmpty) return;
+    final cleanCode = (studentCode != null && studentCode.trim().isNotEmpty)
+        ? studentCode.trim().toUpperCase()
+        : '';
+
     try {
       final bindData = {
-        'studentId': studentId,
+        'studentId': cleanId,
         'linkedDeviceId': currentDeviceId,
         'deviceLinkedAt': FieldValue.serverTimestamp(),
         'accountStatus': 'active',
       };
-      if (studentCode != null && studentCode.isNotEmpty) {
-        bindData['studentCode'] = studentCode.trim().toUpperCase();
+      if (cleanCode.isNotEmpty) {
+        bindData['studentCode'] = cleanCode;
       }
 
       await _firestore
           .collection('student_auth')
-          .doc(studentId)
+          .doc(cleanId)
           .set(bindData, SetOptions(merge: true));
 
-      if (studentCode != null && studentCode.isNotEmpty) {
-        final cleanCode = studentCode.trim().toUpperCase();
-        if (cleanCode != studentId) {
-          await _firestore
-              .collection('student_auth')
-              .doc(cleanCode)
-              .set(bindData, SetOptions(merge: true))
-              .catchError((_) {});
+      if (cleanCode.isNotEmpty && cleanCode != cleanId) {
+        await _firestore
+            .collection('student_auth')
+            .doc(cleanCode)
+            .set(bindData, SetOptions(merge: true))
+            .catchError((_) {});
+      }
+
+      if (cleanCode.isNotEmpty) {
+        final queryCode = await _firestore
+            .collection('student_auth')
+            .where('studentCode', isEqualTo: cleanCode)
+            .get();
+        for (final doc in queryCode.docs) {
+          if (doc.id != cleanId && doc.id != cleanCode) {
+            await doc.reference.set(bindData, SetOptions(merge: true)).catchError((_) {});
+          }
         }
       }
+
       debugPrint(
-          '[StudentAuthService] ensureDeviceBound bound device: ${_maskId(currentDeviceId)}');
+          '[StudentAuthService] ensureDeviceBound bound device: ${_maskId(currentDeviceId)} for $cleanId / $cleanCode');
     } catch (e) {
       debugPrint('[StudentAuthService] ensureDeviceBound error: $e');
     }
@@ -1020,44 +1035,72 @@ class StudentAuthService {
 
   /// Resets the device binding for a student so they can log in from a new device.
   ///
-  /// This does NOT change studentCode, qrToken, or any other identity field.
+  /// This clears linkedDeviceId across all documents representing this student
+  /// in student_auth.
   static Future<void> resetDeviceBinding(String studentId, {String? studentCode}) async {
-    final st = StackTrace.current;
+    final cleanId = studentId.trim();
+    final cleanCode = (studentCode != null && studentCode.trim().isNotEmpty)
+        ? studentCode.trim().toUpperCase()
+        : '';
+
     debugPrint('''
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 [RESET DEVICE BINDING CALLED]
-studentId = $studentId
-studentCode = ${studentCode ?? ''}
-caller stack =
-$st
+studentId = $cleanId
+studentCode = $cleanCode
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!''');
 
     final resetMap = {
       'linkedDeviceId': '',
       'deviceLinkedAt': null,
     };
-    try {
-      await _firestore
-          .collection('student_auth')
-          .doc(studentId)
-          .set(resetMap, SetOptions(merge: true));
-    } catch (e) {
-      debugPrint('[StudentAuthService] resetDeviceBinding studentId error: $e');
-    }
 
-    if (studentCode != null && studentCode.isNotEmpty) {
-      final cleanCode = studentCode.trim().toUpperCase();
-      if (cleanCode != studentId) {
-        try {
-          await _firestore
-              .collection('student_auth')
-              .doc(cleanCode)
-              .set(resetMap, SetOptions(merge: true));
-        } catch (_) {}
+    if (cleanId.isNotEmpty) {
+      try {
+        await _firestore
+            .collection('student_auth')
+            .doc(cleanId)
+            .set(resetMap, SetOptions(merge: true));
+      } catch (e) {
+        debugPrint('[StudentAuthService] resetDeviceBinding studentId error: $e');
       }
     }
+
+    if (cleanCode.isNotEmpty && cleanCode != cleanId) {
+      try {
+        await _firestore
+            .collection('student_auth')
+            .doc(cleanCode)
+            .set(resetMap, SetOptions(merge: true));
+      } catch (_) {}
+    }
+
+    // Also update any documents found via query by studentCode or studentId
+    try {
+      if (cleanCode.isNotEmpty) {
+        final queryCode = await _firestore
+            .collection('student_auth')
+            .where('studentCode', isEqualTo: cleanCode)
+            .get();
+        for (final doc in queryCode.docs) {
+          await doc.reference.set(resetMap, SetOptions(merge: true));
+        }
+      }
+      if (cleanId.isNotEmpty) {
+        final queryId = await _firestore
+            .collection('student_auth')
+            .where('studentId', isEqualTo: cleanId)
+            .get();
+        for (final doc in queryId.docs) {
+          await doc.reference.set(resetMap, SetOptions(merge: true));
+        }
+      }
+    } catch (e) {
+      debugPrint('[StudentAuthService] resetDeviceBinding query update error: $e');
+    }
+
     debugPrint(
-        '[StudentAuthService] Device binding reset for studentId: $studentId');
+        '[StudentAuthService] Device binding reset for studentId: $cleanId, studentCode: $cleanCode');
   }
 
   // ── Private Helpers ──────────────────────────────────────────────────────

@@ -88,8 +88,11 @@ class _StudentDetailScreenState extends State<StudentDetailScreen> {
               .doc(student.id)
               .get()
               .then((doc) {
-            if (mounted && doc.exists && doc.data() != null) {
-              final id = doc.data()?['linkedDeviceId'] as String? ?? '';
+            if (mounted) {
+              final data = doc.data();
+              final id = (doc.exists && data != null)
+                  ? data['linkedDeviceId'] as String? ?? ''
+                  : '';
               debugPrint(
                   '[ADMIN BINDING] Detail fallback doc fetched | studentId = ${student.id} | linkedDeviceId = $id | calculated bound count = ${id.isNotEmpty ? 1 : 0}');
               setState(() => _deviceId = id);
@@ -1106,7 +1109,7 @@ class _StudentDetailScreenState extends State<StudentDetailScreen> {
                     const SizedBox(width: 12),
                     Expanded(
                       child: OutlinedButton.icon(
-                        onPressed: _isLoadingAuth || _deviceId.isEmpty ? null : _resetDevice,
+                        onPressed: _isLoadingAuth ? null : _resetDevice,
                         icon: const Icon(Icons.phonelink_erase_rounded, size: 16),
                         label: const Text('Reset Device'),
                         style: OutlinedButton.styleFrom(

@@ -57,12 +57,17 @@ class _StudentMainWrapperState extends State<StudentMainWrapper> {
 
   Future<void> _initializeStudentSession() async {
     try {
-        final session = await StudentAuthService.getLocalSession();
+      final session = await StudentAuthService.getLocalSession();
       if (session != null) {
         final studentId = session['studentId'] as String? ?? '';
         final studentCode = session['studentCode'] as String? ?? '';
         final deviceId = session['deviceId'] as String? ?? '';
         final sessionQrToken = session['qrToken'] as String? ?? '';
+        final loginTimeStr = session['loginTime'] as String? ?? '';
+        final loginTime = DateTime.tryParse(loginTimeStr);
+        final isRecentLogin = loginTime != null &&
+            DateTime.now().difference(loginTime).inSeconds < 45;
+
         if (studentId.isNotEmpty) {
           await Hive.openBox<bool>('read_notices');
           await NotificationService.init();
@@ -82,6 +87,7 @@ class _StudentMainWrapperState extends State<StudentMainWrapper> {
             currentDeviceId,
             studentCode: studentCode,
             sessionQrToken: sessionQrToken,
+            isRecentLogin: isRecentLogin,
           );
         }
       }
@@ -95,6 +101,7 @@ class _StudentMainWrapperState extends State<StudentMainWrapper> {
     String currentDeviceId, {
     String? studentCode,
     String? sessionQrToken,
+    bool isRecentLogin = false,
   }) {
     // Initialize tracking state
     _bindingState = DeviceBindingState.checking;
@@ -168,6 +175,7 @@ remoteLength = ${linkedDeviceId.length}
 exactMatch = ${linkedDeviceId == currentDeviceId}
 secondsSinceStart = $secondsSinceStart
 currentBindingState = $_bindingState
+isRecentLogin = $isRecentLogin
 ==============================''');
 
       // RULE 1: Ignore cached / pending write snapshots
@@ -187,6 +195,7 @@ currentBindingState = $_bindingState
           currentDeviceId: currentDeviceId,
           studentCode: studentCode,
           reasonForEmpty: 'document_not_found',
+          isRecentLogin: isRecentLogin,
         );
         return;
       }
@@ -205,19 +214,21 @@ currentBindingState = $_bindingState
 
       // RULE 3: Empty linkedDeviceId case — indicates admin reset device or regenerated QR
       if (linkedDeviceId.isEmpty) {
-        if (_bindingState == DeviceBindingState.checking && secondsSinceStart < 4) {
-          debugPrint('[BINDING CHECK] Empty binding observed during startup grace window — verifying with server.');
-          _confirmServerAndEvaluate(
+        if ((_bindingState == DeviceBindingState.checking || isRecentLogin) && secondsSinceStart < 8) {
+          debugPrint('[BINDING CHECK] Empty binding observed during fresh login grace window — binding device to active session.');
+          _bindingState = DeviceBindingState.valid;
+          _lastKnownLinkedDeviceId = currentDeviceId;
+          unawaited(StudentAuthService.ensureDeviceBound(
             studentId: studentId,
             currentDeviceId: currentDeviceId,
             studentCode: studentCode,
-            reasonForEmpty: 'empty_binding',
-          );
-        } else {
-          debugPrint('[BINDING CHECK] Empty binding observed — session was reset by admin. Forcing logout.');
-          _bindingState = DeviceBindingState.confirmedReset;
-          _handleForceLogout('Your session has been reset by the administration. Please scan your QR code to log in.');
+          ));
+          return;
         }
+
+        debugPrint('[BINDING CHECK] Empty binding observed — session was reset by admin. Forcing logout.');
+        _bindingState = DeviceBindingState.confirmedReset;
+        _handleForceLogout('Your session has been reset by the administration. Please scan your QR code to log in.');
         return;
       }
 
@@ -233,6 +244,7 @@ currentBindingState = $_bindingState
           studentCode: studentCode,
           reasonForEmpty: 'mismatch',
           observedRemoteId: linkedDeviceId,
+          isRecentLogin: isRecentLogin,
         );
         return;
       }
@@ -252,6 +264,7 @@ currentBindingState = $_bindingState
     String? studentCode,
     required String reasonForEmpty,
     String? observedRemoteId,
+    bool isRecentLogin = false,
   }) async {
     try {
       debugPrint('[BINDING SERVER CONFIRMATION] Performing Source.server read for student_auth/$studentId...');
@@ -282,7 +295,7 @@ currentBindingState = $_bindingState
           }
         }
 
-        if (_bindingState != DeviceBindingState.checking) {
+        if (_bindingState != DeviceBindingState.checking && !isRecentLogin) {
           _bindingState = DeviceBindingState.confirmedReset;
           debugPrint('DECISION: FORCE LOGOUT\nREASON: Fresh server read confirmed student_auth record does not exist.');
           _handleForceLogout('Your student authorization has been removed. Please contact admin.');
@@ -303,6 +316,19 @@ currentBindingState = $_bindingState
       }
 
       if (serverDeviceId.isEmpty) {
+        if ((_bindingState == DeviceBindingState.checking || isRecentLogin) &&
+            DateTime.now().difference(_listenerStartTime ?? DateTime.now()).inSeconds < 8) {
+          debugPrint('DECISION: KEEP SESSION\nREASON: Authoritative read empty during fresh login grace window. Binding device.');
+          await StudentAuthService.ensureDeviceBound(
+            studentId: studentId,
+            currentDeviceId: currentDeviceId,
+            studentCode: studentCode,
+          );
+          _bindingState = DeviceBindingState.valid;
+          _lastKnownLinkedDeviceId = currentDeviceId;
+          return;
+        }
+
         _bindingState = DeviceBindingState.confirmedReset;
         debugPrint('DECISION: FORCE LOGOUT\nREASON: Authoritative server read confirmed empty device binding (admin reset or QR regenerated).');
         _handleForceLogout('Your session has been reset by the administration. Please scan your QR code to log in.');
