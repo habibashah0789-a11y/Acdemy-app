@@ -3,18 +3,26 @@ import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../theme/app_theme.dart';
+import '../models/teacher_model.dart';
+import '../screens/main_wrapper.dart';
+import '../teacher_portal/teacher_main_wrapper.dart';
+import '../student_portal/student_main_wrapper.dart';
+import '../main.dart';
 
 enum PortalRoleType { admin, teacher, student, general }
 
 /// Premium, high-tech animated portal loading & transition screen.
 /// Gives users clear visual feedback that their portal is securely loading,
 /// with stepped verification messages, role badge, pulsing branding, and gradient progress.
+/// Automatically and reliably navigates into the target portal when loading completes.
 class PortalLoadingScreen extends StatefulWidget {
   final PortalRoleType roleType;
   final String title;
   final String subtitle;
   final String? userName;
-  final VoidCallback onComplete;
+  final Widget? targetScreen;
+  final WidgetBuilder? targetBuilder;
+  final VoidCallback? onComplete;
   final Duration duration;
 
   const PortalLoadingScreen({
@@ -23,16 +31,20 @@ class PortalLoadingScreen extends StatefulWidget {
     required this.title,
     required this.subtitle,
     this.userName,
-    required this.onComplete,
-    this.duration = const Duration(milliseconds: 2000),
+    this.targetScreen,
+    this.targetBuilder,
+    this.onComplete,
+    this.duration = const Duration(milliseconds: 1200),
   });
 
   /// Factory for Admin Portal Access
   factory PortalLoadingScreen.admin({
     Key? key,
-    required VoidCallback onComplete,
+    Widget? targetScreen,
+    WidgetBuilder? targetBuilder,
+    VoidCallback? onComplete,
     String? adminName,
-    Duration duration = const Duration(milliseconds: 2000),
+    Duration duration = const Duration(milliseconds: 1200),
   }) {
     return PortalLoadingScreen(
       key: key,
@@ -40,6 +52,8 @@ class PortalLoadingScreen extends StatefulWidget {
       title: 'Administrator Portal',
       subtitle: 'Securing administrative console & controls',
       userName: adminName ?? 'Administrator',
+      targetScreen: targetScreen ?? const MainWrapper(),
+      targetBuilder: targetBuilder,
       onComplete: onComplete,
       duration: duration,
     );
@@ -48,18 +62,25 @@ class PortalLoadingScreen extends StatefulWidget {
   /// Factory for Teacher Portal Access
   factory PortalLoadingScreen.teacher({
     Key? key,
-    required VoidCallback onComplete,
+    TeacherModel? teacher,
+    Widget? targetScreen,
+    WidgetBuilder? targetBuilder,
+    VoidCallback? onComplete,
     String? teacherName,
     String? subject,
-    Duration duration = const Duration(milliseconds: 2000),
+    Duration duration = const Duration(milliseconds: 1200),
   }) {
-    final subText = subject != null && subject.isNotEmpty ? ' ($subject)' : '';
+    final subText = subject != null && subject.isNotEmpty
+        ? ' ($subject)'
+        : (teacher?.subject != null && teacher!.subject.isNotEmpty ? ' (${teacher.subject})' : '');
     return PortalLoadingScreen(
       key: key,
       roleType: PortalRoleType.teacher,
       title: 'Teacher Portal',
       subtitle: 'Preparing classroom records & student rosters$subText',
-      userName: teacherName ?? 'Teacher',
+      userName: teacherName ?? teacher?.name ?? 'Teacher',
+      targetScreen: targetScreen ?? (teacher != null ? TeacherMainWrapper(teacher: teacher) : null),
+      targetBuilder: targetBuilder,
       onComplete: onComplete,
       duration: duration,
     );
@@ -68,10 +89,12 @@ class PortalLoadingScreen extends StatefulWidget {
   /// Factory for Student Portal Access
   factory PortalLoadingScreen.student({
     Key? key,
-    required VoidCallback onComplete,
+    Widget? targetScreen,
+    WidgetBuilder? targetBuilder,
+    VoidCallback? onComplete,
     String? studentName,
     String? studentCode,
-    Duration duration = const Duration(milliseconds: 2000),
+    Duration duration = const Duration(milliseconds: 1200),
   }) {
     final codeText = studentCode != null && studentCode.isNotEmpty ? ' [$studentCode]' : '';
     return PortalLoadingScreen(
@@ -80,6 +103,8 @@ class PortalLoadingScreen extends StatefulWidget {
       title: 'Student Portal',
       subtitle: 'Syncing your schedule, attendance & fee record$codeText',
       userName: studentName ?? 'Student',
+      targetScreen: targetScreen ?? const StudentMainWrapper(),
+      targetBuilder: targetBuilder,
       onComplete: onComplete,
       duration: duration,
     );
@@ -88,16 +113,20 @@ class PortalLoadingScreen extends StatefulWidget {
   /// Factory for General Startup / Role Verification
   factory PortalLoadingScreen.general({
     Key? key,
-    required VoidCallback onComplete,
+    Widget? targetScreen,
+    WidgetBuilder? targetBuilder,
+    VoidCallback? onComplete,
     String title = 'Quaid Academy',
     String subtitle = 'Loading academy services...',
-    Duration duration = const Duration(milliseconds: 1800),
+    Duration duration = const Duration(milliseconds: 1200),
   }) {
     return PortalLoadingScreen(
       key: key,
       roleType: PortalRoleType.general,
       title: title,
       subtitle: subtitle,
+      targetScreen: targetScreen,
+      targetBuilder: targetBuilder,
       onComplete: onComplete,
       duration: duration,
     );
@@ -113,6 +142,8 @@ class _PortalLoadingScreenState extends State<PortalLoadingScreen>
   late Animation<double> _progressAnimation;
   int _currentStepIndex = 0;
   Timer? _stepTimer;
+  Timer? _safetyTimer;
+  bool _hasNavigated = false;
 
   late final List<String> _steps;
 
@@ -174,15 +205,89 @@ class _PortalLoadingScreenState extends State<PortalLoadingScreen>
       }
     });
 
+    // 1. Controller status completion listener
+    _progressController.addStatusListener((status) {
+      if (status == AnimationStatus.completed) {
+        _completeAndNavigate();
+      }
+    });
+
+    // 2. Controller forward future completion
     _progressController.forward().then((_) {
       if (mounted) {
-        widget.onComplete();
+        _completeAndNavigate();
+      }
+    }).catchError((e) {
+      debugPrint('[PortalLoadingScreen] Animation ticker error: $e');
+      if (mounted) {
+        _completeAndNavigate();
+      }
+    });
+
+    // 3. Fallback safety timer to ensure navigation occurs even if ticker is paused
+    _safetyTimer = Timer(widget.duration + const Duration(milliseconds: 250), () {
+      if (mounted && !_hasNavigated) {
+        debugPrint('[PortalLoadingScreen] Safety timer triggered navigation');
+        _completeAndNavigate();
       }
     });
   }
 
+  void _completeAndNavigate() {
+    if (_hasNavigated || !mounted) return;
+    _hasNavigated = true;
+    _stepTimer?.cancel();
+    _safetyTimer?.cancel();
+
+    // 1. If explicit onComplete callback was provided, try executing it safely
+    if (widget.onComplete != null) {
+      try {
+        widget.onComplete!();
+        return;
+      } catch (e) {
+        debugPrint('[PortalLoadingScreen] onComplete error: $e. Falling back to self-navigation.');
+      }
+    }
+
+    // 2. Safe internal navigation using this State's own context or appNavigatorKey
+    final nav = (mounted ? Navigator.maybeOf(context) : null) ?? appNavigatorKey.currentState;
+    if (nav == null) {
+      debugPrint('[PortalLoadingScreen] Navigator unavailable!');
+      return;
+    }
+
+    Widget? destination = widget.targetScreen;
+    if (destination == null && widget.targetBuilder != null && mounted) {
+      destination = widget.targetBuilder!(context);
+    }
+
+    // Fallback based on roleType if not specified
+    if (destination == null) {
+      switch (widget.roleType) {
+        case PortalRoleType.admin:
+          destination = const MainWrapper();
+          break;
+        case PortalRoleType.student:
+          destination = const StudentMainWrapper();
+          break;
+        case PortalRoleType.teacher:
+          break;
+        case PortalRoleType.general:
+          break;
+      }
+    }
+
+    if (destination != null) {
+      nav.pushAndRemoveUntil(
+        MaterialPageRoute(builder: (_) => destination!),
+        (route) => false,
+      );
+    }
+  }
+
   @override
   void dispose() {
+    _safetyTimer?.cancel();
     _stepTimer?.cancel();
     _progressController.dispose();
     super.dispose();
@@ -232,7 +337,9 @@ class _PortalLoadingScreenState extends State<PortalLoadingScreen>
     final isAurora = AppTheme.isAurora(context);
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
-    return Scaffold(
+    return PopScope(
+      canPop: false,
+      child: Scaffold(
       body: Stack(
         children: [
           // Background Gradient
@@ -522,10 +629,15 @@ class _PortalLoadingScreenState extends State<PortalLoadingScreen>
                                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                     children: [
                                       Text(
-                                        'Securing Session...',
+                                        percent >= 100
+                                            ? 'Ready! Opening Portal...'
+                                            : 'Securing Session...',
                                         style: GoogleFonts.poppins(
                                           fontSize: 11,
-                                          color: isDark ? Colors.grey.shade500 : Colors.grey.shade500,
+                                          fontWeight: percent >= 100 ? FontWeight.w600 : FontWeight.normal,
+                                          color: percent >= 100
+                                              ? _primaryColor
+                                              : (isDark ? Colors.grey.shade400 : Colors.grey.shade600),
                                         ),
                                       ),
                                       Text(
@@ -575,6 +687,7 @@ class _PortalLoadingScreenState extends State<PortalLoadingScreen>
           ),
         ],
       ),
+    ),
     );
   }
 }

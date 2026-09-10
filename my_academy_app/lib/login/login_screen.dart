@@ -46,19 +46,55 @@ class _LoginScreenState extends State<LoginScreen> {
       );
 
       // Verify user has admin role
-      final roleDoc = await FirebaseFirestore.instance
-          .collection('roles')
-          .doc(user.uid)
-          .get()
-          .timeout(const Duration(seconds: 5));
+      final firestore = FirebaseFirestore.instance;
+      DocumentSnapshot<Map<String, dynamic>>? roleDoc;
 
-      final roleData = roleDoc.data();
+      // 1. Try local cache first for instant verification
+      try {
+        roleDoc = await firestore
+            .collection('roles')
+            .doc(user.uid)
+            .get(const GetOptions(source: Source.cache));
+      } catch (_) {}
+
+      // 2. If not in cache, query server with a quick timeout
+      if (roleDoc == null || !roleDoc.exists) {
+        try {
+          roleDoc = await firestore
+              .collection('roles')
+              .doc(user.uid)
+              .get()
+              .timeout(const Duration(milliseconds: 2500));
+        } catch (_) {}
+      }
+
+      final roleData = roleDoc?.data();
       String role = roleData?['role'] as String? ?? '';
       
       if (role.isEmpty) {
-        final adminDoc = await FirebaseFirestore.instance.collection('admins').doc(user.uid).get();
-        if (adminDoc.exists && adminDoc.data()?['admin'] == true) {
-          role = 'admin';
+        try {
+          final adminDoc = await firestore
+              .collection('admins')
+              .doc(user.uid)
+              .get()
+              .timeout(const Duration(milliseconds: 2000));
+          if (adminDoc.exists && adminDoc.data()?['admin'] == true) {
+            role = 'admin';
+          }
+        } catch (_) {}
+
+        if (role.isEmpty && user.email != null && user.email!.isNotEmpty) {
+          try {
+            final aQuery = await firestore
+                .collection('admins')
+                .where('email', isEqualTo: user.email!.trim().toLowerCase())
+                .limit(1)
+                .get()
+                .timeout(const Duration(milliseconds: 2000));
+            if (aQuery.docs.isNotEmpty) {
+              role = 'admin';
+            }
+          } catch (_) {}
         }
       }
 
@@ -67,17 +103,20 @@ class _LoginScreenState extends State<LoginScreen> {
         throw Exception('Access denied. Administrator privileges required.');
       }
 
+      // Self-heal/sync roles collection
+      try {
+        await firestore
+            .collection('roles')
+            .doc(user.uid)
+            .set({'role': 'admin'}, SetOptions(merge: true));
+      } catch (_) {}
+
       if (mounted) {
         Navigator.of(context).pushAndRemoveUntil(
           MaterialPageRoute(
             builder: (_) => PortalLoadingScreen.admin(
               adminName: user.displayName ?? 'Administrator',
-              onComplete: () {
-                Navigator.of(context).pushAndRemoveUntil(
-                  MaterialPageRoute(builder: (_) => const MainWrapper()),
-                  (route) => false,
-                );
-              },
+              targetScreen: const MainWrapper(),
             ),
           ),
           (route) => false,

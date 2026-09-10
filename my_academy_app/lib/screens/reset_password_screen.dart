@@ -246,17 +246,11 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
 
         Navigator.of(context).pushAndRemoveUntil(
           MaterialPageRoute(
-            builder: (portalCtx) => PortalLoadingScreen.teacher(
+            builder: (_) => PortalLoadingScreen.teacher(
+              teacher: teacher,
               teacherName: teacher.name,
               subject: teacher.subject,
-              onComplete: () {
-                Navigator.of(portalCtx).pushAndRemoveUntil(
-                  MaterialPageRoute(
-                    builder: (_) => TeacherMainWrapper(teacher: teacher),
-                  ),
-                  (_) => false,
-                );
-              },
+              targetScreen: TeacherMainWrapper(teacher: teacher),
             ),
           ),
           (_) => false,
@@ -265,14 +259,9 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
         // Admin portal access
         Navigator.of(context).pushAndRemoveUntil(
           MaterialPageRoute(
-            builder: (portalCtx) => PortalLoadingScreen.admin(
+            builder: (_) => PortalLoadingScreen.admin(
               adminName: adminName,
-              onComplete: () {
-                Navigator.of(portalCtx).pushAndRemoveUntil(
-                  MaterialPageRoute(builder: (_) => const MainWrapper()),
-                  (_) => false,
-                );
-              },
+              targetScreen: const MainWrapper(),
             ),
           ),
           (_) => false,

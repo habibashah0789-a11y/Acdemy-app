@@ -205,17 +205,11 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
 
           Navigator.of(context).pushAndRemoveUntil(
             MaterialPageRoute(
-              builder: (portalCtx) => PortalLoadingScreen.teacher(
+              builder: (_) => PortalLoadingScreen.teacher(
+                teacher: targetTeacher,
                 teacherName: targetTeacher.name,
                 subject: targetTeacher.subject,
-                onComplete: () {
-                  Navigator.of(portalCtx).pushAndRemoveUntil(
-                    MaterialPageRoute(
-                      builder: (_) => TeacherMainWrapper(teacher: targetTeacher),
-                    ),
-                    (_) => false,
-                  );
-                },
+                targetScreen: TeacherMainWrapper(teacher: targetTeacher),
               ),
             ),
             (_) => false,
@@ -223,14 +217,9 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
         } else {
           Navigator.of(context).pushAndRemoveUntil(
             MaterialPageRoute(
-              builder: (portalCtx) => PortalLoadingScreen.admin(
+              builder: (_) => PortalLoadingScreen.admin(
                 adminName: userName,
-                onComplete: () {
-                  Navigator.of(portalCtx).pushAndRemoveUntil(
-                    MaterialPageRoute(builder: (_) => const MainWrapper()),
-                    (_) => false,
-                  );
-                },
+                targetScreen: const MainWrapper(),
               ),
             ),
             (_) => false,
@@ -444,17 +433,11 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
 
                                     Navigator.of(context).pushAndRemoveUntil(
                                       MaterialPageRoute(
-                                        builder: (portalCtx) => PortalLoadingScreen.teacher(
+                                        builder: (_) => PortalLoadingScreen.teacher(
+                                          teacher: teacher,
                                           teacherName: teacher!.name,
                                           subject: teacher.subject,
-                                          onComplete: () {
-                                            Navigator.of(portalCtx).pushAndRemoveUntil(
-                                              MaterialPageRoute(
-                                                builder: (_) => TeacherMainWrapper(teacher: teacher!),
-                                              ),
-                                              (_) => false,
-                                            );
-                                          },
+                                          targetScreen: TeacherMainWrapper(teacher: teacher),
                                         ),
                                       ),
                                       (_) => false,
@@ -463,14 +446,9 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                                     final adminName = user.displayName ?? 'Administrator';
                                     Navigator.of(context).pushAndRemoveUntil(
                                       MaterialPageRoute(
-                                        builder: (portalCtx) => PortalLoadingScreen.admin(
+                                        builder: (_) => PortalLoadingScreen.admin(
                                           adminName: adminName,
-                                          onComplete: () {
-                                            Navigator.of(portalCtx).pushAndRemoveUntil(
-                                              MaterialPageRoute(builder: (_) => const MainWrapper()),
-                                              (_) => false,
-                                            );
-                                          },
+                                          targetScreen: const MainWrapper(),
                                         ),
                                       ),
                                       (_) => false,

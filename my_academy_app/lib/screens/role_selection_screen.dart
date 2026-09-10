@@ -54,12 +54,7 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen>
           MaterialPageRoute(
             builder: (_) => PortalLoadingScreen.student(
               studentCode: studentSession['studentCode'] ?? 'Student',
-              onComplete: () {
-                Navigator.pushReplacement(
-                  context,
-                  MaterialPageRoute(builder: (_) => const StudentMainWrapper()),
-                );
-              },
+              targetScreen: const StudentMainWrapper(),
             ),
           ),
         );
@@ -95,14 +90,10 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen>
               context,
               MaterialPageRoute(
                 builder: (_) => PortalLoadingScreen.teacher(
+                  teacher: teacher,
                   teacherName: teacher.name,
                   subject: teacher.subject,
-                  onComplete: () {
-                    Navigator.pushReplacement(
-                      context,
-                      MaterialPageRoute(builder: (_) => TeacherMainWrapper(teacher: teacher)),
-                    );
-                  },
+                  targetScreen: TeacherMainWrapper(teacher: teacher),
                 ),
               ),
             );
@@ -113,12 +104,7 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen>
             context,
             MaterialPageRoute(
               builder: (_) => PortalLoadingScreen.admin(
-                onComplete: () {
-                  Navigator.pushReplacement(
-                    context,
-                    MaterialPageRoute(builder: (_) => const MainWrapper()),
-                  );
-                },
+                targetScreen: const MainWrapper(),
               ),
             ),
           );

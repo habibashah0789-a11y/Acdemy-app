@@ -81,12 +81,7 @@ class _StudentLoginScreenState extends State<StudentLoginScreen> {
           MaterialPageRoute(
             builder: (_) => PortalLoadingScreen.student(
               studentCode: codeLabel,
-              onComplete: () {
-                Navigator.of(context).pushAndRemoveUntil(
-                  MaterialPageRoute(builder: (_) => const StudentMainWrapper()),
-                  (_) => false,
-                );
-              },
+              targetScreen: const StudentMainWrapper(),
             ),
           ),
           (_) => false,

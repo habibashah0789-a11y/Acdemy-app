@@ -111,16 +111,10 @@ class _TeacherLoginScreenState extends State<TeacherLoginScreen> {
         Navigator.of(context).pushAndRemoveUntil(
           MaterialPageRoute(
             builder: (_) => PortalLoadingScreen.teacher(
+              teacher: currentTeacher,
               teacherName: currentTeacher.name,
               subject: currentTeacher.subject,
-              onComplete: () {
-                Navigator.of(context).pushAndRemoveUntil(
-                  MaterialPageRoute(
-                    builder: (_) => TeacherMainWrapper(teacher: currentTeacher),
-                  ),
-                  (_) => false,
-                );
-              },
+              targetScreen: TeacherMainWrapper(teacher: currentTeacher),
             ),
           ),
           (_) => false,
