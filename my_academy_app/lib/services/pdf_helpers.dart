@@ -18,8 +18,8 @@ class PdfHelpers {
   }
   // ─── Academy constants ────────────────────────────────────────────────────
 
-  static const String _academyName = 'QUAID ACADEMY';
-  static const String _motto = 'From Here It Is Possible';
+  static const String academyName = 'QUAID ACADEMY';
+  static const String motto = 'From Here It Is Possible';
   static const String _phone = '03139509505';
   static const String _address =
       'Opposite Islamia College Gate 2, UPS School Street,\n'

@@ -18,19 +18,24 @@ service cloud.firestore {
 
     function isTeacher() {
       return isSignedIn() && (
+<<<<<<< Updated upstream
         (exists(/databases/$(database)/documents/roles/$(request.auth.uid)) &&
          (get(/databases/$(database)/documents/roles/$(request.auth.uid)).data.role == 'teacher' ||
           get(/databases/$(database)/documents/roles/$(request.auth.uid)).data.role == 'Teacher')) ||
+=======
+        !exists(/databases/$(database)/documents/roles/$(request.auth.uid)) ||
+        get(/databases/$(database)/documents/roles/$(request.auth.uid)).data.role == 'teacher' ||
+        get(/databases/$(database)/documents/roles/$(request.auth.uid)).data.role == 'admin' ||
+>>>>>>> Stashed changes
         exists(/databases/$(database)/documents/teachers/$(request.auth.uid))
       );
     }
 
     function isStudent() {
-      return isSignedIn() &&
-             exists(/databases/$(database)/documents/roles/$(request.auth.uid)) &&
-             get(/databases/$(database)/documents/roles/$(request.auth.uid)).data.role == 'student';
+      return isSignedIn();
     }
 
+<<<<<<< Updated upstream
     // Helper to verify a teacher is creating an announcement for their authorized students/subject
     function isTeacherAnnouncement() {
       return isSignedIn() && (
@@ -39,6 +44,11 @@ service cloud.firestore {
         (request.resource.data.type == 'teacher_announcement' ||
          request.resource.data.notificationType == 'teacher_announcement')
       );
+=======
+    // Helper to verify teacher permissions
+    function isTeacherForSubject() {
+      return true;
+>>>>>>> Stashed changes
     }
 
     // ── Roles ─────────────────────────────────────────────────────────────
@@ -61,11 +71,9 @@ service cloud.firestore {
 
     // ── Students ──────────────────────────────────────────────────────────
     match /students/{studentId} {
-      allow read: if true;
-      allow write: if isAdmin() || isTeacher();
+      allow read, write: if true;
       match /{subcollection=**} {
-        allow read: if true;
-        allow write: if isAdmin() || isTeacher();
+        allow read, write: if true;
       }
     }
 
@@ -85,6 +93,7 @@ service cloud.firestore {
     // ── Notifications, Announcements & Notices ────────────────────────────
     // Teachers can create and broadcast announcements directly to their students
     match /notifications/{notifId} {
+<<<<<<< Updated upstream
       allow read: if true;
       allow create: if isSignedIn() && (
         isAdmin() ||
@@ -154,6 +163,21 @@ service cloud.firestore {
         resource.data.teacherAuthUid == request.auth.uid
       );
       allow write: if true;
+=======
+      allow read, write: if true;
+    }
+
+    match /announcements/{announcementId} {
+      allow read, write: if true;
+    }
+
+    match /notices/{noticeId} {
+      allow read, write: if true;
+    }
+
+    match /teacher_announcements/{announcementId} {
+      allow read, write: if true;
+>>>>>>> Stashed changes
     }
 
     // ── Devices (FCM Push Tokens) ─────────────────────────────────────────
