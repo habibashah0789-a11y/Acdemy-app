@@ -838,11 +838,7 @@ class TeacherService {
       'attachmentType': mediaType,
     };
 
-<<<<<<< Updated upstream
-    // Save directly to notifications, announcements, notices, and teacher_announcements collections
-=======
     // Save to notifications, announcements, notices, and teacher_announcements collections for complete compatibility
->>>>>>> Stashed changes
     await _firestore.collection('notifications').doc(notifDocRef.id).set(data);
     try {
       await _firestore.collection('announcements').doc(notifDocRef.id).set(data);
