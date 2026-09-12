@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -23,23 +24,33 @@ class StudentLoginScreen extends StatefulWidget {
 
 class _StudentLoginScreenState extends State<StudentLoginScreen> {
   final _studentIdController = TextEditingController();
+  final _tokenController = TextEditingController();
   final _formKey = GlobalKey<FormState>();
 
   String? _scannedToken;
   bool _isLoading = false;
   String? _errorMessage;
+  late bool _isManualToken;
+
+  @override
+  void initState() {
+    super.initState();
+    _isManualToken = kIsWeb;
+  }
 
   @override
   void dispose() {
     _studentIdController.dispose();
+    _tokenController.dispose();
     super.dispose();
   }
 
   Future<void> _handleLogin({bool isQrScan = false}) async {
     final enteredCode = _studentIdController.text.trim();
+    final manualToken = _tokenController.text.trim();
     final tokenToUse = (_scannedToken != null && _scannedToken!.isNotEmpty)
         ? _scannedToken!
-        : enteredCode;
+        : (manualToken.isNotEmpty ? manualToken : enteredCode);
 
     if (!isQrScan) {
       if (!(_formKey.currentState?.validate() ?? false)) return;
@@ -177,278 +188,327 @@ class _StudentLoginScreenState extends State<StudentLoginScreen> {
              .move(begin: const Offset(0, 0), end: const Offset(-30, -20), duration: 7.seconds),
           ),
           SafeArea(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.symmetric(horizontal: 24),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.center,
-                children: [
-                  const SizedBox(height: 12),
+            child: Center(
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 520),
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.symmetric(horizontal: 24),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+                      const SizedBox(height: 12),
 
-                  // Back to Portals button
-                  Align(
-                    alignment: Alignment.centerLeft,
-                    child: InkWell(
-                      borderRadius: BorderRadius.circular(12),
-                      onTap: () {
-                        if (Navigator.canPop(context)) {
-                          Navigator.pop(context);
-                        } else {
-                          Navigator.pushReplacement(
-                            context,
-                            MaterialPageRoute(
-                              builder: (_) => const RoleSelectionScreen(),
-                            ),
-                          );
-                        }
-                      },
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                        decoration: BoxDecoration(
-                          color: isDark
-                              ? Colors.white.withValues(alpha: 0.1)
-                              : Colors.black.withValues(alpha: 0.05),
+                      // Back to Portals button
+                      Align(
+                        alignment: Alignment.centerLeft,
+                        child: InkWell(
                           borderRadius: BorderRadius.circular(12),
-                          border: Border.all(
-                            color: isDark
-                                ? Colors.white.withValues(alpha: 0.15)
-                                : Colors.black.withValues(alpha: 0.08),
-                          ),
-                        ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(
-                              Icons.arrow_back_ios_new_rounded,
-                              size: 15,
-                              color: isDark ? Colors.white : const Color(0xFF0F172A),
-                            ),
-                            const SizedBox(width: 8),
-                            Text(
-                              'Back to Portals',
-                              style: GoogleFonts.poppins(
-                                fontSize: 13,
-                                fontWeight: FontWeight.w600,
-                                color: isDark ? Colors.white : const Color(0xFF0F172A),
+                          onTap: () {
+                            if (Navigator.canPop(context)) {
+                              Navigator.pop(context);
+                            } else {
+                              Navigator.pushReplacement(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (_) => const RoleSelectionScreen(),
+                                ),
+                              );
+                            }
+                          },
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                            decoration: BoxDecoration(
+                              color: isDark
+                                  ? Colors.white.withValues(alpha: 0.1)
+                                  : Colors.black.withValues(alpha: 0.05),
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(
+                                color: isDark
+                                    ? Colors.white.withValues(alpha: 0.15)
+                                    : Colors.black.withValues(alpha: 0.08),
                               ),
                             ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(
+                                  Icons.arrow_back_ios_new_rounded,
+                                  size: 15,
+                                  color: isDark ? Colors.white : const Color(0xFF0F172A),
+                                ),
+                                const SizedBox(width: 8),
+                                Text(
+                                  'Back to Portals',
+                                  style: GoogleFonts.poppins(
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w600,
+                                    color: isDark ? Colors.white : const Color(0xFF0F172A),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ).animate().fadeIn(duration: 400.ms),
+
+                      const SizedBox(height: 20),
+
+                      // Premium Logo
+                      Container(
+                        height: 110,
+                        width: 110,
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            colors: [const Color(0xFF22C55E), const Color(0xFF16A34A)],
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                          ),
+                          borderRadius: BorderRadius.circular(30),
+                          boxShadow: [
+                            BoxShadow(
+                              color: const Color(0xFF22C55E).withValues(alpha: 0.4),
+                              blurRadius: 30,
+                              offset: const Offset(0, 10),
+                            )
+                          ],
+                          border: Border.all(
+                            color: Colors.white.withValues(alpha: 0.2),
+                            width: 1.5,
+                          ),
+                        ),
+                        child: const Center(
+                          child: Text('🎓', style: TextStyle(fontSize: 48)),
+                        ),
+                      ).animate().fadeIn(duration: 600.ms).scale(begin: const Offset(0.8, 0.8), curve: Curves.easeOutBack),
+
+                      const SizedBox(height: 28),
+
+                      Text(
+                        'Student Portal',
+                        style: GoogleFonts.outfit(
+                          fontSize: 32,
+                          fontWeight: FontWeight.w800,
+                          letterSpacing: -0.5,
+                          color: isDark ? Colors.white : const Color(0xFF0F172A),
+                        ),
+                      ).animate().fadeIn().slideY(begin: 0.1),
+
+                      Text(
+                        'Quaid Academy — Student Access',
+                        style: GoogleFonts.outfit(
+                          fontSize: 15,
+                          color: isDark ? Colors.grey[400] : Colors.grey[600],
+                          fontWeight: FontWeight.w500,
+                          letterSpacing: 0.2,
+                        ),
+                      ).animate().fadeIn().slideY(begin: 0.15),
+
+                      if (widget.message != null) ...[
+                        const SizedBox(height: 18),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                          width: double.infinity,
+                          decoration: BoxDecoration(
+                            color: AppTheme.warningRed.withValues(alpha: 0.1),
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(color: AppTheme.warningRed.withValues(alpha: 0.2)),
+                          ),
+                          child: Text(
+                            widget.message!,
+                            textAlign: TextAlign.center,
+                            style: GoogleFonts.poppins(
+                              color: AppTheme.warningRed,
+                              fontSize: 13,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ).animate().fadeIn().shake(hz: 3, curve: Curves.easeInOut),
+                      ],
+
+                      const SizedBox(height: 36),
+
+                      // Step 1: QR Code Section
+                      _buildStepCard(
+                        stepNumber: '1',
+                        title: _isManualToken ? 'Enter QR Access Token' : 'Scan Your QR Access Code',
+                        child: Column(
+                          children: [
+                            Text(
+                              _isManualToken
+                                  ? 'Enter the QR secret token or scan key issued with your student ID'
+                                  : (_scannedToken == null
+                                      ? 'Scan the official student QR code provided by administration'
+                                      : 'QR Code verified successfully'),
+                              textAlign: TextAlign.center,
+                              style: TextStyle(
+                                fontSize: 13,
+                                color: _scannedToken == null
+                                    ? (isDark ? AppTheme.darkTextSecondary : AppTheme.lightTextSecondary)
+                                    : AppTheme.secondaryGreen,
+                                fontWeight: _scannedToken != null ? FontWeight.w600 : FontWeight.normal,
+                              ),
+                            ),
+                            const SizedBox(height: 16),
+                            if (_isManualToken) ...[
+                              TextFormField(
+                                controller: _tokenController,
+                                decoration: InputDecoration(
+                                  hintText: 'Paste QR token or access code',
+                                  prefixIcon: const Icon(
+                                    Icons.key_rounded,
+                                    color: AppTheme.secondaryGreen,
+                                  ),
+                                  labelText: 'Security Access Token',
+                                  suffixIcon: IconButton(
+                                    icon: const Icon(Icons.qr_code_scanner_rounded),
+                                    tooltip: 'Switch to Camera Scan',
+                                    onPressed: () {
+                                      setState(() {
+                                        _isManualToken = false;
+                                      });
+                                      _openScanner();
+                                    },
+                                  ),
+                                ),
+                                onChanged: (val) {
+                                  setState(() {
+                                    _scannedToken = val.trim().isNotEmpty ? val.trim() : null;
+                                  });
+                                },
+                              ),
+                              const SizedBox(height: 8),
+                              TextButton.icon(
+                                onPressed: () => setState(() => _isManualToken = false),
+                                icon: const Icon(Icons.camera_alt_rounded, size: 16),
+                                label: const Text('Or Scan Using Camera'),
+                              ),
+                            ] else ...[
+                              if (_scannedToken != null)
+                                _buildSuccessBadge('QR Token Authenticated ✓')
+                              else
+                                SizedBox(
+                                  width: double.infinity,
+                                  child: OutlinedButton.icon(
+                                    onPressed: _openScanner,
+                                    icon: const Icon(Icons.qr_code_scanner_rounded),
+                                    label: const Text('Scan Student QR Code'),
+                                    style: OutlinedButton.styleFrom(
+                                      padding: const EdgeInsets.symmetric(vertical: 15),
+                                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                                    ),
+                                  ),
+                                ),
+                              if (_scannedToken != null)
+                                TextButton.icon(
+                                  onPressed: _openScanner,
+                                  icon: const Icon(Icons.refresh_rounded, size: 16),
+                                  label: const Text('Scan Different Code'),
+                                )
+                              else
+                                Padding(
+                                  padding: const EdgeInsets.only(top: 8),
+                                  child: TextButton.icon(
+                                    onPressed: () => setState(() => _isManualToken = true),
+                                    icon: const Icon(Icons.keyboard_rounded, size: 16),
+                                    label: const Text('Enter Token Manually (No Camera)'),
+                                  ),
+                                ),
+                            ],
                           ],
                         ),
-                      ),
-                    ),
-                  ).animate().fadeIn(duration: 400.ms),
+                      ).animate().fadeIn().slideY(begin: 0.08),
 
-                  const SizedBox(height: 20),
+                      const SizedBox(height: 18),
 
-                  // Premium Logo
-                  Container(
-                    height: 110,
-                    width: 110,
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        colors: [const Color(0xFF22C55E), const Color(0xFF16A34A)],
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                      ),
-                      borderRadius: BorderRadius.circular(30),
-                      boxShadow: [
-                        BoxShadow(
-                          color: const Color(0xFF22C55E).withValues(alpha: 0.4),
-                          blurRadius: 30,
-                          offset: const Offset(0, 10),
-                        )
-                      ],
-                      border: Border.all(
-                        color: Colors.white.withValues(alpha: 0.2),
-                        width: 1.5,
-                      ),
-                    ),
-                    child: const Center(
-                      child: Text('🎓', style: TextStyle(fontSize: 48)),
-                    ),
-                  ).animate().fadeIn(duration: 600.ms).scale(begin: const Offset(0.8, 0.8), curve: Curves.easeOutBack),
-
-                  const SizedBox(height: 28),
-
-                  Text(
-                    'Student Portal',
-                    style: GoogleFonts.outfit(
-                      fontSize: 32,
-                      fontWeight: FontWeight.w800,
-                      letterSpacing: -0.5,
-                      color: isDark ? Colors.white : const Color(0xFF0F172A),
-                    ),
-                  ).animate().fadeIn().slideY(begin: 0.1),
-
-                  Text(
-                    'Quaid Academy — Student Access',
-                    style: GoogleFonts.outfit(
-                      fontSize: 15,
-                      color: isDark ? Colors.grey[400] : Colors.grey[600],
-                      fontWeight: FontWeight.w500,
-                      letterSpacing: 0.2,
-                    ),
-                  ).animate().fadeIn().slideY(begin: 0.15),
-
-                  if (widget.message != null) ...[
-                    const SizedBox(height: 18),
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                      width: double.infinity,
-                      decoration: BoxDecoration(
-                        color: AppTheme.warningRed.withValues(alpha: 0.1),
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: AppTheme.warningRed.withValues(alpha: 0.2)),
-                      ),
-                      child: Text(
-                        widget.message!,
-                        textAlign: TextAlign.center,
-                        style: GoogleFonts.poppins(
-                          color: AppTheme.warningRed,
-                          fontSize: 13,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ).animate().fadeIn().shake(hz: 3, curve: Curves.easeInOut),
-                  ],
-
-                  const SizedBox(height: 36),
-
-                  // Step 1: QR Code Section
-                  _buildStepCard(
-                    stepNumber: '1',
-                    title: 'Scan Your QR Access Code',
-                    child: Column(
-                      children: [
-                        Text(
-                          _scannedToken == null
-                              ? 'Scan the official student QR code provided by administration'
-                              : 'QR Code verified successfully',
-                          textAlign: TextAlign.center,
-                          style: TextStyle(
-                            fontSize: 13,
-                            color: _scannedToken == null
-                                ? (isDark ? AppTheme.darkTextSecondary : AppTheme.lightTextSecondary)
-                                : AppTheme.secondaryGreen,
-                            fontWeight: _scannedToken != null ? FontWeight.w600 : FontWeight.normal,
-                          ),
-                        ),
-                        const SizedBox(height: 16),
-                        if (_scannedToken != null)
-                          _buildSuccessBadge('QR Token Authenticated ✓')
-                        else
-                          SizedBox(
-                            width: double.infinity,
-                            child: OutlinedButton.icon(
-                              onPressed: _openScanner,
-                              icon: const Icon(Icons.qr_code_scanner_rounded),
-                              label: const Text('Scan Student QR Code'),
-                              style: OutlinedButton.styleFrom(
-                                padding: const EdgeInsets.symmetric(vertical: 15),
-                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                      // Step 2: Student ID Input
+                      _buildStepCard(
+                        stepNumber: '2',
+                        title: 'Enter Your Student Code',
+                        isLocked: false,
+                        child: Form(
+                          key: _formKey,
+                          child: TextFormField(
+                            controller: _studentIdController,
+                            textCapitalization: TextCapitalization.characters,
+                            enabled: true,
+                            textInputAction: TextInputAction.done,
+                            onFieldSubmitted: (_) {
+                              if (!_isLoading) _handleLogin();
+                            },
+                            decoration: InputDecoration(
+                              hintText: 'e.g. QA-9-2026-001 or QA-11-2026-001',
+                              prefixIcon: const Icon(
+                                Icons.badge_rounded,
+                                color: AppTheme.primaryBlue,
                               ),
+                              labelText: 'Student ID',
                             ),
+                            validator: (v) {
+                              if (v == null || v.trim().isEmpty) {
+                                return 'Please enter your assigned Student ID';
+                              }
+                              return null;
+                            },
                           ),
-                        if (_scannedToken != null)
-                          TextButton.icon(
-                            onPressed: _openScanner,
-                            icon: const Icon(Icons.refresh_rounded, size: 16),
-                            label: const Text('Scan Different Code'),
-                          ),
-                      ],
-                    ),
-                  ).animate().fadeIn().slideY(begin: 0.08),
-
-                  const SizedBox(height: 18),
-
-                  // Step 2: Student ID Input
-                  _buildStepCard(
-                    stepNumber: '2',
-                    title: 'Enter Your Student Code',
-                    isLocked: false,
-                    child: Form(
-                      key: _formKey,
-                      child: TextFormField(
-                        controller: _studentIdController,
-                        textCapitalization: TextCapitalization.characters,
-                        enabled: true,
-                        textInputAction: TextInputAction.done,
-                        onFieldSubmitted: (_) {
-                          if (!_isLoading) _handleLogin();
-                        },
-                        decoration: InputDecoration(
-                          hintText: 'e.g. QA-9-2026-001 or QA-11-2026-001',
-                          prefixIcon: const Icon(
-                            Icons.badge_rounded,
-                            color: AppTheme.primaryBlue,
-                          ),
-                          labelText: 'Student ID',
                         ),
-                        validator: (v) {
-                          if (v == null || v.trim().isEmpty) {
-                            return 'Please enter your assigned Student ID';
-                          }
-                          return null;
-                        },
-                      ),
-                    ),
-                  ).animate().fadeIn().slideY(begin: 0.08),
+                      ).animate().fadeIn().slideY(begin: 0.08),
 
-                  const SizedBox(height: 16),
+                      const SizedBox(height: 16),
 
-                  // Error Banner
-                  if (_errorMessage != null)
-                    Container(
-                      width: double.infinity,
-                      margin: const EdgeInsets.only(bottom: 16),
-                      padding: const EdgeInsets.all(14),
-                      decoration: BoxDecoration(
-                        color: AppTheme.warningRed.withValues(alpha: 0.1),
-                        borderRadius: BorderRadius.circular(14),
-                        border: Border.all(color: AppTheme.warningRed.withValues(alpha: 0.3)),
-                      ),
-                      child: Row(
-                        children: [
-                          const Icon(Icons.error_outline_rounded, color: AppTheme.warningRed, size: 20),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: Text(
-                              _errorMessage!,
-                              style: const TextStyle(color: AppTheme.warningRed, fontSize: 13, fontWeight: FontWeight.w500),
-                            ),
+                      // Error Banner
+                      if (_errorMessage != null)
+                        Container(
+                          width: double.infinity,
+                          margin: const EdgeInsets.only(bottom: 16),
+                          padding: const EdgeInsets.all(14),
+                          decoration: BoxDecoration(
+                            color: AppTheme.warningRed.withValues(alpha: 0.1),
+                            borderRadius: BorderRadius.circular(14),
+                            border: Border.all(color: AppTheme.warningRed.withValues(alpha: 0.3)),
                           ),
-                        ],
+                          child: Row(
+                            children: [
+                              const Icon(Icons.error_outline_rounded, color: AppTheme.warningRed, size: 20),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Text(
+                                  _errorMessage!,
+                                  style: const TextStyle(color: AppTheme.warningRed, fontSize: 13, fontWeight: FontWeight.w500),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ).animate().fadeIn().shakeX(),
+
+                      // Submit Button
+                      SizedBox(
+                        width: double.infinity,
+                        child: InlineLoadingButton(
+                          isLoading: _isLoading,
+                          label: 'Access Student Portal',
+                          loadingLabel: 'Verifying Credentials...',
+                          icon: Icons.arrow_forward_rounded,
+                          onPressed: _handleLogin,
+                        ),
+                      ).animate().fadeIn(),
+
+                      const SizedBox(height: 32),
+
+                      const SizedBox(height: 16),
+
+                      Text(
+                        'Need assistance? Contact the Academy Administration',
+                        style: TextStyle(
+                          fontSize: 11,
+                          color: isDark ? AppTheme.darkTextSecondary : AppTheme.lightTextSecondary,
+                        ),
+                        textAlign: TextAlign.center,
                       ),
-                    ).animate().fadeIn().shakeX(),
 
-                  // Submit Button
-                  SizedBox(
-                    width: double.infinity,
-                    child: InlineLoadingButton(
-                      isLoading: _isLoading,
-                      label: 'Access Student Portal',
-                      loadingLabel: 'Verifying Credentials...',
-                      icon: Icons.arrow_forward_rounded,
-                      onPressed: _handleLogin,
-                    ),
-                  ).animate().fadeIn(),
-
-                  const SizedBox(height: 32),
-
-
-
-                  const SizedBox(height: 16),
-
-                  Text(
-                    'Need assistance? Contact the Academy Administration',
-                    style: TextStyle(
-                      fontSize: 11,
-                      color: isDark ? AppTheme.darkTextSecondary : AppTheme.lightTextSecondary,
-                    ),
-                    textAlign: TextAlign.center,
+                      const SizedBox(height: 32),
+                    ],
                   ),
-
-                  const SizedBox(height: 32),
-                ],
+                ),
               ),
             ),
           ),

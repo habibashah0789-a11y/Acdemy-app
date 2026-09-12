@@ -1202,22 +1202,41 @@ class _DashboardScreenState extends State<DashboardScreen> {
     final matricStudents =
         students.where((s) => _isMatric(s.classType)).toList();
 
-    return Column(
-      children: [
-        _buildClassRevenueChart(
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final isWide = constraints.maxWidth >= 900;
+        final fscCard = _buildClassRevenueChart(
           'FSC Revenue',
           fscStudents,
           (metric) => _openDrillDown('FSC Revenue', 'FSc', students,
               initialMetric: metric),
-        ),
-        const SizedBox(height: 20),
-        _buildClassRevenueChart(
+        );
+        final matricCard = _buildClassRevenueChart(
           'Matric Revenue',
           matricStudents,
           (metric) => _openDrillDown('Matric Revenue', 'Matric', students,
               initialMetric: metric),
-        ),
-      ],
+        );
+
+        if (isWide) {
+          return Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(child: fscCard),
+              const SizedBox(width: 20),
+              Expanded(child: matricCard),
+            ],
+          );
+        }
+
+        return Column(
+          children: [
+            fscCard,
+            const SizedBox(height: 20),
+            matricCard,
+          ],
+        );
+      },
     );
   }
 }

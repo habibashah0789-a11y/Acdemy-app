@@ -1,8 +1,13 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:my_academy_app/widgets/portal_loading_screen.dart';
 
 void main() {
+  setUpAll(() {
+    GoogleFonts.config.allowRuntimeFetching = false;
+  });
+
   testWidgets('PortalLoadingScreen.admin instantiates and displays admin title', (tester) async {
     bool completed = false;
 
@@ -81,7 +86,11 @@ void main() {
         ),
       ),
     );
+    await tester.pump(const Duration(milliseconds: 50));
 
     expect(find.text('Loading records...'), findsOneWidget);
+
+    await tester.pumpWidget(const SizedBox());
+    await tester.pump(const Duration(milliseconds: 50));
   });
 }

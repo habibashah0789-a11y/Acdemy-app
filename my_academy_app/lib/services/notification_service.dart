@@ -113,14 +113,17 @@ class NotificationService {
       iOS: initializationSettingsDarwin,
     );
 
-    await _localNotificationsPlugin.initialize(
-      initializationSettings,
-      onDidReceiveNotificationResponse: (NotificationResponse response) {
-        if (response.payload != null && response.payload!.isNotEmpty) {
-          handleNotificationPayload(response.payload);
-        }
-      },
-    );
+    // Local notifications initialization (mobile only)
+    if (!kIsWeb) {
+      await _localNotificationsPlugin.initialize(
+        initializationSettings,
+        onDidReceiveNotificationResponse: (NotificationResponse response) {
+          if (response.payload != null && response.payload!.isNotEmpty) {
+            handleNotificationPayload(response.payload);
+          }
+        },
+      );
+    }
 
     // Create Android Channels
     if (!kIsWeb && defaultTargetPlatform == TargetPlatform.android) {
@@ -255,12 +258,16 @@ platform = ${defaultTargetPlatform.name}
 Firebase projectId = ${Firebase.app().options.projectId}
 ==============================''');
 
-        await _messaging.subscribeToTopic('academy_all');
-        await _messaging.subscribeToTopic('students');
+        if (!kIsWeb) {
+          await _messaging.subscribeToTopic('academy_all');
+          await _messaging.subscribeToTopic('students');
+        }
       } catch (e) {
         debugPrint('[NotificationService] FCM token retrieval note (platform specific): $e');
       }
-      FirebaseMessaging.onBackgroundMessage(firebaseMessagingBackgroundHandler);
+      if (!kIsWeb) {
+        FirebaseMessaging.onBackgroundMessage(firebaseMessagingBackgroundHandler);
+      }
 
       // Handle Foreground Notifications (App OPEN)
       FirebaseMessaging.onMessage.listen((RemoteMessage message) {
@@ -371,6 +378,10 @@ Firebase projectId = ${Firebase.app().options.projectId}
     required String body,
     String? payload,
   }) async {
+    if (kIsWeb) {
+      debugPrint('[NotificationService Web] $title: $body');
+      return;
+    }
     try {
       final androidDetails = AndroidNotificationDetails(
         channelId,
@@ -1497,16 +1508,10 @@ status = PENDING
     }
 
     final notifType = (data['notificationType'] ?? data['type'] ?? '').toString();
-    final senderId = (data['senderId'] ?? data['teacherId'] ?? '').toString();
     final studentId = (data['studentId'] ?? '').toString();
     final notifId = (data['id'] ?? '').toString();
 
-    // 1. Exclude announcements sent by this teacher themselves from their incoming notices
-    if (senderId.isNotEmpty && (senderId == teacher.id || senderId == teacher.teacherId)) {
-      return false;
-    }
-
-    // 2. Direct Teacher Payout: ONLY if this payout is specifically for THIS teacher
+    // 1. Direct Teacher Payout: ONLY if this payout is specifically for THIS teacher
     if (notifType == 'teacher_payout' || notifId.startsWith('payout_')) {
       final targetTeacherId = (data['teacherId'] ?? '').toString().trim();
       final targetTeacherName = (data['teacherName'] ?? data['studentName'] ?? '').toString().trim().toLowerCase();
@@ -1525,6 +1530,12 @@ status = PENDING
            myName.contains(targetTeacherName));
 
       return idMatches || nameMatches;
+    }
+
+    // 2. Exclude announcements sent by this teacher themselves from their incoming notices
+    final senderId = (data['senderId'] ?? '').toString();
+    if (senderId.isNotEmpty && (senderId == teacher.id || senderId == teacher.teacherId)) {
+      return false;
     }
 
     // 3. Exclude admin-only copies, private fee reminders, fee summaries, attendance alerts, and timetable updates
@@ -1552,6 +1563,11 @@ status = PENDING
         .map((s) => s.trim().toLowerCase())
         .where((s) => s.isNotEmpty && s != 'all' && s != 'general')
         .toList();
+
+    // Multi-subject fee payments are general ledger entries, not per-subject teacher alerts
+    if ((notifType == 'fee_payment' || notifType == 'fee_edited') && notifSubjects.length > 1) {
+      return false;
+    }
 
     bool subjectMatches = false;
     if (notifSubjects.isNotEmpty) {

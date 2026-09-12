@@ -673,6 +673,10 @@ class StudentAuthService {
     return null;
   }
 
+  static Future<void> clearSession() async {
+    await logout();
+  }
+
   static Future<void> logout() async {
     try {
       Box sessionBox;

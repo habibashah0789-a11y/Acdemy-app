@@ -4,7 +4,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import 'package:my_academy_app/theme/app_theme_palette.dart';
 import 'package:my_academy_app/theme/app_theme_registry.dart';
-import 'package:my_academy_app/theme/app_theme.dart';
+// import 'package:my_academy_app/theme/app_theme.dart';
 import 'package:my_academy_app/provider/theme_provider.dart';
 import 'package:my_academy_app/settings/theme_selection_screen.dart';
 

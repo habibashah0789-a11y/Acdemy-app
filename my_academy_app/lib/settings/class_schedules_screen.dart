@@ -355,8 +355,11 @@ class _ClassSchedulesScreenState extends State<ClassSchedulesScreen> {
           ),
         ],
       ),
-      body: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+      body: Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 1000),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // ── Class/Grade Selector ──
           Padding(
@@ -589,7 +592,9 @@ class _ClassSchedulesScreenState extends State<ClassSchedulesScreen> {
           ),
         ],
       ),
-    );
+    ),
+  ),
+);
   }
 
   Widget _buildEmptyState() {

@@ -14,6 +14,7 @@ import 'package:hive_flutter/hive_flutter.dart';
 import '../models/student_model.dart';
 import '../services/database_service.dart';
 import '../widgets/student_avatar.dart';
+import '../widgets/web_adaptive_layout.dart';
 
 enum DeviceBindingState {
   checking,
@@ -38,6 +39,7 @@ class _StudentMainWrapperState extends State<StudentMainWrapper> {
 
   // ── Device-binding state machine fields ──────────────────────────────────
   String? _lastKnownLinkedDeviceId;
+  String? _currentStudentCode;
   DeviceBindingState _bindingState = DeviceBindingState.checking;
   DateTime? _listenerStartTime;
 
@@ -61,6 +63,11 @@ class _StudentMainWrapperState extends State<StudentMainWrapper> {
       if (session != null) {
         final studentId = session['studentId'] as String? ?? '';
         final studentCode = session['studentCode'] as String? ?? '';
+        if (mounted) {
+          setState(() {
+            _currentStudentCode = studentCode;
+          });
+        }
         final deviceId = session['deviceId'] as String? ?? '';
         final sessionQrToken = session['qrToken'] as String? ?? '';
         final loginTimeStr = session['loginTime'] as String? ?? '';
@@ -390,123 +397,90 @@ $st
     super.dispose();
   }
 
+  void _confirmStudentLogout(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Confirm Logout'),
+        content: const Text('Are you sure you want to log out of the Student Portal?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              Navigator.pop(ctx);
+              await StudentAuthService.clearSession();
+              if (context.mounted) {
+                Navigator.of(context).pushAndRemoveUntil(
+                  MaterialPageRoute(builder: (_) => const StudentLoginScreen()),
+                  (_) => false,
+                );
+              }
+            },
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.redAccent),
+            child: const Text('Logout', style: TextStyle(color: Colors.white)),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
-    final isAurora = AppTheme.isAurora(context);
-    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final navItems = [
+      const WebNavItem(
+        icon: Icons.grid_view_outlined,
+        activeIcon: Icons.grid_view_rounded,
+        label: 'Dashboard',
+      ),
+      const WebNavItem(
+        icon: Icons.account_balance_wallet_outlined,
+        activeIcon: Icons.account_balance_wallet_rounded,
+        label: 'Fees & Payments',
+      ),
+      WebNavItem(
+        icon: Icons.notifications_none_rounded,
+        activeIcon: Icons.notifications_rounded,
+        label: 'Notices',
+        badge: ValueListenableBuilder<int>(
+          valueListenable: NotificationService.studentUnreadNoticesCount,
+          builder: (context, unreadCount, _) {
+            if (unreadCount <= 0) return const SizedBox.shrink();
+            return Container(
+              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+              decoration: BoxDecoration(
+                color: Colors.redAccent,
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Text(
+                '$unreadCount',
+                style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold),
+              ),
+            );
+          },
+        ),
+      ),
+      const WebNavItem(
+        icon: Icons.person_outline_rounded,
+        activeIcon: Icons.person_rounded,
+        label: 'Profile',
+      ),
+    ];
 
-    final navBg = isAurora
-        ? AppTheme.auroraSurface
-        : (isDark ? AppTheme.darkSurface : Colors.white);
-    final activeColor = isAurora ? AppTheme.auroraCyanHighlight : AppTheme.primaryBlue;
-    final indicatorColor = isAurora
-        ? AppTheme.auroraCyanHighlight.withValues(alpha: 0.18)
-        : AppTheme.primaryBlue.withValues(alpha: 0.14);
-
-    return Scaffold(
+    return WebAdaptiveLayout(
+      currentIndex: _currentIndex,
+      onIndexChanged: (index) {
+        setState(() => _currentIndex = index);
+      },
+      items: navItems,
+      roleTitle: 'Student Portal',
+      userName: _currentStudentCode ?? 'Student',
+      onLogout: () => _confirmStudentLogout(context),
       body: IndexedStack(
         index: _currentIndex,
         children: _screens,
-      ),
-      bottomNavigationBar: Container(
-        decoration: BoxDecoration(
-          color: navBg,
-          border: isAurora
-              ? const Border(
-                  top: BorderSide(color: AppTheme.auroraBorder, width: 1.2),
-                )
-              : null,
-          boxShadow: [
-            BoxShadow(
-              color: isAurora
-                  ? const Color(0xFF020617).withValues(alpha: 0.6)
-                  : Colors.black.withValues(alpha: 0.06),
-              blurRadius: 16,
-              offset: const Offset(0, -4),
-            )
-          ],
-        ),
-        child: NavigationBarTheme(
-          data: NavigationBarThemeData(
-            indicatorColor: indicatorColor,
-            labelTextStyle: WidgetStateProperty.resolveWith((states) {
-              if (states.contains(WidgetState.selected)) {
-                return GoogleFonts.poppins(
-                  fontSize: 12,
-                  fontWeight: FontWeight.bold,
-                  color: activeColor,
-                );
-              }
-              return GoogleFonts.poppins(
-                fontSize: 12,
-                fontWeight: FontWeight.w500,
-                color: isDark
-                    ? AppTheme.darkTextSecondary
-                    : AppTheme.lightTextSecondary,
-              );
-            }),
-            iconTheme: WidgetStateProperty.resolveWith((states) {
-              if (states.contains(WidgetState.selected)) {
-                return IconThemeData(color: activeColor, size: 24);
-              }
-              return IconThemeData(
-                color: isDark
-                    ? AppTheme.darkTextSecondary
-                    : AppTheme.lightTextSecondary,
-                size: 22,
-              );
-            }),
-          ),
-          child: NavigationBar(
-            selectedIndex: _currentIndex,
-            height: 68,
-            elevation: 0,
-            backgroundColor: Colors.transparent,
-            onDestinationSelected: (index) {
-              setState(() => _currentIndex = index);
-            },
-            destinations: [
-              const NavigationDestination(
-                icon: Icon(Icons.grid_view_outlined),
-                selectedIcon: Icon(Icons.grid_view_rounded),
-                label: 'Dashboard',
-              ),
-              const NavigationDestination(
-                icon: Icon(Icons.account_balance_wallet_outlined),
-                selectedIcon: Icon(Icons.account_balance_wallet_rounded),
-                label: 'Fees',
-              ),
-              NavigationDestination(
-                icon: ValueListenableBuilder<int>(
-                  valueListenable: NotificationService.studentUnreadNoticesCount,
-                  builder: (context, unreadCount, _) {
-                    return Badge(
-                      isLabelVisible: unreadCount > 0,
-                      label: Text('$unreadCount'),
-                      child: const Icon(Icons.notifications_none_rounded),
-                    );
-                  },
-                ),
-                selectedIcon: ValueListenableBuilder<int>(
-                  valueListenable: NotificationService.studentUnreadNoticesCount,
-                  builder: (context, unreadCount, _) {
-                    return Badge(
-                      isLabelVisible: unreadCount > 0,
-                      label: Text('$unreadCount'),
-                      child: const Icon(Icons.notifications_rounded),
-                    );
-                  },
-                ),
-                label: 'Notices',
-              ),
-              const NavigationDestination(
-                icon: Icon(Icons.person_outline_rounded),
-                selectedIcon: Icon(Icons.person_rounded),
-                label: 'Profile',
-              ),
-            ],
-          ),
-        ),
       ),
     );
   }

@@ -6,6 +6,8 @@ import '../teachers/teacher_folder_screen.dart';
 import '../theme/app_theme.dart';
 import '../settings/setting_screen.dart';
 import '../services/notification_service.dart';
+import '../services/auth_service.dart';
+import '../widgets/web_adaptive_layout.dart';
 
 class MainWrapper extends StatefulWidget {
   const MainWrapper({super.key});
@@ -39,67 +41,76 @@ class _MainWrapperState extends State<MainWrapper> {
     super.dispose();
   }
 
+  static const List<WebNavItem> _navItems = [
+    WebNavItem(
+      icon: Icons.dashboard_outlined,
+      activeIcon: Icons.dashboard_rounded,
+      label: 'Dashboard',
+    ),
+    WebNavItem(
+      icon: Icons.school_outlined,
+      activeIcon: Icons.school_rounded,
+      label: 'Students',
+    ),
+    WebNavItem(
+      icon: Icons.supervisor_account_outlined,
+      activeIcon: Icons.supervisor_account_rounded,
+      label: 'Teachers',
+    ),
+    WebNavItem(
+      icon: Icons.account_balance_wallet_outlined,
+      activeIcon: Icons.account_balance_wallet_rounded,
+      label: 'Finance',
+    ),
+    WebNavItem(
+      icon: Icons.settings_outlined,
+      activeIcon: Icons.settings_rounded,
+      label: 'Settings',
+    ),
+  ];
+
+  void _confirmLogout(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Confirm Logout'),
+        content: const Text('Are you sure you want to log out of the Administration Portal?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              Navigator.pop(ctx);
+              await AuthService.signOut();
+            },
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.redAccent),
+            child: const Text('Logout', style: TextStyle(color: Colors.white)),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
-    final tokens = AppTheme.tokens(context);
-    final isAurora = AppTheme.isAurora(context);
-
-    return Scaffold(
+    return WebAdaptiveLayout(
+      currentIndex: _currentIndex,
+      onIndexChanged: (index) {
+        if (_currentIndex != index) {
+          setState(() {
+            _currentIndex = index;
+          });
+        }
+      },
+      items: _navItems,
+      roleTitle: 'Administration',
+      userName: 'Administrator',
+      onLogout: () => _confirmLogout(context),
       body: IndexedStack(
         index: _currentIndex,
         children: _screens,
-      ),
-      bottomNavigationBar: Container(
-        decoration: BoxDecoration(
-          color: tokens.navBar,
-          border: Border(
-            top: BorderSide(
-              color: isAurora ? AppTheme.auroraBorder : tokens.border.withValues(alpha: 0.5),
-              width: isAurora ? 1.2 : 0.8,
-            ),
-          ),
-        ),
-        child: BottomNavigationBar(
-          type: BottomNavigationBarType.fixed,
-          currentIndex: _currentIndex,
-          backgroundColor: tokens.navBar,
-          selectedItemColor: isAurora ? AppTheme.auroraCyanHighlight : tokens.navBarSelected,
-          unselectedItemColor: isAurora ? AppTheme.auroraTextSecondary : tokens.navBarUnselected,
-          onTap: (index) {
-            if (_currentIndex != index) {
-              setState(() {
-                _currentIndex = index;
-              });
-            }
-          },
-          items: const [
-            BottomNavigationBarItem(
-              icon: Icon(Icons.dashboard_rounded),
-              activeIcon: Icon(Icons.dashboard_rounded),
-              label: 'Dashboard',
-            ),
-            BottomNavigationBarItem(
-              icon: Icon(Icons.school_outlined),
-              activeIcon: Icon(Icons.school_rounded),
-              label: 'Students',
-            ),
-            BottomNavigationBarItem(
-              icon: Icon(Icons.supervisor_account_outlined),
-              activeIcon: Icon(Icons.supervisor_account_rounded),
-              label: 'Teachers',
-            ),
-            BottomNavigationBarItem(
-              icon: Icon(Icons.account_balance_wallet_outlined),
-              activeIcon: Icon(Icons.account_balance_wallet_rounded),
-              label: 'Finance',
-            ),
-            BottomNavigationBarItem(
-              icon: Icon(Icons.settings_outlined),
-              activeIcon: Icon(Icons.settings_rounded),
-              label: 'Settings',
-            ),
-          ],
-        ),
       ),
     );
   }

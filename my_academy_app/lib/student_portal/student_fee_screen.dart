@@ -5,12 +5,16 @@ import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:hive/hive.dart';
+import 'package:intl/intl.dart';
+import '../models/payment_transaction_model.dart';
 import '../models/student_model.dart';
+import '../services/payment_service.dart';
 import '../theme/app_theme.dart';
 import '../widgets/custom_card.dart';
 import '../widgets/empty_state_widget.dart';
 import '../widgets/shimmer_loading_widget.dart';
 import 'student_auth_service.dart';
+import 'student_online_fee_dialog.dart';
 
 class StudentFeeScreen extends StatefulWidget {
   const StudentFeeScreen({super.key});
@@ -216,196 +220,360 @@ class _StudentFeeScreenState extends State<StudentFeeScreen> {
         ? (student.feeSubmitted / student.totalFee).clamp(0.0, 1.0)
         : 0.0;
 
-    return ListView(
-      padding: const EdgeInsets.all(20),
-      children: [
-        // Overall Summary Banner Card
-        CustomCard(
-          padding: const EdgeInsets.all(22),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+    return Center(
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 880),
+        child: ListView(
+          padding: const EdgeInsets.all(20),
+          children: [
+            // Overall Summary Banner Card
+            CustomCard(
+              padding: const EdgeInsets.all(22),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    'Academic Fee Status',
-                    style: GoogleFonts.poppins(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 16,
-                    ),
-                  ),
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                    decoration: BoxDecoration(
-                      color: student.feeRemaining <= 0
-                          ? AppTheme.secondaryGreen.withValues(alpha: 0.15)
-                          : AppTheme.warningRed.withValues(alpha: 0.15),
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    child: Text(
-                      student.feeRemaining <= 0 ? 'Fully Cleared' : 'Balance Pending',
-                      style: TextStyle(
-                        fontSize: 11,
-                        fontWeight: FontWeight.bold,
-                        color: student.feeRemaining <= 0 ? AppTheme.secondaryGreen : AppTheme.warningRed,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 20),
-              Row(
-                children: [
-                  Expanded(
-                    child: _statChip('Total Due', student.totalFee, AppTheme.primaryBlue),
-                  ),
-                  Container(width: 1, height: 44, color: AppTheme.borderColor(context)),
-                  Expanded(
-                    child: _statChip('Submitted', student.feeSubmitted, AppTheme.secondaryGreen),
-                  ),
-                  Container(width: 1, height: 44, color: AppTheme.borderColor(context)),
-                  Expanded(
-                    child: _statChip(
-                      'Remaining',
-                      student.feeRemaining,
-                      student.feeRemaining > 0 ? AppTheme.warningRed : AppTheme.secondaryGreen,
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 20),
-              Stack(
-                children: [
-                  Container(
-                    height: 12,
-                    decoration: BoxDecoration(
-                      color: isDark ? Colors.white.withValues(alpha: 0.1) : Colors.grey.shade200,
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                  ),
-                  FractionallySizedBox(
-                    widthFactor: feePercent,
-                    child: Container(
-                      height: 12,
-                      decoration: BoxDecoration(
-                        gradient: feePercent >= 1.0 ? AppTheme.successGradient : AppTheme.primaryGradient,
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 10),
-              Text(
-                student.feeRemaining <= 0
-                    ? '✓ All course fees have been paid in full.'
-                    : '${(feePercent * 100).toStringAsFixed(0)}% of total fee submitted.',
-                style: TextStyle(
-                  fontSize: 12,
-                  color: student.feeRemaining <= 0 ? AppTheme.secondaryGreen : (isDark ? AppTheme.darkTextSecondary : AppTheme.lightTextSecondary),
-                  fontWeight: student.feeRemaining <= 0 ? FontWeight.bold : FontWeight.w500,
-                ),
-              ),
-            ],
-          ),
-        ).animate().fadeIn(),
-
-        const SizedBox(height: 24),
-
-        if (subjects.isNotEmpty) ...[
-          Row(
-            children: [
-              const Icon(Icons.menu_book_rounded, size: 18, color: AppTheme.primaryBlue),
-              const SizedBox(width: 8),
-              Text(
-                'Subject-wise Breakdown',
-                style: GoogleFonts.poppins(fontWeight: FontWeight.bold, fontSize: 15),
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          ...subjects.entries.map((entry) {
-            final subName = entry.key;
-            final totalSubFee = entry.value;
-            final paidSub = student.getSubjectPaid(subName);
-            final dueSub = student.getSubjectRemaining(subName);
-            final subPercent =
-                totalSubFee > 0 ? (paidSub / totalSubFee).clamp(0.0, 1.0) : 0.0;
-
-            return Padding(
-              padding: const EdgeInsets.only(bottom: 12),
-              child: CustomCard(
-                padding: const EdgeInsets.all(16),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Text(
-                          subName,
-                          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        'Academic Fee Status',
+                        style: GoogleFonts.poppins(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 16,
                         ),
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                          decoration: BoxDecoration(
-                            color: dueSub <= 0
-                                ? AppTheme.secondaryGreen.withValues(alpha: 0.12)
-                                : AppTheme.accentOrange.withValues(alpha: 0.12),
-                            borderRadius: BorderRadius.circular(8),
+                      ),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: student.feeRemaining <= 0
+                              ? AppTheme.secondaryGreen.withValues(alpha: 0.15)
+                              : AppTheme.warningRed.withValues(alpha: 0.15),
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                        child: Text(
+                          student.feeRemaining <= 0 ? 'Fully Cleared' : 'Balance Pending',
+                          style: TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.bold,
+                            color: student.feeRemaining <= 0 ? AppTheme.secondaryGreen : AppTheme.warningRed,
                           ),
-                          child: Text(
-                            dueSub <= 0 ? 'PAID' : 'Rs ${dueSub.toStringAsFixed(0)} due',
-                            style: TextStyle(
-                              fontSize: 12,
-                              fontWeight: FontWeight.bold,
-                              color: dueSub <= 0 ? AppTheme.secondaryGreen : AppTheme.accentOrange,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 20),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: _statChip('Total Due', student.totalFee, AppTheme.primaryBlue),
+                      ),
+                      Container(width: 1, height: 44, color: AppTheme.borderColor(context)),
+                      Expanded(
+                        child: _statChip('Submitted', student.feeSubmitted, AppTheme.secondaryGreen),
+                      ),
+                      Container(width: 1, height: 44, color: AppTheme.borderColor(context)),
+                      Expanded(
+                        child: _statChip(
+                          'Remaining',
+                          student.feeRemaining,
+                          student.feeRemaining > 0 ? AppTheme.warningRed : AppTheme.secondaryGreen,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 20),
+                  Stack(
+                    children: [
+                      Container(
+                        height: 12,
+                        decoration: BoxDecoration(
+                          color: isDark ? Colors.white.withValues(alpha: 0.1) : Colors.grey.shade200,
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                      ),
+                      FractionallySizedBox(
+                        widthFactor: feePercent,
+                        child: Container(
+                          height: 12,
+                          decoration: BoxDecoration(
+                            gradient: feePercent >= 1.0 ? AppTheme.successGradient : AppTheme.primaryGradient,
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 10),
+                  Text(
+                    student.feeRemaining <= 0
+                        ? '✓ All course fees have been paid in full.'
+                        : '${(feePercent * 100).toStringAsFixed(0)}% of total fee submitted.',
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: student.feeRemaining <= 0 ? AppTheme.secondaryGreen : (isDark ? AppTheme.darkTextSecondary : AppTheme.lightTextSecondary),
+                      fontWeight: student.feeRemaining <= 0 ? FontWeight.bold : FontWeight.w500,
+                    ),
+                  ),
+                  if (student.feeRemaining > 0) ...[
+                    const SizedBox(height: 18),
+                    SizedBox(
+                      width: double.infinity,
+                      height: 44,
+                      child: ElevatedButton.icon(
+                        onPressed: () {
+                          showDialog(
+                            context: context,
+                            builder: (_) => StudentOnlineFeeDialog(student: student),
+                          );
+                        },
+                        icon: const Icon(Icons.account_balance_wallet_rounded, color: Colors.white, size: 18),
+                        label: const Text(
+                          'Pay Online (Bank / EasyPaisa / JazzCash)',
+                          style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white, fontSize: 13),
+                        ),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppTheme.primaryBlue,
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        ),
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            ).animate().fadeIn(),
+
+            const SizedBox(height: 24),
+
+            if (subjects.isNotEmpty) ...[
+              Row(
+                children: [
+                  const Icon(Icons.menu_book_rounded, size: 18, color: AppTheme.primaryBlue),
+                  const SizedBox(width: 8),
+                  Text(
+                    'Subject-wise Breakdown',
+                    style: GoogleFonts.poppins(fontWeight: FontWeight.bold, fontSize: 15),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              ...subjects.entries.map((entry) {
+                final subName = entry.key;
+                final totalSubFee = entry.value;
+                final paidSub = student.getSubjectPaid(subName);
+                final dueSub = student.getSubjectRemaining(subName);
+                final subPercent =
+                    totalSubFee > 0 ? (paidSub / totalSubFee).clamp(0.0, 1.0) : 0.0;
+
+                return Padding(
+                  padding: const EdgeInsets.only(bottom: 12),
+                  child: CustomCard(
+                    padding: const EdgeInsets.all(16),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Text(
+                              subName,
+                              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                            ),
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                              decoration: BoxDecoration(
+                                color: dueSub <= 0
+                                    ? AppTheme.secondaryGreen.withValues(alpha: 0.12)
+                                    : AppTheme.accentOrange.withValues(alpha: 0.12),
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: Text(
+                                dueSub <= 0 ? 'PAID' : 'Rs ${dueSub.toStringAsFixed(0)} due',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.bold,
+                                  color: dueSub <= 0 ? AppTheme.secondaryGreen : AppTheme.accentOrange,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 12),
+                        ClipRRect(
+                          borderRadius: BorderRadius.circular(6),
+                          child: LinearProgressIndicator(
+                            value: subPercent,
+                            minHeight: 8,
+                            backgroundColor: isDark ? Colors.white.withValues(alpha: 0.1) : Colors.grey.shade200,
+                            valueColor: AlwaysStoppedAnimation(
+                              subPercent >= 1.0 ? AppTheme.secondaryGreen : AppTheme.primaryBlue,
                             ),
                           ),
                         ),
-                      ],
-                    ),
-                    const SizedBox(height: 12),
-                    ClipRRect(
-                      borderRadius: BorderRadius.circular(6),
-                      child: LinearProgressIndicator(
-                        value: subPercent,
-                        minHeight: 8,
-                        backgroundColor: isDark ? Colors.white.withValues(alpha: 0.1) : Colors.grey.shade200,
-                        valueColor: AlwaysStoppedAnimation(
-                          subPercent >= 1.0 ? AppTheme.secondaryGreen : AppTheme.primaryBlue,
+                        const SizedBox(height: 10),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Text('Total: Rs ${totalSubFee.toStringAsFixed(0)}',
+                                style: const TextStyle(fontSize: 12, color: Colors.grey)),
+                            Text('Paid: Rs ${paidSub.toStringAsFixed(0)}',
+                                style: const TextStyle(
+                                    fontSize: 12,
+                                    color: AppTheme.secondaryGreen,
+                                    fontWeight: FontWeight.bold)),
+                          ],
                         ),
-                      ),
-                    ),
-                    const SizedBox(height: 10),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Text('Total: Rs ${totalSubFee.toStringAsFixed(0)}',
-                            style: const TextStyle(fontSize: 12, color: Colors.grey)),
-                        Text('Paid: Rs ${paidSub.toStringAsFixed(0)}',
-                            style: const TextStyle(
-                                fontSize: 12,
-                                color: AppTheme.secondaryGreen,
-                                fontWeight: FontWeight.bold)),
                       ],
                     ),
-                  ],
+                  ),
+                ).animate().fadeIn();
+              }),
+            ],
+
+            // Online Submissions Status Tracker
+            _buildOnlineSubmissions(student),
+
+            // Legacy / Offline Payment History Section
+            const SizedBox(height: 16),
+            if (student.paymentHistoryJson != null &&
+                student.paymentHistoryJson!.isNotEmpty)
+              _buildPaymentHistory(student),
+
+            const SizedBox(height: 60),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildOnlineSubmissions(StudentModel student) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    return StreamBuilder<List<PaymentTransactionModel>>(
+      stream: PaymentService.getStudentTransactionsStream(student.id),
+      builder: (context, snapshot) {
+        final transactions = snapshot.data ?? [];
+        if (transactions.isEmpty) return const SizedBox.shrink();
+
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const SizedBox(height: 20),
+            Row(
+              children: [
+                const Icon(Icons.cloud_done_rounded, size: 18, color: AppTheme.primaryBlue),
+                const SizedBox(width: 8),
+                Text(
+                  'Online Fee Submissions & Verification',
+                  style: GoogleFonts.poppins(fontWeight: FontWeight.bold, fontSize: 15),
                 ),
-              ),
-            ).animate().fadeIn();
-          }),
-        ],
+              ],
+            ),
+            const SizedBox(height: 12),
+            ...transactions.map((txn) {
+              Color statusColor = Colors.orange;
+              String statusLabel = 'Verification Required';
+              IconData statusIcon = Icons.hourglass_top_rounded;
 
-        // Legacy / Offline Payment History Section
-        const SizedBox(height: 16),
-        if (student.paymentHistoryJson != null &&
-            student.paymentHistoryJson!.isNotEmpty)
-          _buildPaymentHistory(student),
+              if (txn.status == PaymentTransactionStatus.successful) {
+                statusColor = AppTheme.secondaryGreen;
+                statusLabel = 'Verified & Credited';
+                statusIcon = Icons.check_circle_rounded;
+              } else if (txn.status == PaymentTransactionStatus.rejected) {
+                statusColor = AppTheme.warningRed;
+                statusLabel = 'Rejected';
+                statusIcon = Icons.cancel_rounded;
+              }
 
-        const SizedBox(height: 60),
-      ],
+              final dateStr = DateFormat('dd MMM yyyy, hh:mm a').format(txn.createdAt);
+
+              return Padding(
+                padding: const EdgeInsets.only(bottom: 10),
+                child: CustomCard(
+                  padding: const EdgeInsets.all(16),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Row(
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.all(8),
+                                decoration: BoxDecoration(
+                                  color: statusColor.withValues(alpha: 0.12),
+                                  shape: BoxShape.circle,
+                                ),
+                                child: Icon(statusIcon, color: statusColor, size: 18),
+                              ),
+                              const SizedBox(width: 10),
+                              Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    txn.provider,
+                                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                                  ),
+                                  Text(
+                                    'Ref: ${txn.providerTransactionId}',
+                                    style: TextStyle(
+                                      fontSize: 11,
+                                      color: isDark ? Colors.grey.shade400 : Colors.grey.shade600,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ),
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.end,
+                            children: [
+                              Text(
+                                'Rs ${txn.amount.toStringAsFixed(0)}',
+                                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+                              ),
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                                decoration: BoxDecoration(
+                                  color: statusColor.withValues(alpha: 0.15),
+                                  borderRadius: BorderRadius.circular(6),
+                                ),
+                                child: Text(
+                                  statusLabel,
+                                  style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: statusColor),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                      if (txn.description.isNotEmpty) ...[
+                        const SizedBox(height: 8),
+                        Text(
+                          txn.description,
+                          style: TextStyle(fontSize: 12, color: isDark ? Colors.grey.shade300 : Colors.grey.shade700),
+                        ),
+                      ],
+                      if (txn.status == PaymentTransactionStatus.rejected && txn.failureReason != null) ...[
+                        const SizedBox(height: 6),
+                        Text(
+                          'Reason: ${txn.failureReason}',
+                          style: const TextStyle(fontSize: 11, color: AppTheme.warningRed, fontWeight: FontWeight.w500),
+                        ),
+                      ],
+                      const SizedBox(height: 6),
+                      Text(
+                        'Submitted: $dateStr',
+                        style: const TextStyle(fontSize: 10, color: Colors.grey),
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            }),
+          ],
+        );
+      },
     );
   }
 

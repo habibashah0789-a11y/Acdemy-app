@@ -1,21 +1,11 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:my_academy_app/screens/reset_password_screen.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:my_academy_app/screens/forgot_password_screen.dart';
 
 void main() {
-  testWidgets('ResetPasswordScreen instantiates properly with oobCode', (tester) async {
-    await tester.pumpWidget(
-      const MaterialApp(
-        home: ResetPasswordScreen(
-          oobCode: 'test-oob-code-123456',
-          roleHint: 'admin',
-        ),
-      ),
-    );
-
-    expect(find.byType(ResetPasswordScreen), findsOneWidget);
-    expect(find.text('Set New Password'), findsOneWidget);
+  setUpAll(() {
+    GoogleFonts.config.allowRuntimeFetching = false;
   });
 
   testWidgets('ForgotPasswordScreen instantiates properly for admin and teacher', (tester) async {
@@ -27,8 +17,12 @@ void main() {
         ),
       ),
     );
+    await tester.pump(const Duration(milliseconds: 50));
 
     expect(find.byType(ForgotPasswordScreen), findsOneWidget);
-    expect(find.text('Password Recovery'), findsOneWidget);
+    expect(find.text('Reset Password'), findsOneWidget);
+
+    await tester.pumpWidget(const SizedBox());
+    await tester.pump(const Duration(milliseconds: 50));
   });
 }

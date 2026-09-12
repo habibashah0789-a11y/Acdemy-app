@@ -1,6 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:my_academy_app/models/notification_model.dart';
 import 'package:my_academy_app/models/student_model.dart';
+import 'package:my_academy_app/models/teacher_model.dart';
 import 'package:my_academy_app/services/notification_service.dart';
 
 void main() {
@@ -62,7 +63,7 @@ void main() {
   });
 
   group('Teacher Notification Filtering Tests', () {
-    const teacherBiology = TeacherModel(
+    final teacherBiology = TeacherModel(
       id: 'teacher-bio-uid',
       name: 'Sir Ahmed',
       email: 'ahmed@academy.com',
@@ -70,7 +71,7 @@ void main() {
       subject: 'Biology',
       section: 'FSc',
       assignedClasses: ['First Year', 'Second Year'],
-      createdAt: null as dynamic,
+      createdAt: DateTime(2026, 1, 1),
     );
 
     test('Teacher receives payout notification specifically addressed to them', () {

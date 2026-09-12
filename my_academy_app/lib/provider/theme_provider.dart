@@ -167,8 +167,9 @@ class ThemeProvider extends ChangeNotifier {
     }
   }
 
-  /// Preserved for backward compatibility with boolean toggle callers.
-  Future<void> toggleTheme(bool value) async {
-    await setTheme(value ? 'classic_dark' : 'classic_light');
+  /// Preserved for backward compatibility with toggle callers.
+  Future<void> toggleTheme([bool? value]) async {
+    final nextDark = value ?? !_currentPalette.isDark;
+    await setTheme(nextDark ? 'classic_dark' : 'classic_light');
   }
 }

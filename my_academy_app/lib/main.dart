@@ -8,7 +8,6 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter_native_splash/flutter_native_splash.dart';
-import 'theme/app_theme.dart';
 
 // Models
 import 'models/student_model.dart';
@@ -27,6 +26,7 @@ import 'provider/theme_provider.dart';
 import 'screens/main_wrapper.dart';
 import 'screens/role_selection_screen.dart';
 import 'screens/reset_password_screen.dart';
+import 'screens/landing/web_landing_screen.dart';
 import 'student_portal/student_main_wrapper.dart';
 
 // Teacher portal
@@ -57,7 +57,9 @@ Future<void> main() async {
   await SupabaseConfig.init();
   HybridBackend.printDiagnostics().catchError((e) => debugPrint('[HYBRID BACKEND] Diagnostics error: $e'));
 
-  FirebaseMessaging.onBackgroundMessage(firebaseMessagingBackgroundHandler);
+  if (!kIsWeb) {
+    FirebaseMessaging.onBackgroundMessage(firebaseMessagingBackgroundHandler);
+  }
 
   debugPrint('[FIREBASE CONFIG] platform = ${defaultTargetPlatform.name}');
   debugPrint('[FIREBASE CONFIG] projectId = ${app.options.projectId}');
@@ -245,7 +247,12 @@ class _StudentPortalEntryWrapperState extends State<StudentPortalEntryWrapper> {
       return const StudentMainWrapper();
     }
 
-    // No session: show Role Selection so user can choose Student / Teacher / Admin.
+    // No session: On web browsers, show the Quaid Academy Public Landing Screen.
+    // On native mobile devices, show RoleSelectionScreen.
+    if (kIsWeb) {
+      return const WebLandingScreen();
+    }
+
     return const RoleSelectionScreen();
   }
 }
