@@ -41,3 +41,6 @@ macos/Flutter/ephemeral/
 *.aab
 backup.apk
 quiad academy app/
+flutter/
+.vercel/
+

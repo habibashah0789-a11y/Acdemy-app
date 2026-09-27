@@ -1,0 +1,9 @@
+{
+  "name": "quaid-academy-web",
+  "version": "1.0.0",
+  "description": "Quaid Academy Web Application for Vercel deployment",
+  "scripts": {
+    "build": "bash build.sh",
+    "start": "echo 'Flutter Web hosted on Vercel'"
+  }
+}
