@@ -113,32 +113,44 @@ class NotificationService {
       iOS: initializationSettingsDarwin,
     );
 
-    // Local notifications initialization (mobile only)
-    if (!kIsWeb) {
-      await _localNotificationsPlugin.initialize(
-        initializationSettings,
-        onDidReceiveNotificationResponse: (NotificationResponse response) {
-          if (response.payload != null && response.payload!.isNotEmpty) {
-            handleNotificationPayload(response.payload);
-          }
-        },
-      );
+    // Local notifications initialization (mobile only: Android/iOS)
+    final bool isMobile = !kIsWeb &&
+        (defaultTargetPlatform == TargetPlatform.android ||
+            defaultTargetPlatform == TargetPlatform.iOS);
+
+    if (isMobile) {
+      try {
+        await _localNotificationsPlugin.initialize(
+          initializationSettings,
+          onDidReceiveNotificationResponse: (NotificationResponse response) {
+            if (response.payload != null && response.payload!.isNotEmpty) {
+              handleNotificationPayload(response.payload);
+            }
+          },
+        );
+      } catch (e) {
+        debugPrint('[NotificationService] Local notifications init error: $e');
+      }
     }
 
     // Create Android Channels
-    if (!kIsWeb && defaultTargetPlatform == TargetPlatform.android) {
-      final androidPlugin = _localNotificationsPlugin
-          .resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>();
-      if (androidPlugin != null) {
-        await androidPlugin.createNotificationChannel(_academyNotificationsV2Channel);
-        await androidPlugin.createNotificationChannel(_feeRemindersV2Channel);
-        debugPrint('''
+    if (isMobile && defaultTargetPlatform == TargetPlatform.android) {
+      try {
+        final androidPlugin = _localNotificationsPlugin
+            .resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>();
+        if (androidPlugin != null) {
+          await androidPlugin.createNotificationChannel(_academyNotificationsV2Channel);
+          await androidPlugin.createNotificationChannel(_feeRemindersV2Channel);
+          debugPrint('''
 ==============================
 [FEE CHANNEL]
 created = $feeReminderChannelId
 sound = $defaultSoundName
 importance = high
 ==============================''');
+        }
+      } catch (e) {
+        debugPrint('[NotificationService] Android channel creation error: $e');
       }
     }
 
@@ -223,6 +235,15 @@ importance = high
   }
 
   static Future<void> initializePushNotifications() async {
+    final bool isMobileOrWeb = kIsWeb ||
+        defaultTargetPlatform == TargetPlatform.android ||
+        defaultTargetPlatform == TargetPlatform.iOS;
+
+    if (!isMobileOrWeb) {
+      debugPrint('[NotificationService] FCM push notifications skipped on desktop: ${defaultTargetPlatform.name}');
+      return;
+    }
+
     try {
       final settings = await _messaging.requestPermission(
         alert: true,
@@ -265,8 +286,16 @@ Firebase projectId = ${Firebase.app().options.projectId}
       } catch (e) {
         debugPrint('[NotificationService] FCM token retrieval note (platform specific): $e');
       }
-      if (!kIsWeb) {
-        FirebaseMessaging.onBackgroundMessage(firebaseMessagingBackgroundHandler);
+
+      final bool isMobile = !kIsWeb &&
+          (defaultTargetPlatform == TargetPlatform.android ||
+              defaultTargetPlatform == TargetPlatform.iOS);
+      if (isMobile) {
+        try {
+          FirebaseMessaging.onBackgroundMessage(firebaseMessagingBackgroundHandler);
+        } catch (e) {
+          debugPrint('[NotificationService] FCM background registration note: $e');
+        }
       }
 
       // Handle Foreground Notifications (App OPEN)
@@ -321,7 +350,12 @@ Firebase projectId = ${Firebase.app().options.projectId}
       final token = fcmToken ?? await _messaging.getToken();
       if (token == null || token.isEmpty) return;
 
-      final currentUid = userId ?? FirebaseAuth.instance.currentUser?.uid ?? 'guest';
+      final currentUid = userId ?? FirebaseAuth.instance.currentUser?.uid;
+      // Do not attempt to register an unauthenticated guest into Firestore
+      if (currentUid == null || currentUid.isEmpty || currentUid == 'guest') {
+        return;
+      }
+
       final deviceInfo = DeviceInfoPlugin();
       String deviceId = 'unknown_device';
       String platformName = kIsWeb ? 'web' : defaultTargetPlatform.name;
@@ -333,40 +367,72 @@ Firebase projectId = ${Firebase.app().options.projectId}
         } else if (defaultTargetPlatform == TargetPlatform.iOS) {
           final iosInfo = await deviceInfo.iosInfo;
           deviceId = iosInfo.identifierForVendor ?? 'ios_device';
+        } else if (defaultTargetPlatform == TargetPlatform.windows) {
+          try {
+            final winInfo = await deviceInfo.windowsInfo;
+            deviceId = winInfo.deviceId;
+          } catch (_) {}
         }
+      } else {
+        deviceId = 'web_${currentUid.hashCode.abs()}';
       }
 
-      await _firestore.collection('devices').doc('${currentUid}_$deviceId').set(
-        {
-          'fcmToken': token,
-          'platform': platformName,
-          'deviceId': deviceId,
-          'userId': currentUid,
-          'role': role ?? 'student',
-          'studentId': studentId ?? '',
-          'createdAt': FieldValue.serverTimestamp(),
-          'updatedAt': FieldValue.serverTimestamp(),
-          'isActive': true,
-        },
-        SetOptions(merge: true),
-      );
+      try {
+        await _firestore.collection('devices').doc('${currentUid}_$deviceId').set(
+          {
+            'fcmToken': token,
+            'platform': platformName,
+            'deviceId': deviceId,
+            'userId': currentUid,
+            'role': role ?? 'student',
+            'studentId': studentId ?? '',
+            'createdAt': FieldValue.serverTimestamp(),
+            'updatedAt': FieldValue.serverTimestamp(),
+            'isActive': true,
+          },
+          SetOptions(merge: true),
+        );
+        debugPrint('[NotificationService] FCM token registered for $currentUid ($deviceId)');
+      } on FirebaseException catch (e) {
+        if (e.code == 'permission-denied') {
+          debugPrint('[NotificationService] Device registration in devices collection skipped (insufficient Firestore permissions for $currentUid)');
+        } else {
+          debugPrint('[NotificationService] Firestore devices registration note: [${e.code}] ${e.message}');
+        }
+      } catch (e) {
+        debugPrint('[NotificationService] Devices collection update error: $e');
+      }
 
-      debugPrint('[NotificationService] FCM token registered for $currentUid ($deviceId)');
+      // If this is a student, also record the fcmToken in student_auth where students have access
+      final effectiveStudentId = studentId ?? (role == 'student' ? currentUid : null);
+      if (effectiveStudentId != null && effectiveStudentId.isNotEmpty) {
+        try {
+          await _firestore.collection('student_auth').doc(effectiveStudentId).set(
+            {
+              'fcmToken': token,
+              'fcmPlatform': platformName,
+              'fcmUpdatedAt': FieldValue.serverTimestamp(),
+            },
+            SetOptions(merge: true),
+          );
+          debugPrint('[NotificationService] FCM token synced to student_auth/$effectiveStudentId');
+        } catch (_) {}
+      }
     } catch (e) {
-      debugPrint('[NotificationService] Token register error: $e');
+      debugPrint('[NotificationService] Token register note: $e');
     }
   }
 
   static Future<void> unregisterFcmToken({String? userId}) async {
     try {
       final currentUid = userId ?? FirebaseAuth.instance.currentUser?.uid;
-      if (currentUid == null) return;
+      if (currentUid == null || currentUid.isEmpty || currentUid == 'guest') return;
       final snapshot = await _firestore.collection('devices').where('userId', isEqualTo: currentUid).get();
       for (final doc in snapshot.docs) {
         await doc.reference.update({'isActive': false, 'updatedAt': FieldValue.serverTimestamp()});
       }
     } catch (e) {
-      debugPrint('[NotificationService] Unregister token error: $e');
+      debugPrint('[NotificationService] Unregister token note: $e');
     }
   }
 
@@ -1200,6 +1266,9 @@ status = PENDING
   // ── 9. Student Real-time Notifications Listener ────────────────────────────
 
   static Future<void> subscribeToStudentTopics(StudentModel student) async {
+    // Topic subscriptions are not supported on web clients
+    if (kIsWeb) return;
+
     try {
       final safeClass = student.classType.toLowerCase().replaceAll(RegExp(r'[^a-z0-9]'), '_');
       final subjects = student.subject
@@ -1219,6 +1288,10 @@ status = PENDING
           await _messaging.subscribeToTopic('class_${safeClass}_subject_${safeSub}_hour_$safeHour');
         }
       }
+    } on UnsupportedError catch (e) {
+      debugPrint('[NotificationService] Student topic subscription not supported: $e');
+    } on UnimplementedError catch (e) {
+      debugPrint('[NotificationService] Student topic subscription unimplemented: $e');
     } catch (e) {
       debugPrint('[NotificationService] Error subscribing to student topics: $e');
     }
@@ -1455,6 +1528,9 @@ status = PENDING
   static List<NotificationModel> _lastTeacherFilteredNotices = [];
 
   static Future<void> subscribeToTeacherTopics(TeacherModel teacher) async {
+    // Topic subscriptions are not supported on web clients
+    if (kIsWeb) return;
+
     try {
       await _messaging.unsubscribeFromTopic('students');
       await _messaging.unsubscribeFromTopic('academy_all');
@@ -1470,6 +1546,10 @@ status = PENDING
       for (var sub in subjects) {
         await _messaging.subscribeToTopic('subject_$sub');
       }
+    } on UnsupportedError catch (e) {
+      debugPrint('[NotificationService] Teacher topic subscription not supported: $e');
+    } on UnimplementedError catch (e) {
+      debugPrint('[NotificationService] Teacher topic subscription unimplemented: $e');
     } catch (e) {
       debugPrint('[NotificationService] Error subscribing to teacher topics: $e');
     }

@@ -22,7 +22,9 @@ class SyncService extends ChangeNotifier {
     _initialized = true;
 
     // Ensure Hive box is opened.
-    final Box<StudentModel> studentBox = await Hive.openBox<StudentModel>('students');
+    final Box<StudentModel> studentBox = Hive.isBoxOpen('students')
+        ? Hive.box<StudentModel>('students')
+        : await Hive.openBox<StudentModel>('students');
     // Load existing cached students from Hive immediately.
     _students = studentBox.values.toList();
     notifyListeners();

@@ -57,8 +57,16 @@ Future<void> main() async {
   await SupabaseConfig.init();
   HybridBackend.printDiagnostics().catchError((e) => debugPrint('[HYBRID BACKEND] Diagnostics error: $e'));
 
-  if (!kIsWeb) {
-    FirebaseMessaging.onBackgroundMessage(firebaseMessagingBackgroundHandler);
+  final bool isMobile = !kIsWeb &&
+      (defaultTargetPlatform == TargetPlatform.android ||
+          defaultTargetPlatform == TargetPlatform.iOS);
+
+  if (isMobile) {
+    try {
+      FirebaseMessaging.onBackgroundMessage(firebaseMessagingBackgroundHandler);
+    } catch (e) {
+      debugPrint('[FCM] Background handler registration skipped: $e');
+    }
   }
 
   debugPrint('[FIREBASE CONFIG] platform = ${defaultTargetPlatform.name}');
@@ -66,35 +74,55 @@ Future<void> main() async {
   debugPrint('[FIREBASE CONFIG] appId = ${app.options.appId}');
   debugPrint('[FIREBASE CONFIG] storageBucket = ${app.options.storageBucket}');
 
-  await Hive.initFlutter();
+  try {
+    await Hive.initFlutter();
 
-  if (!Hive.isAdapterRegistered(0)) {
-    Hive.registerAdapter(StudentModelAdapter());
+    if (!Hive.isAdapterRegistered(0)) {
+      Hive.registerAdapter(StudentModelAdapter());
+    }
+    if (!Hive.isAdapterRegistered(1)) {
+      Hive.registerAdapter(RecycledStudentAdapter());
+    }
+
+    await DatabaseService.init();
+    await NotificationService.init(key: appNavigatorKey);
+
+    final themeProvider = ThemeProvider();
+    await themeProvider.init();
+
+    final syncService = SyncService();
+    await syncService.init();
+
+    runApp(
+      MultiProvider(
+        providers: [
+          ChangeNotifierProvider.value(value: themeProvider),
+          ChangeNotifierProvider.value(value: syncService),
+        ],
+        child: const MyApp(),
+      ),
+    );
+  } catch (e, stack) {
+    debugPrint('[APP INIT ERROR] $e\n$stack');
+    runApp(
+      MaterialApp(
+        home: Scaffold(
+          body: Center(
+            child: Padding(
+              padding: const EdgeInsets.all(24.0),
+              child: Text(
+                'Initialization Error: $e\nPlease restart the application.',
+                textAlign: TextAlign.center,
+                style: const TextStyle(color: Colors.red, fontSize: 16),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  } finally {
+    FlutterNativeSplash.remove();
   }
-  if (!Hive.isAdapterRegistered(1)) {
-    Hive.registerAdapter(RecycledStudentAdapter());
-  }
-
-  await DatabaseService.init();
-  await NotificationService.init(key: appNavigatorKey);
-
-  final themeProvider = ThemeProvider();
-  await themeProvider.init();
-
-  final syncService = SyncService();
-  await syncService.init();
-
-  runApp(
-    MultiProvider(
-      providers: [
-        ChangeNotifierProvider.value(value: themeProvider),
-        ChangeNotifierProvider.value(value: syncService),
-      ],
-      child: const MyApp(),
-    ),
-  );
-
-  FlutterNativeSplash.remove();
 }
 
 final GlobalKey<NavigatorState> appNavigatorKey = GlobalKey<NavigatorState>();

@@ -22,9 +22,15 @@ class DatabaseService {
   static late Box _settingsBox;
 
   static Future<void> init() async {
-    _studentBox = await Hive.openBox<StudentModel>('students');
-    _recycledStudentBox = await Hive.openBox<RecycledStudent>('recycled_students');
-    _settingsBox = await Hive.openBox('settings');
+    _studentBox = Hive.isBoxOpen('students')
+        ? Hive.box<StudentModel>('students')
+        : await Hive.openBox<StudentModel>('students');
+    _recycledStudentBox = Hive.isBoxOpen('recycled_students')
+        ? Hive.box<RecycledStudent>('recycled_students')
+        : await Hive.openBox<RecycledStudent>('recycled_students');
+    _settingsBox = Hive.isBoxOpen('settings')
+        ? Hive.box('settings')
+        : await Hive.openBox('settings');
   }
 
   // ── Student CRUD (Local + Cloud) ──
