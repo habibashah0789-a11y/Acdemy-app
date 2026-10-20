@@ -2,7 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'dart:convert';
-import 'dart:io' as io;
+// ignore: avoid_web_libraries_in_flutter
+import 'dart:io' if (dart.library.html) 'package:my_academy_app/utils/io_stub.dart' as io;
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:url_launcher/url_launcher.dart';
 import '../models/student_model.dart';

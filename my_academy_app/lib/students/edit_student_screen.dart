@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
-import 'dart:io' as io;
+// ignore: avoid_web_libraries_in_flutter
+import 'dart:io' if (dart.library.html) 'package:my_academy_app/utils/io_stub.dart' as io;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;

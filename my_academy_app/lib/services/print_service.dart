@@ -5,7 +5,8 @@ import 'package:pdf/widgets.dart' as pw;
 import 'package:printing/printing.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'dart:convert';
-import 'dart:io' as io;
+// ignore: avoid_web_libraries_in_flutter
+import 'dart:io' if (dart.library.html) 'package:my_academy_app/utils/io_stub.dart' as io;
 import 'package:path_provider/path_provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../models/student_model.dart';

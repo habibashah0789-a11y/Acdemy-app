@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:typed_data';
-import 'dart:io' as io;
+// ignore: avoid_web_libraries_in_flutter
+import 'dart:io' if (dart.library.html) 'package:my_academy_app/utils/io_stub.dart' as io;
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:cached_network_image/cached_network_image.dart';

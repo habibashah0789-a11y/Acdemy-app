@@ -1,0 +1,9 @@
+{
+  "name": "my-academy-app",
+  "version": "1.0.0",
+  "description": "Quaid Academy Flutter Web App",
+  "scripts": {
+    "build": "echo 'Build is handled by GitHub Actions + Flutter'"
+  },
+  "private": true
+}
