@@ -1,6 +1,5 @@
 import 'dart:convert';
-// ignore: avoid_web_libraries_in_flutter
-import 'dart:io' if (dart.library.html) 'package:my_academy_app/utils/io_stub.dart';
+import 'dart:io';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';

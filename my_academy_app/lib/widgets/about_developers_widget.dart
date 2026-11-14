@@ -1,6 +1,5 @@
 import 'dart:convert';
-// ignore: avoid_web_libraries_in_flutter
-import 'dart:io' if (dart.library.html) 'package:my_academy_app/utils/io_stub.dart';
+import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
