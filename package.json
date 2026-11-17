@@ -1,0 +1,9 @@
+{
+  "name": "quaid-academy-web",
+  "version": "1.0.0",
+  "description": "Quaid Academy Web App",
+  "private": true,
+  "scripts": {
+    "build": "cd my_academy_app && bash build.sh"
+  }
+}

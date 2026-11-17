@@ -27,7 +27,7 @@ flutter pub get
 
 # 5. Build Web Release
 echo "--> Building Flutter Web Release..."
-flutter build web --release
+flutter build web --release --no-tree-shake-icons
 
 echo "=========================================="
 echo " Flutter Web Build Completed Successfully! "
