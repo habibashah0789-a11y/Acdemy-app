@@ -91,3 +91,4 @@ jobs:
           vercel-project-id: ${{ secrets.VERCEL_PROJECT_ID }}
           working-directory: ./my_academy_app/build/web
           vercel-args: '--prod'
+

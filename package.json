@@ -7,3 +7,4 @@
     "build": "cd my_academy_app && bash build.sh"
   }
 }
+
